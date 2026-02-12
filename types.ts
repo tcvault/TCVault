@@ -1,4 +1,10 @@
 
+export interface User {
+  id: string;
+  username: string;
+  avatar?: string;
+}
+
 export interface Card {
   id: string;
   playerName: string;
@@ -13,6 +19,8 @@ export interface Card {
   images: string[];
   notes?: string;
   createdAt: number;
+  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
+  isWishlist?: boolean;
 }
 
 export interface CollectionStats {
@@ -21,6 +29,7 @@ export interface CollectionStats {
   totalMarketValue: number;
   netProfit: number;
   topSet: string;
+  dailyChange?: number;
 }
 
 export enum ViewMode {

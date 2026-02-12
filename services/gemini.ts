@@ -13,6 +13,8 @@ export interface IdentifiedCard {
   description: string;
   serialNumber?: string;
   reasoning?: string;
+  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
+  checklistVerified?: boolean;
 }
 
 export interface MarketPriceResult {
@@ -21,9 +23,51 @@ export interface MarketPriceResult {
   summary: string;
 }
 
+const UNIVERSAL_SOCCER_CARD_REGISTRY = `
+UNIVERSAL SOCCER CARD HISTORICAL REGISTRY (Multi-Era):
+
+1. PANINI SELECT 2024-25 (Critical Parallel Mapping):
+   - /155: Orange Ice
+   - /150: Camo
+   - /140: Purple
+   - /125: Bronze Checker / Green Fluorescent
+   - /99: Pink
+   - /88: Red Wave
+   - /85: WHITE ICE (Verified Checklist Match)
+   - /75: Orange
+   - /49: Winter Camo
+   - /48: Jade Dragon Scale
+   - /25: Tie-Dye
+   - /20: White
+   - /15: Tessellation
+   - /13: Pink Wave
+   - /10: Gold / Gold Ice / Gold Mojo / Gold Wave
+   - /5: Green
+   - 1/1: Black / Black Finite
+
+2. PANINI PRIZM (Global Standard):
+   - Parallels: Silver, Hyper, Mojo, Red, Blue.
+   - Numbered: /199 (Blue), /149 (Red), /99 (Blue Ice), /75 (Purple), /25 (Mojo), /10 (Gold), /1 (Black).
+   - Case Hits: Color Blast, Manga, Stained Glass.
+
+3. TOPPS CHROME UEFA (Historical & Modern):
+   - Refractor, Speckle, Pink, Negative, RayWave.
+   - Numbered: /250 (Aqua), /150 (Blue), /99 (Green), /75 (Yellow), /50 (Gold), /25 (Orange), /10 (Red), /5 (Frozen).
+   - Case Hits: Helix, Radiance, The Grail.
+
+4. TOPPS MERLIN UEFA:
+   - Renaissance (Case Hit), Sword, Sorcery.
+   - Numbered: /99 (Green), /75 (Rose Gold), /50 (Gold), /20 (Matcha), /5 (Red).
+
+5. VISUAL HEURISTICS:
+   - "Ice" = Geometric/Glass Shards.
+   - "Wave" = Sinuous undulating lines.
+   - "Mojo" = Concentric circular spirals.
+   - "Checkerboard" = Rectangular grid pattern.
+`;
+
 /**
- * Uses Gemini 3 Flash with an enhanced authentication protocol specifically tuned for 
- * sports card parallels and rare textures.
+ * High-precision identification for the Global Soccer Archive across all eras.
  */
 export const identifyCard = async (images: string[]): Promise<IdentifiedCard | null> => {
   try {
@@ -40,91 +84,75 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
         parts: [
           ...imageParts,
           {
-            text: `Act as a world-class trading card grader and parallel specialist. Analyze these ${images.length} images.
-            
-            STRICT IDENTIFICATION PROTOCOL:
-            
-            1. **Grading Check (CRITICAL)**:
-               - Look for a plastic holder with a label (a "slab").
-               - Identify the Grading Company: PSA, BGS (Beckett), SGC, CGC, etc.
-               - Identify the Numerical Grade: (e.g., 10, 9.5, 9, 8).
-               - If graded, return the condition as '[Company] [Grade]' (e.g., "PSA 10").
-               - If NOT in a slab, return 'Raw' or 'Ungraded'.
+            text: `Act as a Senior Soccer Card Historian and Registry Expert.
+            Master Registry Reference: ${UNIVERSAL_SOCCER_CARD_REGISTRY}
 
-            2. **Parallel Identification**: 
-               - Look for printed text: 'CONCOURSE', 'PREMIER LEVEL', 'COURTSIDE', 'TERRACE', 'MEZZANINE', 'FIELD LEVEL'.
-               - Texture: Look for 'ICE' (cracked shards), 'PRIZM' (smooth rainbow), 'SHIMMER', or 'WAVE'.
-               - Color: Differentiate WHITE ICE (silver shards) from BLUE ICE (blue shards).
-            
-            3. **Serial Number Logic**:
-               - Search for FOIL-STAMPED fractional numbers (e.g., '12/85').
-               - Often found on the back or in corners of the front.
-            
-            4. **Set Identification**:
-               - Check the small legal text at the bottom rear for the YEAR and PRODUCT (e.g., '2023-24 Panini Select').
+            CRITICAL PROTOCOL:
+            1. **Serial Number Primacy**: If a serial number is detected (e.g., 12/85), the variant name MUST match the registry mapping (e.g., /85 = White Ice).
+            2. **Determine Era & Year**: Identify the specific season (2024-25, 2017-18, etc.) via copyright or design.
+            3. **Identify Brand**: Panini (Select, Prizm, Donruss) vs Topps (Chrome, Merlin, Finest).
+            4. **Visual Texture Mapping**: Use texture (Ice, Mojo, Wave) only when serial numbers are not present or to confirm the specific parallel type.
+            5. **Case Hits**: Flag Renaissance, Kaboom, Color Blast, or Helix immediately as 'Chase'.
 
-            Return a JSON object. In the 'description' field, include any visible defects or interesting details about the card's appearance.`,
+            Output JSON. If a precise checklist match is found (especially for serial-numbered cards), set checklistVerified to true.`,
           },
         ],
       },
       config: {
+        thinkingConfig: { thinkingBudget: 16384 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
             playerName: { type: Type.STRING },
-            cardSpecifics: { type: Type.STRING, description: "Full Parallel Name, e.g., 'White Ice Terrace'" },
-            set: { type: Type.STRING },
-            setNumber: { type: Type.STRING, description: "Checklist ID from back (e.g., 245)" },
-            condition: { type: Type.STRING, description: "Graded status, e.g. 'PSA 10' or 'Raw'" },
+            cardSpecifics: { type: Type.STRING, description: "Detailed Parallel Name and Year (e.g. '2024-25 White Ice /85')" },
+            set: { type: Type.STRING, description: "Full Set Name (e.g. '2024-25 Panini Select Premier League')" },
+            setNumber: { type: Type.STRING },
+            condition: { type: Type.STRING },
             estimatedValue: { type: Type.NUMBER },
             description: { type: Type.STRING },
-            serialNumber: { type: Type.STRING, description: "Fractional stamp (e.g., 12/85)" },
-            reasoning: { type: Type.STRING, description: "Visual logic for parallel choice" },
+            serialNumber: { type: Type.STRING },
+            reasoning: { type: Type.STRING, description: "Logic path, citing serial number if found" },
+            rarityTier: { type: Type.STRING, enum: ['Base', 'Parallel', 'Chase', '1/1'] },
+            checklistVerified: { type: Type.BOOLEAN }
           },
           required: ["playerName", "cardSpecifics", "set", "estimatedValue"],
         },
       },
     });
 
-    const result = JSON.parse(response.text || '{}');
-    return result as IdentifiedCard;
+    return JSON.parse(response.text || '{}') as IdentifiedCard;
   } catch (error: any) {
-    if (error?.message?.includes('429') || error?.message?.includes('quota')) {
-      throw new Error("QUOTA_EXHAUSTED");
-    }
-    console.error("Gemini Identification Error:", error);
+    if (error?.message?.includes('429')) throw new Error("QUOTA_EXHAUSTED");
+    console.error("Identification Error:", error);
     return null;
   }
 };
 
 export const getMarketPrice = async (playerName: string, cardSpecifics: string, set: string): Promise<MarketPriceResult | null> => {
   try {
-    const prompt = `Search for recent sales and current listings of: "${playerName}" - "${cardSpecifics}" from "${set}". Provide average price in GBP (£).`;
+    const prompt = `Synthesize Market Valuation for: ${playerName} ${cardSpecifics} (${set}).
+    Reference recent auction data from eBay (Sold), Goldin, and 130point.
+    Look specifically for the most recent sales of this exact parallel variant.
+    Provide average GBP (£) price and a concise summary.`;
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-flash-preview', 
       contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
+      config: { tools: [{ googleSearch: {} }] },
     });
 
-    const priceMatch = response.text.match(/[£$](\d+(\.\d{2})?)/);
-    const estimatedPrice = priceMatch ? parseFloat(priceMatch[1]) : 0;
-    
-    const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
-      title: chunk.web?.title || 'Source',
-      uri: chunk.web?.uri || '#'
-    })) || [];
-
+    const priceMatch = response.text.match(/[£](\d+(\.\d{2})?)/) || response.text.match(/(\d+(\.\d{2})?)\s?GBP/);
     return {
-      price: estimatedPrice,
+      price: priceMatch ? parseFloat(priceMatch[1]) : 0,
       summary: response.text,
-      sources: sources
+      sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+        title: chunk.web?.title || 'Market Intel',
+        uri: chunk.web?.uri || '#'
+      })) || []
     };
   } catch (error) {
-    console.error("Market Price Check Error:", error);
+    console.error("Market Intel Error:", error);
     return null;
   }
 };
