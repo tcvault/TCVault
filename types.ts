@@ -5,6 +5,12 @@ export interface User {
   avatar?: string;
 }
 
+export interface BinderPage {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export interface Card {
   id: string;
   playerName: string;
@@ -21,6 +27,7 @@ export interface Card {
   createdAt: number;
   rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
   isWishlist?: boolean;
+  pageId?: string; // Reference to a BinderPage
 }
 
 export interface CollectionStats {

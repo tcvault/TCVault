@@ -1,16 +1,17 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Card } from '../types';
-import { Sparkles, X, Save, AlertCircle, Info, Hash, Plus, Trash2, User, FileText, Camera, Eye, Search, BrainCircuit, Scan, ShieldCheck, Database, CheckCircle2 } from 'lucide-react';
+import { Card, BinderPage } from '../types';
+import { Sparkles, X, Save, AlertCircle, Info, Hash, Plus, Trash2, User, FileText, Camera, Eye, Search, BrainCircuit, Scan, ShieldCheck, Database, CheckCircle2, PoundSterling, BookOpen } from 'lucide-react';
 import { identifyCard } from '../services/gemini';
 
 interface CardFormProps {
   onSubmit: (card: Card) => void;
   onCancel: () => void;
   initialData?: Card;
+  pages: BinderPage[];
 }
 
-const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) => {
+const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData, pages }) => {
   const isEditing = !!initialData;
   const [formData, setFormData] = useState<Partial<Card & { reasoning?: string, rarityTier?: string, checklistVerified?: boolean }>>({
     playerName: '',
@@ -25,7 +26,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
     notes: '',
     reasoning: '',
     rarityTier: 'Base',
-    checklistVerified: false
+    checklistVerified: false,
+    pageId: ''
   });
 
   const [images, setImages] = useState<string[]>([]);
@@ -87,7 +89,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
         }));
         setHasScanned(true);
       } else {
-        setError("Identification inconclusive. Multi-era manual check required.");
+        setError("Identification inconclusive. Please double check the card details.");
       }
     } catch (e: any) {
       setError(e.message === "QUOTA_EXHAUSTED" ? "Registry capacity reached." : "Scan error.");
@@ -99,7 +101,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.playerName || !formData.set) {
-      setError("Subject and Set identity required.");
+      setError("Card name and Set name are required.");
       return;
     }
     onSubmit({
@@ -115,7 +117,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
       serialNumber: formData.serialNumber || undefined,
       images: images,
       notes: formData.notes,
-      createdAt: initialData?.createdAt || Date.now()
+      createdAt: initialData?.createdAt || Date.now(),
+      pageId: formData.pageId || undefined
     });
   };
 
@@ -123,11 +126,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
     <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-top-6 duration-1000 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-4xl font-black tracking-tighter text-white uppercase italic">{isEditing ? 'Asset Modification' : 'Universal Registry Entry'}</h2>
-          <p className="text-slate-600 text-xs font-bold uppercase tracking-[0.25em] mt-3 flex items-center gap-2">
-            <ShieldCheck size={14} className="text-indigo-500" />
-            Universal Multi-Era Soccer Registry Online
-          </p>
+          <h2 className="text-4xl font-black tracking-tighter text-white uppercase italic">{isEditing ? 'Edit Card Details' : 'Add your latest Pickup'}</h2>
         </div>
         <button onClick={onCancel} className="p-4 bg-white/5 border border-white/10 rounded-full hover:bg-rose-500/20 hover:border-rose-500/40 transition-all text-slate-500 hover:text-rose-400">
           <X size={24} />
@@ -139,28 +138,28 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
           <div className="glass rounded-[3rem] p-10 space-y-8 border-white/5 relative overflow-hidden group">
             {isScanning && (
               <div className="absolute inset-0 bg-black/98 backdrop-blur-3xl z-50 flex flex-col items-center justify-center p-10 animate-in fade-in duration-500">
-                <div className="w-full aspect-[3/4] relative border border-indigo-500/30 rounded-[2.5rem] overflow-hidden mb-10 bg-slate-950 shadow-[0_0_100px_rgba(79,70,229,0.1)]">
+                <div className="w-full aspect-[3/4] relative border border-blue-500/30 rounded-[2.5rem] overflow-hidden mb-10 bg-slate-950 shadow-[0_0_100px_rgba(59,130,246,0.1)]">
                    <div className="scanner-line absolute w-full z-20"></div>
                    <div className="absolute inset-0 flex items-center justify-center">
                       <div className="relative">
-                        <Scan size={140} className="text-indigo-500/5 animate-pulse" />
-                        <BrainCircuit size={70} className="text-indigo-400 absolute inset-0 m-auto animate-bounce" />
+                        <Scan size={140} className="text-blue-500/5 animate-pulse" />
+                        <BrainCircuit size={70} className="text-blue-400 absolute inset-0 m-auto animate-bounce" />
                       </div>
                    </div>
                 </div>
                 <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center gap-3 text-indigo-400 font-black text-xs uppercase tracking-[0.4em]">
+                  <div className="flex items-center justify-center gap-3 text-blue-400 font-black text-xs uppercase tracking-[0.4em]">
                     <Sparkles size={18} className="animate-spin" />
-                    Analyzing Visual Era & Brand
+                    Analyzing Card Details
                   </div>
-                  <p className="text-[10px] text-slate-600 font-bold leading-relaxed uppercase tracking-[0.2em] max-w-[200px] mx-auto">Cross-referencing historic checklists & auction results...</p>
+                  <p className="text-[10px] text-slate-600 font-bold leading-relaxed uppercase tracking-[0.2em] max-w-[200px] mx-auto">Identifying player, set, and rarity level...</p>
                 </div>
               </div>
             )}
 
             <div className="flex items-center justify-between px-2">
-              <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em]">Visual Matrix</label>
-              <span className="text-[10px] font-black text-indigo-500 tabular">{images.length} FRAMES</span>
+              <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em]">Card Images</label>
+              <span className="text-[10px] font-black text-blue-500 tabular">{images.length} FRAMES</span>
             </div>
             
             <div className="grid grid-cols-2 gap-6">
@@ -172,32 +171,28 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
                   </button>
                 </div>
               ))}
-              <button onClick={() => fileInputRef.current?.click()} className="aspect-[3/4] rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-4 hover:border-indigo-500/40 hover:bg-indigo-500/[0.03] transition-all group/add">
-                <div className="p-5 bg-white/5 rounded-2xl group-hover/add:bg-indigo-500/20 transition-all group-hover/add:scale-110">
-                  <Plus className="text-slate-600 group-hover/add:text-indigo-400" size={24} />
+              <button onClick={() => fileInputRef.current?.click()} className="aspect-[3/4] rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-4 hover:border-blue-500/40 hover:bg-blue-500/[0.03] transition-all group/add">
+                <div className="p-5 bg-white/5 rounded-2xl group-hover/add:bg-blue-500/20 transition-all group-hover/add:scale-110">
+                  <Plus className="text-slate-600 group-hover/add:text-blue-400" size={24} />
                 </div>
-                <span className="text-[10px] font-black text-slate-700 group-hover/add:text-indigo-400 uppercase tracking-widest">Capture</span>
+                <span className="text-[10px] font-black text-slate-700 group-hover/add:text-blue-400 uppercase tracking-widest">Add Image</span>
               </button>
             </div>
             
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
 
             {!isScanning && images.length > 0 && (
-              <button type="button" onClick={runScanner} className={`w-full flex items-center justify-center gap-4 py-6 rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] transition-all shadow-2xl ${!hasScanned ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/20' : 'bg-white/5 text-indigo-400 border border-indigo-500/20 hover:bg-white/10'}`}>
+              <button type="button" onClick={runScanner} className={`w-full flex items-center justify-center gap-4 py-6 rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] transition-all shadow-2xl ${!hasScanned ? 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-600/20' : 'bg-white/5 text-blue-400 border border-blue-500/20 hover:bg-white/10'}`}>
                 <Sparkles size={20} />
-                {hasScanned ? 'Rerun Registry Scan' : 'Identify Asset'}
+                {hasScanned ? 'Identify Again' : 'Auto-Identify Card'}
               </button>
             )}
             
             <div className="pt-6 border-t border-white/5 space-y-4">
-                <div className="flex items-center gap-3 px-2 opacity-60">
-                    <Database size={14} className="text-indigo-400" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Universal Archive Sync v3.0</span>
-                </div>
                 {formData.checklistVerified && (
                   <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-3 animate-in slide-in-from-left-4">
                     <CheckCircle2 size={18} className="text-emerald-500" />
-                    <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Registry Match Verified</span>
+                    <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Set Match Verified</span>
                   </div>
                 )}
             </div>
@@ -207,43 +202,60 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
         <form onSubmit={handleSubmit} className="lg:col-span-8 space-y-8">
           <div className="glass rounded-[3.5rem] p-12 space-y-12 border-white/5 relative bg-black/40">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-              <Field label="Subject / Athlete" value={formData.playerName} onChange={v => setFormData({...formData, playerName: v})} icon={<User size={20} />} />
+              <Field label="Player / Subject" value={formData.playerName} onChange={v => setFormData({...formData, playerName: v})} icon={<User size={20} />} />
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-1">
-                  <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em]">Parallel Variant & Year</label>
+                  <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em]">Variant & Year</label>
                   {formData.rarityTier && (
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${formData.rarityTier === 'Chase' || formData.rarityTier === '1/1' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-white/5 text-slate-500 border border-white/5'}`}>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${formData.rarityTier === 'Chase' || formData.rarityTier === '1/1' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-white/5 text-slate-500 border border-white/5'}`}>
                         {formData.rarityTier}
                     </span>
                   )}
                 </div>
                 <div className="relative group">
-                  <FileText className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-indigo-500 transition-colors" size={20} />
-                  <input type="text" placeholder="e.g. 2014 Prizm Silver" value={formData.cardSpecifics} onChange={e => setFormData({...formData, cardSpecifics: e.target.value})} className="w-full bg-slate-950/40 border border-white/5 rounded-2xl h-16 pl-16 pr-8 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40 outline-none font-bold text-white transition-all placeholder:text-slate-900" />
+                  <FileText className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-blue-500 transition-colors" size={20} />
+                  <input type="text" placeholder="e.g. 2024 Silver Prizm" value={formData.cardSpecifics} onChange={e => setFormData({...formData, cardSpecifics: e.target.value})} className="w-full bg-slate-950/40 border border-white/5 rounded-2xl h-16 pl-16 pr-8 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/40 outline-none font-bold text-white transition-all placeholder:text-slate-900" />
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
-              <Field label="Archive Set Identity" value={formData.set} onChange={v => setFormData({...formData, set: v})} icon={<Eye size={20} />} />
+              <Field label="Set Name" value={formData.set} onChange={v => setFormData({...formData, set: v})} icon={<Eye size={20} />} />
               <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] px-1">Condition Rating</label>
-                <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} className="w-full bg-slate-950/40 border border-white/5 rounded-2xl h-16 px-8 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40 outline-none font-bold text-white appearance-none cursor-pointer">
+                <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] px-1">Condition</label>
+                <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} className="w-full bg-slate-950/40 border border-white/5 rounded-2xl h-16 px-8 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/40 outline-none font-bold text-white appearance-none cursor-pointer">
                   {standardConditions.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-12">
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] px-1">Assign to Page</label>
+                <div className="relative group">
+                  <BookOpen className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-blue-500 transition-colors" size={20} />
+                  <select 
+                    value={formData.pageId || ''} 
+                    onChange={e => setFormData({...formData, pageId: e.target.value})} 
+                    className="w-full bg-slate-950/40 border border-white/5 rounded-2xl h-16 pl-16 pr-8 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/40 outline-none font-bold text-white appearance-none cursor-pointer"
+                  >
+                    <option value="">(No Page Assigned)</option>
+                    {pages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 pt-12 border-t border-white/5">
-              <Field label="Asset Basis (£)" type="number" value={formData.pricePaid} onChange={v => setFormData({...formData, pricePaid: Number(v)})} icon={<PoundIcon />} />
-              <Field label="Market Valuation (£)" type="number" value={formData.marketValue} onChange={v => setFormData({...formData, marketValue: Number(v)})} icon={<Sparkles size={18} className="text-indigo-500" />} />
+              <Field label="Purchase Cost (£)" type="number" value={formData.pricePaid} onChange={v => setFormData({...formData, pricePaid: Number(v)})} icon={<PoundSterling size={20} className="text-blue-500" />} />
+              <Field label="Market Value (£)" type="number" value={formData.marketValue} onChange={v => setFormData({...formData, marketValue: Number(v)})} icon={<Sparkles size={18} className="text-blue-500" />} />
             </div>
 
             {formData.reasoning && (
-                <div className="p-8 bg-indigo-500/[0.04] border border-indigo-500/10 rounded-[2.5rem] space-y-4 shadow-inner">
+                <div className="p-8 bg-blue-500/[0.04] border border-blue-500/10 rounded-[2.5rem] space-y-4 shadow-inner">
                     <div className="flex items-center gap-3">
-                        <BrainCircuit size={16} className="text-indigo-400" />
-                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em]">Historical Identification Logic</span>
+                        <BrainCircuit size={16} className="text-blue-400" />
+                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em]">How AI identified this card</span>
                     </div>
                     <p className="text-xs text-slate-500 font-medium leading-relaxed italic">"{formData.reasoning}"</p>
                 </div>
@@ -252,9 +264,9 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onCancel, initialData }) 
 
           <div className="flex flex-col sm:flex-row gap-8">
             <button type="button" onClick={onCancel} className="flex-1 h-20 bg-white/5 border border-white/10 rounded-3xl font-black text-[10px] uppercase tracking-[0.4em] transition-all hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 active:scale-[0.98]">Cancel</button>
-            <button type="submit" className="flex-[2] h-20 bg-white text-black rounded-3xl font-black text-[11px] uppercase tracking-[0.5em] shadow-3xl shadow-white/5 transition-all flex items-center justify-center gap-4 hover:bg-slate-200 active:scale-[0.98]">
+            <button type="submit" className="flex-[2] h-20 bg-blue-600 text-white rounded-3xl font-black text-[11px] uppercase tracking-[0.5em] shadow-3xl shadow-blue-600/20 transition-all flex items-center justify-center gap-4 hover:bg-blue-500 active:scale-[0.98]">
               <Save size={22} />
-              Commit Asset
+              Submit
             </button>
           </div>
         </form>
@@ -267,14 +279,10 @@ const Field = ({ label, value, onChange, icon, type = 'text' }: any) => (
   <div className="space-y-4">
     <label className="text-[10px] font-black text-slate-700 uppercase tracking-[0.3em] px-1">{label}</label>
     <div className="relative group">
-      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-indigo-500 transition-colors">{icon}</div>
-      <input type={type} step="0.01" value={value} onChange={e => onChange(e.target.value)} className="w-full bg-slate-950/40 border border-white/5 rounded-2xl h-16 pl-16 pr-8 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500/40 outline-none font-bold text-white transition-all placeholder:text-slate-900" />
+      <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-800 group-focus-within:text-blue-500 transition-colors">{icon}</div>
+      <input type={type} step="0.01" value={value} onChange={e => onChange(e.target.value)} className="w-full bg-slate-950/40 border border-white/5 rounded-2xl h-16 pl-16 pr-8 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/40 outline-none font-bold text-white transition-all placeholder:text-slate-900" />
     </div>
   </div>
-);
-
-const PoundIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a4.5 4.5 0 0 0 0 9H13a4.5 4.5 0 0 1 0 9H6" /></svg>
 );
 
 export default CardForm;
