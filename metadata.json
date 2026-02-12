@@ -1,0 +1,7 @@
+{
+  "name": "TC Vault - Pro Collector Suite",
+  "description": "A high-end trading card collection manager featuring AI-powered card identification, portfolio tracking, and value analytics.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
