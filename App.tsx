@@ -1,36 +1,28 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard as DashboardIcon, Database, PlusCircle, Settings, TrendingUp, Database as BinderIcon, Search, Bell, Power, User as UserIcon } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { LayoutDashboard as DashboardIcon, Database, PlusCircle, Settings, TrendingUp, Database as BinderIcon, Search, Bell, Power, User as UserIcon, ShieldCheck, HardDrive, Sparkles, Plus, CheckCircle2, AlertCircle, Info, X, CloudOff, ExternalLink, RefreshCw, LogIn, ArrowLeft } from 'lucide-react';
 import { Card, ViewMode, CollectionStats, User, BinderPage } from './types';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import CardForm from './components/CardForm';
 import Auth from './components/Auth';
+import { vaultStorage, supabase } from './services/storage';
 
-const STORAGE_SESSION_KEY = 'cardvault_current_session';
-
-export const TCLogo = ({ className = "w-10 h-10" }: { className?: string }) => (
+export const TCLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
-    {/* Clean, Bold Geometric Design - No Complex Filters */}
     <circle cx="50" cy="50" r="48" fill="#1e293b" />
     <circle cx="50" cy="50" r="42" fill="#020617" />
-    
-    {/* Bold Silver 'C' (Back Layer) */}
-    <path 
-      d="M 50 25 H 85 V 38 H 63 V 62 H 85 V 75 H 50 Z" 
-      fill="#cbd5e1" 
-    />
-    
-    {/* Bold Electric Blue 'T' (Front Layer) */}
-    <path 
-      d="M 15 25 H 60 V 38 H 43 V 75 H 32 V 38 H 15 Z" 
-      fill="#3b82f6" 
-    />
-
-    {/* Small 'Keyhole' detail for the 'Vault' vibe */}
+    <path d="M 50 25 H 85 V 38 H 63 V 62 H 85 V 75 H 50 Z" fill="#cbd5e1" />
+    <path d="M 15 25 H 60 V 38 H 43 V 75 H 32 V 38 H 15 Z" fill="#3b82f6" />
     <circle cx="78" cy="50" r="4" fill="#020617" />
   </svg>
 );
+
+interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -40,205 +32,320 @@ const App: React.FC = () => {
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [globalSearch, setGlobalSearch] = useState('');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  // Guard ref to prevent the background auth listener from logging us back in during logout
+  const logoutInProgress = useRef(false);
 
-  useEffect(() => {
-    const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
-    if (savedSession) {
-      try {
-        setCurrentUser(JSON.parse(savedSession));
-      } catch (e) {
-        localStorage.removeItem(STORAGE_SESSION_KEY);
-      }
-    }
-    setIsInitializing(false);
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = crypto.randomUUID();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3000);
   }, []);
 
-  useEffect(() => {
-    if (currentUser) {
-      const userKey = currentUser.username.toLowerCase();
-      const vaultKey = `cardvault_vault_${userKey}`;
-      const pagesKey = `cardvault_pages_${userKey}`;
-      
-      const storedCards = localStorage.getItem(vaultKey);
-      const storedPages = localStorage.getItem(pagesKey);
-      
-      try {
-        setCards(storedCards ? JSON.parse(storedCards) : []);
-        setPages(storedPages ? JSON.parse(storedPages) : []);
-      } catch (e) {
-        setCards([]);
-        setPages([]);
-      }
-      setView(ViewMode.DASHBOARD);
+  const loadData = useCallback(async () => {
+    try {
+      const [storedCards, storedPages] = await Promise.all([
+        vaultStorage.getCards(),
+        vaultStorage.getPages()
+      ]);
+      setCards(storedCards || []);
+      setPages(storedPages || []);
+    } catch (e) {
+      console.error("Failed to load vault data:", e);
+      addToast("Vault load error", "error");
     }
-  }, [currentUser]);
+  }, [addToast]);
 
+  // Auth Lifecycle Management
   useEffect(() => {
-    if (!isInitializing && currentUser) {
-      const userKey = currentUser.username.toLowerCase();
-      localStorage.setItem(`cardvault_vault_${userKey}`, JSON.stringify(cards));
-      localStorage.setItem(`cardvault_pages_${userKey}`, JSON.stringify(pages));
+    const checkInitialSession = async () => {
+      if (!supabase) {
+        setIsInitializing(false);
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && !logoutInProgress.current) {
+          setCurrentUser({ 
+            id: session.user.id, 
+            username: session.user.email?.split('@')[0] || 'Collector' 
+          });
+          await loadData();
+        }
+      } catch (e) {
+        console.error("Auth init failed:", e);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    checkInitialSession();
+
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        // Critical: If we are logging out, ignore all background auth events
+        if (logoutInProgress.current) return;
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          setCurrentUser({ 
+            id: session.user.id, 
+            username: session.user.email?.split('@')[0] || 'Collector' 
+          });
+          loadData();
+        } else if (event === 'SIGNED_OUT') {
+          // Only clear state if we aren't using the manual Admin bypass
+          setCurrentUser(prev => prev?.id === 'admin-master' ? prev : null);
+          if (!currentUser || currentUser.id !== 'admin-master') {
+            setCards([]);
+            setPages([]);
+          }
+        }
+      });
+      return () => subscription.unsubscribe();
     }
-  }, [cards, pages, isInitializing, currentUser]);
+  }, [loadData, currentUser?.id]);
 
   const stats = useMemo<CollectionStats>(() => {
-    const totalInvestment = cards.reduce((sum, c) => sum + (Number(c.pricePaid) || 0), 0);
+    const totalSpent = cards.reduce((sum, c) => sum + (Number(c.pricePaid) || 0), 0);
     const totalMarketValue = cards.reduce((sum, c) => sum + (Number(c.marketValue) || 0), 0);
-    
     const setCounts: Record<string, number> = {};
     cards.forEach(c => setCounts[c.set] = (setCounts[c.set] || 0) + 1);
     const topSet = Object.entries(setCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
 
-    return {
-      totalCards: cards.length,
-      totalInvestment,
-      totalMarketValue,
-      netProfit: totalMarketValue - totalInvestment,
-      topSet
+    return { 
+      totalCards: cards.length, 
+      totalSpent, 
+      totalMarketValue, 
+      valueGrowth: totalMarketValue - totalSpent, 
+      topSet 
     };
   }, [cards]);
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(user));
-  };
+  const handleLogout = async () => {
+    const isMasterAdmin = currentUser?.id === 'admin-master';
+    
+    if (!window.confirm(isMasterAdmin ? "Terminate Administrative session?" : "Seal your cloud vault and sign out?")) {
+      return;
+    }
 
-  const handleLogout = () => {
-    if (window.confirm("Close your vault?")) {
-      localStorage.removeItem(STORAGE_SESSION_KEY);
-      setCurrentUser(null);
-      setView(ViewMode.DASHBOARD);
+    // 1. Lock listeners
+    logoutInProgress.current = true;
+    
+    // 2. Clear state immediately for instant feedback
+    setCurrentUser(null);
+    setCards([]);
+    setPages([]);
+    setView(ViewMode.DASHBOARD);
+    
+    // 3. Clear cloud session if applicable
+    try {
+      if (!isMasterAdmin && supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (e) {
+      console.error("Cloud signout error:", e);
+    } finally {
+      // 4. Cleanup and show success
+      addToast(isMasterAdmin ? "Admin session ended" : "Vault sealed", "info");
+      // Keep lock active for a short buffer to allow redirect/render to stabilize
+      setTimeout(() => {
+        logoutInProgress.current = false;
+      }, 1000);
     }
   };
 
-  const handleAddCard = (newCard: Card) => {
-    setCards(prev => [newCard, ...prev]);
-    setView(ViewMode.INVENTORY);
+  const handleSaveCard = async (cardData: Card) => {
+    try {
+      await vaultStorage.saveCard(cardData);
+      await loadData();
+      setEditingCard(null);
+      setView(ViewMode.INVENTORY);
+      addToast(cardData.id ? "Vault record updated" : "Card stashed successfully");
+    } catch (e) {
+      addToast("Save failed", "error");
+    }
   };
 
-  const handleUpdateCard = (updated: Card) => {
-    setCards(prev => prev.map(c => c.id === updated.id ? updated : c));
-    setEditingCard(null);
-    setView(ViewMode.INVENTORY);
-  };
-
-  const handleDeleteCard = (id: string) => {
+  const handleDeleteCard = async (id: string) => {
     if (window.confirm("Remove this card from your collection?")) {
-      setCards(prev => prev.filter(c => c.id !== id));
+      try {
+        await vaultStorage.deleteCard(id);
+        await loadData();
+        addToast("Card removed from stash", "info");
+      } catch (e) {
+        addToast("Delete failed", "error");
+      }
     }
   };
 
-  const handleEditTrigger = (card: Card) => {
-    setEditingCard(card);
-    setView(ViewMode.ADD_CARD);
+  const handleCreatePage = async (name: string) => {
+    try {
+      await vaultStorage.createPage(name);
+      await loadData();
+      addToast(`Binder page "${name}" created`);
+    } catch (e) {
+      addToast("Failed to create page", "error");
+    }
   };
 
-  const handleCreatePage = (name: string) => {
-    const newPage: BinderPage = { id: crypto.randomUUID(), name };
-    setPages(prev => [...prev, newPage]);
-  };
-
-  const handleDeletePage = (id: string) => {
-    if (window.confirm("Are you sure? Cards on this page will become unassigned.")) {
-      setPages(prev => prev.filter(p => p.id !== id));
-      setCards(prev => prev.map(c => c.pageId === id ? { ...c, pageId: undefined } : c));
+  const handleDeletePage = async (id: string) => {
+    if (window.confirm("Remove this binder page? Your cards will stay safe in the main stash.")) {
+      try {
+        await vaultStorage.deletePage(id);
+        await loadData();
+        addToast("Binder page deleted", "info");
+      } catch (e) {
+        addToast("Failed to delete page", "error");
+      }
     }
   };
 
   if (isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
-        <TCLogo className="w-16 h-16 animate-pulse" />
+        <TCLogo className="w-12 h-12 animate-pulse" />
       </div>
     );
   }
 
-  if (!currentUser) return <Auth onLogin={handleLogin} />;
+  if (!currentUser) {
+    return <Auth onLogin={(u) => { setCurrentUser(u); loadData(); }} />;
+  }
 
   return (
-    <div className="flex h-screen bg-black text-slate-200 overflow-hidden">
-      {/* Sidebar */}
-      <aside className="hidden md:flex flex-col w-72 border-r border-white/5 bg-[#020617] h-full">
-        <div className="px-8 py-10 flex flex-col h-full">
-          <div className="flex items-center gap-4 mb-16 cursor-pointer" onClick={() => setView(ViewMode.DASHBOARD)}>
-            <TCLogo className="w-10 h-10" />
-            <div className="flex flex-col">
-              <h1 className="text-xl font-black tracking-tighter uppercase leading-none">
+    <div className="flex h-screen bg-black text-slate-200 overflow-hidden relative selection:bg-blue-600/30">
+      <aside className="hidden md:flex flex-col w-64 border-r border-white/5 bg-[#020617] h-full">
+        <div className="p-8 flex flex-col h-full space-y-8">
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView(ViewMode.DASHBOARD)}>
+            <TCLogo className="w-8 h-8" />
+            <div>
+              <h1 className="text-sm font-black tracking-tighter leading-none">
                 <span className="text-blue-500">TC</span>
-                <span className="text-slate-300 ml-1">VAULT</span>
+                <span className="text-slate-300 ml-1 uppercase">Vault</span>
               </h1>
-              <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">Hobbyist Archive</span>
+              <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Collector Suite</span>
             </div>
           </div>
 
-          <nav className="space-y-1.5 flex-1">
-            <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={18} />} label="Showcase" />
-            <NavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={18} />} label="My Binder" />
-            <NavButton active={view === ViewMode.ADD_CARD} onClick={() => setView(ViewMode.ADD_CARD)} icon={<PlusCircle size={18} />} label="Add Pickup" />
+          <nav className="space-y-2 flex-1">
+            <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Showcase" />
+            <NavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={16} />} label="The binder" />
+            <NavButton active={view === ViewMode.ADD_CARD} onClick={() => setView(ViewMode.ADD_CARD)} icon={<PlusCircle size={16} />} label="Log pickup" />
           </nav>
 
-          <div className="pt-8 border-t border-white/5 space-y-4">
-            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5">
-              <div className="flex items-center gap-3 truncate">
-                <div className="w-7 h-7 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
-                  <UserIcon size={12} />
+          <div className="space-y-4 pt-4 border-t border-white/5">
+            <div className="flex items-center justify-between px-4 h-12 rounded-xl bg-white/[0.02] border border-white/5">
+              <div className="flex items-center gap-2 truncate">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${currentUser.id === 'admin-master' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
+                  {currentUser.id === 'admin-master' ? <ShieldCheck size={12} /> : <UserIcon size={12} />}
                 </div>
-                <span className="text-[11px] font-bold uppercase truncate">{currentUser.username}</span>
+                <span className="text-sm font-semibold truncate italic">{currentUser?.username}</span>
               </div>
-              <button onClick={handleLogout} className="p-2 text-slate-600 hover:text-rose-400"><Power size={14} /></button>
+              <button 
+                onClick={handleLogout} 
+                className="text-slate-600 hover:text-rose-400 transition-colors p-1"
+                title="Seal Vault"
+              >
+                <Power size={16} />
+              </button>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 overflow-y-auto bg-black relative">
-        <header className="sticky top-0 z-[100] px-6 py-5 md:px-12 flex items-center justify-between glass border-b border-white/5">
-          <div className="relative w-full max-w-lg group">
-             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
+      <main className="flex-1 overflow-y-auto bg-black relative pb-20 md:pb-0 scroll-smooth">
+        <header className="sticky top-0 z-[50] px-8 py-4 flex flex-col md:flex-row md:items-center justify-between glass border-b border-white/5 gap-4">
+          <div className="flex items-center justify-between w-full md:w-auto">
+            <div className="flex md:hidden">
+               <TCLogo className="w-8 h-8" />
+            </div>
+            <div className="md:hidden flex items-center gap-2">
+               <button 
+                 onClick={handleLogout} 
+                 className="h-10 w-10 bg-white/[0.03] border border-white/5 rounded-xl text-rose-500 flex items-center justify-center hover:bg-rose-500/10 active:scale-95 transition-all"
+                 title="Seal Vault"
+                >
+                  <Power size={16} />
+                </button>
+            </div>
+          </div>
+
+          <div className="relative w-full max-sm group">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 group-focus-within:text-blue-500 transition-colors" size={16} />
              <input 
                type="text" 
-               placeholder="SEARCH COLLECTION..." 
+               placeholder="Search stash..." 
                value={globalSearch}
                onChange={(e) => setGlobalSearch(e.target.value)}
-               className="w-full h-11 bg-white/[0.03] border border-white/5 rounded-xl pl-12 pr-6 text-[11px] font-bold uppercase tracking-widest focus:border-blue-500/30 outline-none transition-all"
+               className="w-full h-11 bg-white/[0.03] border border-white/5 rounded-xl pl-10 pr-4 text-sm font-semibold focus:border-blue-500/30 outline-none transition-all placeholder:text-slate-700"
              />
           </div>
-          <div className="hidden md:flex items-center gap-6 ml-6">
-             <button className="p-2.5 bg-white/[0.03] border border-white/5 rounded-full text-slate-600"><Bell size={18} /></button>
+
+          <div className="hidden md:flex items-center gap-4">
+             <button className="h-10 w-10 bg-white/[0.03] border border-white/5 rounded-xl text-slate-600 flex items-center justify-center hover:text-white"><Bell size={16} /></button>
           </div>
         </header>
 
-        <div className="p-6 md:p-12 max-w-7xl mx-auto pb-40">
+        <div className="p-8 md:p-16 max-w-6xl mx-auto min-h-[calc(100vh-80px)]">
           {view === ViewMode.DASHBOARD && <Dashboard stats={stats} recentCards={cards} onNavigate={setView} />}
           {view === ViewMode.INVENTORY && (
             <Inventory 
               cards={cards} 
               pages={pages}
               onDelete={handleDeleteCard} 
-              onUpdate={handleEditTrigger} 
+              onUpdate={(c) => { setEditingCard(c); setView(ViewMode.ADD_CARD); }} 
               onCreatePage={handleCreatePage}
               onDeletePage={handleDeletePage}
             />
           )}
           {view === ViewMode.ADD_CARD && (
             <CardForm 
-              onSubmit={editingCard ? handleUpdateCard : handleAddCard} 
-              onCancel={() => setView(ViewMode.DASHBOARD)} 
+              onSubmit={handleSaveCard} 
+              onCancel={() => { setEditingCard(null); setView(ViewMode.DASHBOARD); }} 
               initialData={editingCard || undefined} 
               pages={pages}
+              onToast={addToast}
             />
           )}
         </div>
       </main>
+
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 glass border-t border-white/5 flex items-center justify-around px-8 z-[50]">
+        <MobileNavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={20} />} label="Home" />
+        <button onClick={() => setView(ViewMode.ADD_CARD)} className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center -translate-y-8 shadow-xl border-2 border-black active:scale-90 transition-all"><Plus size={24} /></button>
+        <MobileNavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={20} />} label="Binder" />
+      </nav>
+
+      <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 z-[200] w-full max-w-sm px-4">
+        {toasts.map(toast => (
+          <div key={toast.id} className="flex items-center gap-4 p-4 rounded-2xl glass border border-white/10 shadow-2xl animate-in slide-in-from-bottom-4 w-full">
+            {toast.type === 'success' && <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />}
+            {toast.type === 'error' && <AlertCircle size={20} className="text-rose-500 shrink-0" />}
+            {toast.type === 'info' && <Info size={20} className="text-blue-500 shrink-0" />}
+            <span className="text-xs font-semibold text-slate-100">{toast.message}</span>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-auto text-slate-600 hover:text-white"><X size={16} /></button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
 
 const NavButton = ({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-xl transition-all ${active ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'}`}>
+  <button onClick={onClick} className={`w-full flex items-center gap-4 px-4 h-11 rounded-xl transition-all ${active ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'}`}>
     {icon}
-    <span className="text-[11px] font-black uppercase tracking-widest">{label}</span>
+    <span className="text-sm font-semibold">{label}</span>
+  </button>
+);
+
+const MobileNavButton = ({ active, onClick, icon, label }: any) => (
+  <button onClick={onClick} className={`flex flex-col items-center gap-2 transition-all ${active ? 'text-blue-500' : 'text-slate-600'}`}>
+    {icon}
+    <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
   </button>
 );
 

@@ -14,6 +14,7 @@ export interface BinderPage {
 export interface Card {
   id: string;
   playerName: string;
+  team?: string;
   cardSpecifics: string;
   set: string;
   setNumber?: string;
@@ -32,9 +33,9 @@ export interface Card {
 
 export interface CollectionStats {
   totalCards: number;
-  totalInvestment: number;
+  totalSpent: number; // Changed from totalInvestment
   totalMarketValue: number;
-  netProfit: number;
+  valueGrowth: number; // Changed from netProfit
   topSet: string;
   dailyChange?: number;
 }

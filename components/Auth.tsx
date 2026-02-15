@@ -1,152 +1,268 @@
 
-import React, { useState } from 'react';
-import { ShieldCheck, User as UserIcon, Lock, ChevronRight, Key, Sparkles, Database } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, User as UserIcon, Lock, ChevronRight, Key, Sparkles, Database, Box, HelpCircle, AlertTriangle, RefreshCcw, ArrowLeft, Search as SearchIcon, Loader2, KeyRound, CheckCircle2, Mail, Clock } from 'lucide-react';
 import { User } from '../types';
 import { TCLogo } from '../App';
+import { supabase } from '../services/storage';
 
 interface AuthProps {
   onLogin: (user: User) => void;
 }
 
-const STORAGE_USERS_KEY = 'cardvault_registered_users';
+type AuthMode = 'login' | 'register' | 'forgot-password' | 'update-password' | 'admin-access';
 
 const Auth: React.FC<AuthProps> = ({ onLogin }) => {
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [username, setUsername] = useState('');
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const getUsers = (): Record<string, string> => {
-    const users = localStorage.getItem(STORAGE_USERS_KEY);
-    return users ? JSON.parse(users) : {};
-  };
+  // Remove the redundant listener that was causing session conflicts with App.tsx
+  useEffect(() => {
+    if (!supabase) return;
+    // We only need to check for recovery mode transitions
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setAuthMode('update-password');
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const handleAuth = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
+    setIsLoading(true);
 
-    if (username.length < 3) {
-      setError("Username must be at least 3 characters.");
-      return;
-    }
-
-    const users = getUsers();
-
-    if (isRegistering) {
-      if (users[username.toLowerCase()]) {
-        setError("User already exists.");
+    try {
+      // MASTER ADMIN BYPASS (Strictly local, no Supabase involvement)
+      if (email === 'admin@tcvault.app' && password === 'vault-admin-2025') {
+        onLogin({ id: 'admin-master', username: 'Administrator' });
         return;
       }
-      users[username.toLowerCase()] = password;
-      localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(users));
-      onLogin({ id: crypto.randomUUID(), username });
-    } else {
-      if (users[username.toLowerCase()] === password) {
-        onLogin({ id: crypto.randomUUID(), username });
-      } else {
-        setError("Invalid credentials.");
+
+      const formattedEmail = email.includes('@') ? email : `${email}@tcvault.app`;
+
+      if (authMode === 'register') {
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: formattedEmail,
+          password,
+          options: { emailRedirectTo: window.location.origin }
+        });
+        if (signUpError) throw signUpError;
+        if (data.user) {
+          if (data.session) {
+            onLogin({ id: data.user.id, username: email });
+          } else {
+            setSuccessMessage('Registration successful! Check your email to confirm.');
+          }
+        }
+      } else if (authMode === 'login' || authMode === 'admin-access') {
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formattedEmail,
+          password,
+        });
+        if (signInError) throw signInError;
+        if (data.user) {
+          onLogin({ id: data.user.id, username: email });
+        }
+      } else if (authMode === 'forgot-password') {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(formattedEmail, {
+          redirectTo: window.location.origin,
+        });
+        if (resetError) throw resetError;
+        setSuccessMessage('Reset link sent! Check your inbox.');
+      } else if (authMode === 'update-password') {
+        const { error: updateError } = await supabase.auth.updateUser({ password });
+        if (updateError) throw updateError;
+        setSuccessMessage('Password updated. You can now log in.');
+        setTimeout(() => setAuthMode('login'), 2000);
       }
+    } catch (err: any) {
+      setError(err.message || "Authentication failed.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background Glows */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/5 rounded-full blur-[128px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/[0.02] rounded-full blur-[128px] pointer-events-none"></div>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0%,transparent_70%)] pointer-events-none"></div>
       
-      <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
-        <div className="flex flex-col items-center mb-12">
-          <TCLogo className="w-24 h-24 mb-6" />
-          <h1 className="text-3xl font-black tracking-tighter uppercase drop-shadow-md">
-            <span className="text-blue-500">TC</span>
-            <span className="text-slate-300 ml-2">VAULT</span>
-          </h1>
-        </div>
-
-        <div className="glass rounded-[2.5rem] p-8 md:p-10 border-slate-800/40 shadow-2xl">
-          <div className="flex items-center gap-4 mb-10">
-            <div className={`flex-1 h-px transition-all duration-500 ${!isRegistering ? 'bg-blue-500/40' : 'bg-slate-800'}`}></div>
-            <span className="text-[11px] font-medium text-slate-500 tracking-tight">
-              {isRegistering ? 'Create your Vault' : 'Login to your Vault'}
-            </span>
-            <div className={`flex-1 h-px transition-all duration-500 ${isRegistering ? 'bg-blue-500/40' : 'bg-slate-800'}`}></div>
+      <div className="w-full max-w-sm relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 space-y-12">
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative">
+            <TCLogo className="w-20 h-20 shadow-2xl shadow-blue-500/20" />
+            <div className="absolute -inset-1 bg-blue-500/20 blur-xl rounded-full -z-10"></div>
           </div>
-
-          <form onSubmit={handleAuth} className="space-y-6">
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-[11px] font-medium text-slate-500 tracking-tight ml-1">TC Vault Account ID</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                  <input 
-                    type="text"
-                    required
-                    value={username}
-                    onChange={e => setUsername(e.target.value)}
-                    placeholder="Username"
-                    className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl h-14 pl-12 pr-6 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none font-semibold text-white transition-all placeholder:text-slate-800"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-medium text-slate-500 tracking-tight ml-1">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                  <input 
-                    type="password"
-                    required
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl h-14 pl-12 pr-6 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none font-semibold text-white transition-all placeholder:text-slate-800"
-                  />
-                </div>
-              </div>
+          <div className="text-center space-y-2">
+            <h1 className="text-5xl font-black tracking-tighter leading-none">
+              <span className="text-blue-500 italic">TC</span>
+              <span className="text-slate-300 ml-2 uppercase">Vault</span>
+            </h1>
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] ml-1">Secure Entrance</span>
             </div>
-
-            {error && (
-              <div className="bg-rose-500/5 border border-rose-500/10 p-4 rounded-2xl text-rose-400 text-[11px] font-semibold text-center">
-                {error}
-              </div>
-            )}
-
-            <button 
-              type="submit"
-              className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-blue-600/20 group"
-            >
-              {isRegistering ? 'Create Account' : 'Login'}
-              <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          </form>
-
-          <div className="mt-8 text-center">
-            <button 
-              onClick={() => { setIsRegistering(!isRegistering); setError(''); }}
-              className="text-[11px] font-medium text-slate-600 hover:text-blue-400 transition-colors"
-            >
-              {isRegistering ? 'Already have an account? Login' : 'Sign up for a TC Vault'}
-            </button>
           </div>
         </div>
 
-        <div className="mt-12 grid grid-cols-3 gap-8">
-          <AuthBenefit icon={<ShieldCheck size={16} />} label="Encrypted" />
-          <AuthBenefit icon={<Database size={16} />} label="Sovereign" />
-          <AuthBenefit icon={<Sparkles size={16} />} label="AI Tuned" />
+        <div className="glass rounded-[2rem] p-10 border-white/5 shadow-2xl space-y-8 relative group">
+          <div className="absolute inset-0 bg-blue-500/[0.01] group-hover:bg-blue-500/[0.02] transition-colors pointer-events-none"></div>
+          
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] font-black text-slate-500 tracking-widest uppercase italic">
+              {authMode === 'register' && 'Initialize Account'}
+              {authMode === 'login' && 'Identity Verification'}
+              {authMode === 'forgot-password' && 'Key Recovery'}
+              {authMode === 'update-password' && 'Vault Recalibration'}
+              {authMode === 'admin-access' && 'Admin Override'}
+            </span>
+            <div className="flex-1 h-px bg-white/5"></div>
+          </div>
+
+          {successMessage ? (
+            <div className="text-center space-y-6 py-4 animate-in zoom-in-95 duration-300">
+              <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto text-emerald-500">
+                <CheckCircle2 size={32} />
+              </div>
+              <p className="text-sm font-bold text-white leading-tight">{successMessage}</p>
+              <button 
+                onClick={() => { setAuthMode('login'); setSuccessMessage(''); setError(''); }}
+                className="text-[10px] font-black text-blue-500 hover:text-white transition-colors uppercase tracking-widest flex items-center gap-2 mx-auto"
+              >
+                <ArrowLeft size={12} /> Return to Portal
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleAuth} className="space-y-8">
+              <div className="space-y-5">
+                {(authMode === 'login' || authMode === 'register' || authMode === 'forgot-password' || authMode === 'admin-access') && (
+                  <AuthField 
+                    label="Vault Identity (Email)" 
+                    icon={<UserIcon size={16} />} 
+                    value={email} 
+                    onChange={setEmail} 
+                    placeholder="name@tcvault.app" 
+                  />
+                )}
+                
+                {(authMode === 'login' || authMode === 'register' || authMode === 'update-password' || authMode === 'admin-access') && (
+                  <div className="space-y-3">
+                    <AuthField 
+                      label="Access Cipher"
+                      type="password" 
+                      icon={<Lock size={16} />} 
+                      value={password} 
+                      onChange={setPassword} 
+                      placeholder="••••••••" 
+                    />
+                    {authMode === 'login' && (
+                      <div className="flex justify-between items-center px-1">
+                        <button 
+                          type="button" 
+                          onClick={() => setAuthMode('admin-access')}
+                          className="text-[9px] font-black text-slate-700 hover:text-blue-500 transition-colors uppercase"
+                        >
+                          Admin Logic
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setAuthMode('forgot-password')}
+                          className="text-[9px] font-black text-slate-700 hover:text-blue-400 transition-colors uppercase"
+                        >
+                          Lost Key?
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {error && (
+                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-start gap-3 text-rose-400 animate-in shake">
+                  <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                  <span className="text-[10px] font-black tracking-tight uppercase leading-tight">{error}</span>
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                disabled={isLoading} 
+                className="w-full h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-sm transition-all shadow-2xl shadow-blue-600/20 active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <Loader2 size={20} className="animate-spin text-white/50" />
+                ) : (
+                  <>
+                    {authMode === 'register' && 'Create Vault'}
+                    {authMode === 'login' && 'Unlock Entrance'}
+                    {authMode === 'forgot-password' && 'Request Recovery'}
+                    {authMode === 'update-password' && 'Re-seal Vault'}
+                    {authMode === 'admin-access' && 'Administrative Login'}
+                  </>
+                )}
+              </button>
+
+              <div className="text-center pt-2">
+                {authMode !== 'forgot-password' && authMode !== 'admin-access' && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setAuthMode(authMode === 'register' ? 'login' : 'register'); setError(''); }} 
+                    className="text-[10px] font-black text-slate-600 hover:text-white transition-colors uppercase tracking-widest"
+                  >
+                    {authMode === 'register' ? 'Existing collector? Login' : 'New collector? Initialize Vault'}
+                  </button>
+                )}
+                
+                {(authMode === 'forgot-password' || authMode === 'admin-access') && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setAuthMode('login'); setError(''); }}
+                    className="text-[10px] font-black text-slate-600 hover:text-white transition-colors uppercase tracking-widest flex items-center gap-2 mx-auto"
+                  >
+                    <ArrowLeft size={12} /> Standard Access
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
+        </div>
+
+        <div className="flex justify-center gap-12 text-slate-800">
+           <div className="flex flex-col items-center gap-2">
+             <ShieldCheck size={20} />
+             <span className="text-[8px] font-black uppercase tracking-[0.2em]">Encrypted</span>
+           </div>
+           <div className="flex flex-col items-center gap-2">
+             <RefreshCcw size={20} />
+             <span className="text-[8px] font-black uppercase tracking-[0.2em]">Synced</span>
+           </div>
+           <div className="flex flex-col items-center gap-2">
+             <KeyRound size={20} />
+             <span className="text-[8px] font-black uppercase tracking-[0.2em]">Audited</span>
+           </div>
         </div>
       </div>
     </div>
   );
 };
 
-const AuthBenefit = ({ icon, label }: { icon: React.ReactNode, label: string }) => (
-  <div className="flex flex-col items-center gap-2.5">
-    <div className="text-slate-700">
-      {icon}
+const AuthField = ({ label, value, onChange, icon, type = 'text', placeholder }: any) => (
+  <div className="space-y-2.5">
+    <label className="text-[10px] font-black text-slate-700 uppercase tracking-widest ml-1">{label}</label>
+    <div className="relative">
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-800">{icon}</div>
+      <input 
+        type={type} 
+        required 
+        value={value} 
+        onChange={e => onChange(e.target.value)} 
+        placeholder={placeholder} 
+        className="w-full bg-slate-950/60 border border-white/5 rounded-2xl h-12 pl-12 pr-4 focus:border-blue-500/40 outline-none font-semibold text-sm text-white transition-all placeholder:text-slate-900" 
+      />
     </div>
-    <span className="text-[10px] font-medium text-slate-700 tracking-tight">{label}</span>
   </div>
 );
 
