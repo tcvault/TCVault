@@ -8,6 +8,8 @@ import CardForm from './components/CardForm';
 import Auth from './components/Auth';
 import { vaultStorage, supabase } from './services/storage';
 
+const STORAGE_SESSION_KEY = 'tcvault_active_session';
+
 export const TCLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
     <circle cx="50" cy="50" r="48" fill="#1e293b" />
@@ -34,8 +36,8 @@ const App: React.FC = () => {
   const [globalSearch, setGlobalSearch] = useState('');
   const [toasts, setToasts] = useState<Toast[]>([]);
   
-  // Guard ref to prevent the background auth listener from logging us back in during logout
-  const logoutInProgress = useRef(false);
+  // Guard against re-authentication during the logout process
+  const isTerminating = useRef(false);
 
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = crypto.randomUUID();
@@ -54,14 +56,13 @@ const App: React.FC = () => {
       setCards(storedCards || []);
       setPages(storedPages || []);
     } catch (e) {
-      console.error("Failed to load vault data:", e);
-      addToast("Vault load error", "error");
+      console.error("Vault load error:", e);
     }
-  }, [addToast]);
+  }, []);
 
-  // Auth Lifecycle Management
+  // Primary Auth Listener and Initial Check
   useEffect(() => {
-    const checkInitialSession = async () => {
+    const startup = async () => {
       if (!supabase) {
         setIsInitializing(false);
         return;
@@ -69,35 +70,38 @@ const App: React.FC = () => {
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && !logoutInProgress.current) {
-          setCurrentUser({ 
+        if (session?.user && !isTerminating.current) {
+          const userObj = { 
             id: session.user.id, 
             username: session.user.email?.split('@')[0] || 'Collector' 
-          });
+          };
+          setCurrentUser(userObj);
+          localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(userObj));
           await loadData();
         }
       } catch (e) {
-        console.error("Auth init failed:", e);
+        console.error("Startup auth check failed:", e);
       } finally {
         setIsInitializing(false);
       }
     };
 
-    checkInitialSession();
+    startup();
 
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        // Critical: If we are logging out, ignore all background auth events
-        if (logoutInProgress.current) return;
+        if (isTerminating.current) return;
 
         if (event === 'SIGNED_IN' && session?.user) {
-          setCurrentUser({ 
+          const userObj = { 
             id: session.user.id, 
             username: session.user.email?.split('@')[0] || 'Collector' 
-          });
+          };
+          setCurrentUser(userObj);
+          localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(userObj));
           loadData();
         } else if (event === 'SIGNED_OUT') {
-          // Only clear state if we aren't using the manual Admin bypass
+          // Double-check if we are in admin mode before clearing
           setCurrentUser(prev => prev?.id === 'admin-master' ? prev : null);
           if (!currentUser || currentUser.id !== 'admin-master') {
             setCards([]);
@@ -126,35 +130,35 @@ const App: React.FC = () => {
   }, [cards]);
 
   const handleLogout = async () => {
-    const isMasterAdmin = currentUser?.id === 'admin-master';
-    
-    if (!window.confirm(isMasterAdmin ? "Terminate Administrative session?" : "Seal your cloud vault and sign out?")) {
-      return;
-    }
+    const isAdmin = currentUser?.id === 'admin-master';
+    if (!window.confirm(isAdmin ? "Terminate Admin session?" : "Seal your vault and sign out?")) return;
 
-    // 1. Lock listeners
-    logoutInProgress.current = true;
+    // 1. Enter Terminating State
+    isTerminating.current = true;
     
-    // 2. Clear state immediately for instant feedback
+    // 2. Clear Local State Immediately (Optimistic UI)
     setCurrentUser(null);
     setCards([]);
     setPages([]);
+    setEditingCard(null);
+    setGlobalSearch('');
+    localStorage.removeItem(STORAGE_SESSION_KEY);
     setView(ViewMode.DASHBOARD);
-    
-    // 3. Clear cloud session if applicable
+
+    // 3. Clear Cloud Session if standard user
     try {
-      if (!isMasterAdmin && supabase) {
+      if (!isAdmin && supabase) {
         await supabase.auth.signOut();
       }
     } catch (e) {
-      console.error("Cloud signout error:", e);
+      console.error("Logout error:", e);
     } finally {
-      // 4. Cleanup and show success
-      addToast(isMasterAdmin ? "Admin session ended" : "Vault sealed", "info");
-      // Keep lock active for a short buffer to allow redirect/render to stabilize
+      // 4. Release lock after cleanup
+      addToast(isAdmin ? "Admin session ended" : "Vault sealed", "info");
+      // Delay unlocking to ensure auth listeners don't catch trailing session data
       setTimeout(() => {
-        logoutInProgress.current = false;
-      }, 1000);
+        isTerminating.current = false;
+      }, 1500);
     }
   };
 
@@ -164,7 +168,7 @@ const App: React.FC = () => {
       await loadData();
       setEditingCard(null);
       setView(ViewMode.INVENTORY);
-      addToast(cardData.id ? "Vault record updated" : "Card stashed successfully");
+      addToast(cardData.id ? "Record updated" : "Card stashed");
     } catch (e) {
       addToast("Save failed", "error");
     }
@@ -175,7 +179,7 @@ const App: React.FC = () => {
       try {
         await vaultStorage.deleteCard(id);
         await loadData();
-        addToast("Card removed from stash", "info");
+        addToast("Card removed", "info");
       } catch (e) {
         addToast("Delete failed", "error");
       }
@@ -186,18 +190,18 @@ const App: React.FC = () => {
     try {
       await vaultStorage.createPage(name);
       await loadData();
-      addToast(`Binder page "${name}" created`);
+      addToast(`Page "${name}" created`);
     } catch (e) {
       addToast("Failed to create page", "error");
     }
   };
 
   const handleDeletePage = async (id: string) => {
-    if (window.confirm("Remove this binder page? Your cards will stay safe in the main stash.")) {
+    if (window.confirm("Delete this page? Cards will stay in your main stash.")) {
       try {
         await vaultStorage.deletePage(id);
         await loadData();
-        addToast("Binder page deleted", "info");
+        addToast("Page deleted", "info");
       } catch (e) {
         addToast("Failed to delete page", "error");
       }
@@ -207,7 +211,7 @@ const App: React.FC = () => {
   if (isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
-        <TCLogo className="w-12 h-12 animate-pulse" />
+        <TCLogo className="w-12 h-12 animate-pulse text-blue-500" />
       </div>
     );
   }
@@ -243,12 +247,12 @@ const App: React.FC = () => {
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center ${currentUser.id === 'admin-master' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
                   {currentUser.id === 'admin-master' ? <ShieldCheck size={12} /> : <UserIcon size={12} />}
                 </div>
-                <span className="text-sm font-semibold truncate italic">{currentUser?.username}</span>
+                <span className="text-xs font-bold truncate italic">{currentUser?.username}</span>
               </div>
               <button 
                 onClick={handleLogout} 
                 className="text-slate-600 hover:text-rose-400 transition-colors p-1"
-                title="Seal Vault"
+                title="Sign Out"
               >
                 <Power size={16} />
               </button>
@@ -267,7 +271,7 @@ const App: React.FC = () => {
                <button 
                  onClick={handleLogout} 
                  className="h-10 w-10 bg-white/[0.03] border border-white/5 rounded-xl text-rose-500 flex items-center justify-center hover:bg-rose-500/10 active:scale-95 transition-all"
-                 title="Seal Vault"
+                 title="Sign Out"
                 >
                   <Power size={16} />
                 </button>
@@ -320,6 +324,7 @@ const App: React.FC = () => {
         <MobileNavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={20} />} label="Binder" />
       </nav>
 
+      {/* Toasts */}
       <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 z-[200] w-full max-w-sm px-4">
         {toasts.map(toast => (
           <div key={toast.id} className="flex items-center gap-4 p-4 rounded-2xl glass border border-white/10 shadow-2xl animate-in slide-in-from-bottom-4 w-full">
