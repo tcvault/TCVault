@@ -5,10 +5,16 @@ export interface User {
   avatar?: string;
 }
 
+// Renamed from Binder to BinderPage to fix import errors in storage and forms
 export interface BinderPage {
   id: string;
   name: string;
   description?: string;
+}
+
+export interface PriceSnapshot {
+  date: string;
+  value: number;
 }
 
 export interface Card {
@@ -28,14 +34,15 @@ export interface Card {
   createdAt: number;
   rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
   isWishlist?: boolean;
-  pageId?: string; // Reference to a BinderPage
+  pageId?: string; // Reference to a Binder ID
+  priceHistory?: PriceSnapshot[];
 }
 
 export interface CollectionStats {
   totalCards: number;
-  totalSpent: number; // Changed from totalInvestment
+  totalSpent: number;
   totalMarketValue: number;
-  valueGrowth: number; // Changed from netProfit
+  valueGrowth: number;
   topSet: string;
   dailyChange?: number;
 }
