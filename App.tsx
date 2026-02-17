@@ -1,23 +1,53 @@
+
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { LayoutDashboard as DashboardIcon, PlusCircle, Database as BinderIcon, Search, Power, User as UserIcon, ShieldCheck, RefreshCw, Plus, CheckCircle2, AlertCircle, Info, X, ChevronRight, BookOpen } from 'lucide-react';
+import { 
+  LayoutDashboard as DashboardIcon, 
+  PlusCircle, 
+  Database as BinderIcon, 
+  Search, 
+  Power, 
+  User as UserIcon, 
+  ShieldCheck, 
+  RefreshCw, 
+  Plus, 
+  CheckCircle2, 
+  AlertCircle, 
+  Info, 
+  X, 
+  ChevronRight, 
+  BookOpen,
+  Rss,
+  Globe,
+  Compass
+} from 'lucide-react';
 import { Card, ViewMode, CollectionStats, User, BinderPage } from './types';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import CardForm from './components/CardForm';
 import Auth from './components/Auth';
-import ErrorBoundary from './components/ErrorBoundary';
+import Feed from './components/Feed';
+import Explore from './components/Explore';
+import ProfileView from './components/ProfileView';
 import { vaultStorage, supabase } from './services/storage';
 
 const STORAGE_SESSION_KEY = 'tcvault_active_session';
 
 export const TCLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="48" fill="#1e293b" />
-    <circle cx="50" cy="50" r="42" fill="#020617" />
-    <path d="M 50 25 H 85 V 38 H 63 V 62 H 85 V 75 H 50 Z" fill="#cbd5e1" />
-    <path d="M 15 25 H 60 V 38 H 43 V 75 H 32 V 38 H 15 Z" fill="#3b82f6" />
-    <circle cx="78" cy="50" r="4" fill="#020617" />
-  </svg>
+  <div className={`${className} relative flex items-center justify-center`}>
+    <img 
+      src="https://oewvucbsbcxxwtnflbfw.supabase.co/storage/v1/object/public/assets/TCVaultLogo.png" 
+      onError={(e) => {
+        e.currentTarget.style.display = 'none';
+        const parent = e.currentTarget.parentElement;
+        if (parent) {
+          parent.innerHTML = '<div class="w-full h-full bg-blue-600 rounded-full flex items-center justify-center font-black text-white italic text-[10px]">TC</div>';
+        }
+      }}
+      className="w-full h-full object-contain object-center drop-shadow-xl scale-110" 
+      style={{ filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.5))' }}
+      alt="TC Vault" 
+    />
+  </div>
 );
 
 interface Toast {
@@ -26,9 +56,18 @@ interface Toast {
   type: 'success' | 'error' | 'info';
 }
 
+function usePrevious<T>(value: T): T | undefined {
+  const ref = useRef<T>(undefined);
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+}
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [view, setView] = useState<ViewMode>(ViewMode.DASHBOARD);
+  const [view, setView] = useState<ViewMode>(ViewMode.FEED);
+  const prevView = usePrevious(view);
   const [cards, setCards] = useState<Card[]>([]);
   const [binders, setBinders] = useState<BinderPage[]>([]);
   const [selectedBinderId, setSelectedBinderId] = useState<string | 'all'>('all');
@@ -39,21 +78,43 @@ const App: React.FC = () => {
   
   const isTerminating = useRef(false);
 
+  const animationClass = useMemo(() => {
+    if (!prevView || prevView === view) return 'animate-in fade-in duration-300';
+    
+    const deepViews = [ViewMode.DASHBOARD, ViewMode.INVENTORY, ViewMode.PROFILE, ViewMode.ADD_CARD];
+    const surfaceViews = [ViewMode.FEED, ViewMode.EXPLORE];
+    
+    if (deepViews.includes(view) && surfaceViews.includes(prevView)) {
+      return 'animate-in fade-in slide-in-from-bottom-2 duration-300';
+    }
+    
+    if (surfaceViews.includes(view) && deepViews.includes(prevView)) {
+      return 'animate-in fade-in slide-in-from-left-4 duration-300';
+    }
+
+    if (surfaceViews.includes(view) && surfaceViews.includes(prevView)) {
+      return view === ViewMode.EXPLORE ? 'animate-in fade-in slide-in-from-right-4 duration-300' : 'animate-in fade-in slide-in-from-left-4 duration-300';
+    }
+    
+    return 'animate-in fade-in duration-300';
+  }, [view, prevView]);
+
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = crypto.randomUUID();
-    // Subtle haptic feedback for mobile
-    if (navigator.vibrate) {
-      if (type === 'success') navigator.vibrate([10, 30, 10]);
-      if (type === 'error') navigator.vibrate([50, 100, 50]);
-    }
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts(prev => [{ id, message, type }, ...prev]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3000);
   }, []);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (userId?: string) => {
     try {
+      const effectiveId = userId || currentUser?.id;
+      if (effectiveId) {
+        const fullProfile = await vaultStorage.getUserProfile(effectiveId);
+        if (fullProfile) setCurrentUser(fullProfile);
+      }
+      
       const [storedCards, storedBinders] = await Promise.all([
         vaultStorage.getCards(),
         vaultStorage.getPages()
@@ -63,7 +124,7 @@ const App: React.FC = () => {
     } catch (e) {
       console.error("Vault load error:", e);
     }
-  }, []);
+  }, [currentUser?.id]);
 
   const resetLocalUiState = useCallback(() => {
     setCurrentUser(null);
@@ -72,7 +133,7 @@ const App: React.FC = () => {
     setEditingCard(null);
     setSelectedBinderId('all');
     setGlobalSearch('');
-    setView(ViewMode.DASHBOARD);
+    setView(ViewMode.FEED);
   }, []);
 
   useEffect(() => {
@@ -86,20 +147,23 @@ const App: React.FC = () => {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && !isTerminating.current) {
-          const userObj = { 
-            id: session.user.id, 
+          const userId = session.user.id;
+          const userObj: User = { 
+            id: userId, 
             username: session.user.email?.split('@')[0] || 'Collector' 
           };
-          setCurrentUser(userObj);
-          localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(userObj));
-          await loadData();
+          const profile = await vaultStorage.getUserProfile(userId);
+          const finalUser = profile || userObj;
+          setCurrentUser(finalUser);
+          localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(finalUser));
+          await loadData(userId);
         } else {
           const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
           if (savedSession && !isTerminating.current) {
             try {
               const userObj = JSON.parse(savedSession);
               setCurrentUser(userObj);
-              await loadData();
+              await loadData(userObj.id);
             } catch (e) {
               localStorage.removeItem(STORAGE_SESSION_KEY);
             }
@@ -117,10 +181,10 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (isTerminating.current) return;
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
-        const userObj = { id: session.user.id, username: session.user.email?.split('@')[0] || 'Collector' };
+        const userObj: User = { id: session.user.id, username: session.user.email?.split('@')[0] || 'Collector' };
         setCurrentUser(userObj);
         localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(userObj));
-        loadData();
+        loadData(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         resetLocalUiState();
       }
@@ -136,49 +200,14 @@ const App: React.FC = () => {
     cards.forEach(c => setCounts[c.set] = (setCounts[c.set] || 0) + 1);
     const topSet = Object.entries(setCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
 
-    const now = new Date().toISOString().split('T')[0];
-    let totalDailyChange = 0;
-
-    cards.forEach(c => {
-      const history = c.priceHistory || [];
-      if (history.length > 1) {
-        const last = history[history.length - 1];
-        const prev = history[history.length - 2];
-        if (last.date === now) {
-          totalDailyChange += (last.value - prev.value);
-        }
-      }
-    });
-
-    return { 
-      totalCards: cards.length, 
-      totalSpent, 
-      totalMarketValue, 
-      valueGrowth: totalMarketValue - totalSpent, 
-      topSet,
-      dailyChange: totalDailyChange
-    };
+    return { totalCards: cards.length, totalSpent, totalMarketValue, valueGrowth: totalMarketValue - totalSpent, topSet };
   }, [cards]);
 
   const handleLogout = async () => {
     if (!window.confirm("Seal your vault and sign out?")) return;
     isTerminating.current = true;
-    
     localStorage.clear();
     sessionStorage.clear();
-    
-    document.cookie.split(";").forEach((c) => {
-      document.cookie = c
-        .replace(/^ +/, "")
-        .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-    });
-
-    if (supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch (e) {}
-    }
-
     window.location.replace(window.location.origin);
   };
 
@@ -206,9 +235,23 @@ const App: React.FC = () => {
         await vaultStorage.deleteCard(id);
         setCards(prev => prev.filter(c => c.id !== id));
         addToast("Card removed", "info");
+        if (editingCard?.id === id) {
+          setEditingCard(null);
+          setView(ViewMode.INVENTORY);
+        }
       } catch (e) {
         addToast("Delete failed", "error");
       }
+    }
+  };
+
+  const handleUpdateProfile = async (updatedUser: User) => {
+    try {
+      await vaultStorage.saveUserProfile(updatedUser);
+      setCurrentUser(updatedUser);
+      addToast("Collector identity updated", "success");
+    } catch (e) {
+      addToast("Profile update failed", "error");
     }
   };
 
@@ -237,83 +280,61 @@ const App: React.FC = () => {
     }
   };
 
-  const navigateToBinder = (id: string | 'all') => {
-    setSelectedBinderId(id);
-    setView(ViewMode.INVENTORY);
-  };
-
   if (isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
-        <TCLogo className="w-12 h-12 animate-pulse text-blue-500" />
+        <TCLogo className="w-16 h-16 animate-pulse" />
       </div>
     );
   }
 
-  if (!currentUser) {
-    return <Auth onLogin={(u) => { setCurrentUser(u); loadData(); }} />;
-  }
+  const isGuest = !currentUser;
+  const showAuthTakeover = view === ViewMode.SETTINGS || (isGuest && [ViewMode.DASHBOARD, ViewMode.INVENTORY, ViewMode.ADD_CARD, ViewMode.PROFILE].includes(view));
 
   return (
-    <ErrorBoundary>
-      <div className="flex h-screen bg-black text-slate-200 overflow-hidden relative selection:bg-blue-600/30">
-        <aside className="hidden md:flex flex-col w-64 border-r border-white/5 bg-[#020617] h-full">
-          <div className="p-8 flex flex-col h-full space-y-8">
-            <div className="flex items-center gap-4 cursor-pointer" onClick={() => setView(ViewMode.DASHBOARD)}>
-              <TCLogo className="w-8 h-8" />
-              <div>
-                <h1 className="text-sm font-black tracking-tighter leading-none">
-                  <span className="text-blue-500">TC</span>
-                  <span className="text-slate-300 ml-1 uppercase">Vault</span>
-                </h1>
-              </div>
+    <div className="flex h-screen bg-black text-slate-200 overflow-hidden relative selection:bg-blue-600/30">
+      <aside className="hidden md:flex flex-col w-64 border-r border-white/5 bg-[#020617] h-full">
+        <div className="p-8 flex flex-col h-full">
+          <div className="flex items-center gap-4 cursor-pointer mb-12 hover:opacity-80 transition-opacity" onClick={() => setView(ViewMode.FEED)}>
+            <TCLogo className="w-10 h-10" />
+            <div>
+              <h1 className="text-base font-black tracking-[-0.05em] leather-none uppercase">
+                <span className="text-blue-500">TC</span>
+                <span className="text-slate-200 ml-1">Vault</span>
+              </h1>
+            </div>
+          </div>
+
+          <nav className="space-y-8 flex-1 overflow-y-auto no-scrollbar">
+            <div className="space-y-2">
+              <span className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Community</span>
+              <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
+              <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
             </div>
 
-            <nav className="space-y-6 flex-1 overflow-y-auto no-scrollbar">
-              <div className="space-y-2">
-                <span className="px-4 text-[10px] font-black text-slate-600 uppercase tracking-widest">Navigation</span>
-                <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Showcase" />
-                <NavButton active={view === ViewMode.ADD_CARD} onClick={() => setView(ViewMode.ADD_CARD)} icon={<PlusCircle size={16} />} label="Log Pickup" />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-4">
-                  <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">My Binders</span>
-                  <button onClick={() => setView(ViewMode.INVENTORY)} className="btn-tertiary text-[10px] font-black uppercase tracking-widest transition-colors h-auto p-0">Manage</button>
+            {!isGuest && (
+              <>
+                <div className="space-y-2">
+                  <span className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Collection</span>
+                  <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Portfolio" />
+                  <NavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={16} />} label="Vault" />
+                  <NavButton active={view === ViewMode.ADD_CARD} onClick={() => setView(ViewMode.ADD_CARD)} icon={<PlusCircle size={16} />} label="Add Card" />
                 </div>
-                
-                <NavButton 
-                  active={view === ViewMode.INVENTORY && selectedBinderId === 'all'} 
-                  onClick={() => navigateToBinder('all')} 
-                  icon={<BinderIcon size={16} />} 
-                  label="All Cards" 
-                />
-                
-                <div className="space-y-1 mt-2">
-                  {binders.map(binder => (
-                    <button 
-                      key={binder.id}
-                      onClick={() => navigateToBinder(binder.id)}
-                      className={`w-full flex items-center justify-between px-4 h-10 rounded-xl transition-all text-sm font-semibold group active:scale-[0.97] ${view === ViewMode.INVENTORY && selectedBinderId === binder.id ? 'bg-blue-600/10 text-blue-400' : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'}`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <BookOpen size={16} className={view === ViewMode.INVENTORY && selectedBinderId === binder.id ? 'text-blue-500' : 'text-slate-600'} />
-                        <span className="truncate">{binder.name}</span>
-                      </div>
-                      <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">
-                        {cards.filter(c => c.pageId === binder.id).length}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </nav>
 
-            <div className="space-y-4 pt-4 border-t border-white/5">
+                <div className="space-y-2">
+                  <span className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Identity</span>
+                  <NavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={16} />} label="My Profile" />
+                </div>
+              </>
+            )}
+          </nav>
+
+          <div className="space-y-4 pt-6 mt-8 border-t border-white/5">
+            {!isGuest ? (
               <div className="flex items-center justify-between px-4 h-12 rounded-xl glass-subtle">
                 <div className="flex items-center gap-2 truncate">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${currentUser.id === 'admin-master' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                    {currentUser.id === 'admin-master' ? <ShieldCheck size={16} /> : <UserIcon size={16} />}
+                  <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center ${currentUser.avatar ? '' : (currentUser.id === 'admin-master' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500')}`}>
+                    {currentUser.avatar ? <img src={currentUser.avatar} className="w-full h-full object-cover" /> : <UserIcon size={16} />}
                   </div>
                   <span className="text-sm font-bold truncate italic">{currentUser?.username}</span>
                 </div>
@@ -321,67 +342,108 @@ const App: React.FC = () => {
                   <Power size={16} />
                 </button>
               </div>
-            </div>
-          </div>
-        </aside>
-
-        <main className="flex-1 overflow-y-auto bg-black relative pb-24 md:pb-0 scroll-smooth">
-          <header className="sticky top-0 z-[50] px-8 py-4 flex flex-col md:flex-row md:items-center justify-between glass border-b border-white/5 gap-4">
-            <div className="flex items-center justify-between w-full md:w-auto">
-              <div className="flex md:hidden"><TCLogo className="w-8 h-8" /></div>
-              <div className="md:hidden flex items-center gap-2">
-                 <button onClick={handleLogout} className="h-12 w-12 glass-subtle rounded-xl text-rose-500 flex items-center justify-center hover:bg-rose-500/10 active:scale-[0.97] active:brightness-90 transition-all" title="Sign Out"><Power size={20} /></button>
-              </div>
-            </div>
-            <div className="relative w-full max-w-sm group">
-               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
-               <input type="text" placeholder="Search across binders..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} className="w-full h-12 bg-white/[0.03] border border-white/5 rounded-xl pl-10 pr-4 text-sm font-semibold focus:border-blue-500/30 outline-none transition-all placeholder:text-slate-600" />
-            </div>
-            <div className="hidden md:flex items-center gap-4">
-               <button onClick={() => loadData()} className="h-12 w-12 glass-subtle rounded-xl text-slate-500 flex items-center justify-center hover:text-white active:scale-[0.97]" title="Sync Vault"><RefreshCw size={20} /></button>
-            </div>
-          </header>
-
-          <div className="p-8 md:p-16 max-w-6xl mx-auto min-h-[calc(100vh-80px)]">
-            {view === ViewMode.DASHBOARD && <Dashboard stats={stats} recentCards={cards} onNavigate={setView} />}
-            {view === ViewMode.INVENTORY && (
-              <Inventory 
-                cards={cards} 
-                pages={binders} 
-                globalSearch={globalSearch}
-                onClearSearch={() => setGlobalSearch('')}
-                onDelete={handleDeleteCard} 
-                onUpdate={(c) => { setEditingCard(c); setView(ViewMode.ADD_CARD); }} 
-                onCreatePage={handleCreateBinder}
-                onDeletePage={handleDeleteBinder}
-                initialActiveBinderId={selectedBinderId}
-              />
-            )}
-            {view === ViewMode.ADD_CARD && (
-              <CardForm onSubmit={handleSaveCard} onCancel={() => { setEditingCard(null); setView(ViewMode.DASHBOARD); }} initialData={editingCard || undefined} pages={binders} onToast={addToast} />
+            ) : (
+              <button 
+                onClick={() => setView(ViewMode.SETTINGS)}
+                className="w-full btn-primary h-12 uppercase text-[10px] tracking-widest"
+              >
+                Join Vault
+              </button>
             )}
           </div>
-        </main>
-
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 glass border-t border-white/5 flex items-center justify-around px-8 z-[50]">
-          <MobileNavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={20} />} label="Home" />
-          <button onClick={() => setView(ViewMode.ADD_CARD)} className="w-14 h-14 bg-blue-600 text-white rounded-xl flex items-center justify-center -translate-y-8 shadow-xl border-2 border-black active:scale-[0.97] transition-all"><Plus size={32} /></button>
-          <MobileNavButton active={view === ViewMode.INVENTORY} onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId('all'); }} icon={<BinderIcon size={20} />} label="Binders" />
-        </nav>
-
-        <div className="fixed bottom-24 md:bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-[200] w-full max-w-sm px-4 max-h-[calc(100vh-140px)] overflow-y-auto no-scrollbar">
-          {toasts.map(toast => (
-            <div key={toast.id} className="flex items-center gap-4 p-4 rounded-xl glass border border-white/10 shadow-2xl animate-in slide-in-from-bottom-4 w-full shrink-0">
-              {toast.type === 'success' && <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />}
-              {toast.type === 'error' && <AlertCircle size={20} className="text-rose-500 shrink-0" />}
-              {toast.type === 'info' && <Info size={20} className="text-blue-500 shrink-0" />}
-              <span className="text-sm font-semibold text-slate-100">{toast.message}</span>
-              <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-auto text-slate-500 hover:text-white p-2 active:scale-90"><X size={16} /></button>
-            </div>
-          ))}
         </div>
+      </aside>
+
+      <main className="flex-1 overflow-y-auto bg-black relative pb-32 md:pb-0 scroll-smooth">
+        <div className="p-8 md:p-16 max-w-6xl mx-auto min-h-screen">
+          {view === ViewMode.FEED && <Feed user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
+          {view === ViewMode.EXPLORE && <Explore onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
+          {view === ViewMode.DASHBOARD && !isGuest && (
+            <Dashboard 
+              stats={stats} 
+              recentCards={cards} 
+              onNavigate={setView} 
+              onEditCard={(c) => { setEditingCard(c); setView(ViewMode.ADD_CARD); }} 
+              animationClass={animationClass} 
+            />
+          )}
+          {view === ViewMode.INVENTORY && !isGuest && (
+            <Inventory 
+              cards={cards} 
+              pages={binders} 
+              globalSearch={globalSearch}
+              onClearSearch={() => setGlobalSearch('')}
+              onDelete={handleDeleteCard} 
+              onUpdate={(c) => { setEditingCard(c); setView(ViewMode.ADD_CARD); }} 
+              onCreatePage={handleCreateBinder}
+              onDeletePage={handleDeleteBinder}
+              initialActiveBinderId={selectedBinderId}
+              animationClass={animationClass}
+            />
+          )}
+          {view === ViewMode.ADD_CARD && !isGuest && (
+            <CardForm 
+              onSubmit={handleSaveCard} 
+              onDelete={handleDeleteCard}
+              onCancel={() => { setEditingCard(null); setView(ViewMode.DASHBOARD); }} 
+              initialData={editingCard || undefined} 
+              pages={binders} 
+              onToast={addToast} 
+              animationClass={animationClass}
+            />
+          )}
+          {view === ViewMode.PROFILE && !isGuest && (
+            <ProfileView 
+              user={currentUser} 
+              cards={cards} 
+              onEditCard={(c) => { setEditingCard(c); setView(ViewMode.ADD_CARD); }} 
+              onUpdateProfile={handleUpdateProfile}
+              animationClass={animationClass}
+            />
+          )}
+        </div>
+      </main>
+
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 glass border-t border-white/5 flex items-center justify-around px-8 z-[50]">
+        <MobileNavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={20} />} label="Feed" />
+        <MobileNavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={20} />} label="Explore" />
+        {!isGuest ? (
+          <>
+            <button 
+              onClick={() => setView(ViewMode.ADD_CARD)} 
+              className="w-14 h-14 bg-blue-600 text-white rounded-xl flex items-center justify-center -translate-y-7 shadow-[0_-8px_20px_rgba(37,99,235,0.25)] border-[3px] border-black active:scale-[0.97] transition-all"
+            >
+              <Plus size={32} />
+            </button>
+            <MobileNavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={20} />} label="Vault" />
+            <MobileNavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={20} />} label="You" />
+          </>
+        ) : (
+          <MobileNavButton active={view === ViewMode.SETTINGS} onClick={() => setView(ViewMode.SETTINGS)} icon={<ShieldCheck size={20} />} label="Join" />
+        )}
+      </nav>
+
+      {showAuthTakeover && (
+        <div className="fixed inset-0 z-[200] animate-in fade-in duration-300">
+          <Auth 
+            onLogin={(u) => { setCurrentUser(u); loadData(u.id); setView(ViewMode.FEED); }} 
+            onCancel={() => setView(ViewMode.FEED)}
+          />
+        </div>
+      )}
+
+      <div className="fixed bottom-24 md:bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-[150] w-full max-w-sm px-4">
+        {toasts.map(toast => (
+          <div key={toast.id} className="flex items-center gap-4 p-4 rounded-xl glass border border-white/10 shadow-2xl animate-in slide-in-from-bottom-4 w-full shrink-0">
+            {toast.type === 'success' && <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />}
+            {toast.type === 'error' && <AlertCircle size={20} className="text-rose-500 shrink-0" />}
+            {toast.type === 'info' && <Info size={20} className="text-blue-500 shrink-0" />}
+            <span className="text-sm font-semibold text-slate-100">{toast.message}</span>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-auto text-slate-500 hover:text-white p-2 active:scale-90"><X size={16} /></button>
+          </div>
+        ))}
       </div>
-    </ErrorBoundary>
+    </div>
   );
 };
 

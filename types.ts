@@ -3,18 +3,41 @@ export interface User {
   id: string;
   username: string;
   avatar?: string;
+  bio?: string;
+  favClub?: string;
+  favPlayer?: string;
+  bannerUrl?: string; // New: Custom profile banner
 }
 
-// Renamed from Binder to BinderPage to fix import errors in storage and forms
 export interface BinderPage {
   id: string;
   name: string;
   description?: string;
 }
 
-export interface PriceSnapshot {
-  date: string;
-  value: number;
+export type PostTag = 'Pickup' | 'PC Update' | 'Show Coverage' | 'General';
+
+export interface SocialComment {
+  id: string;
+  userId: string;
+  username: string;
+  userAvatar?: string;
+  content: string;
+  createdAt: number;
+}
+
+export interface SocialPost {
+  id: string;
+  userId: string;
+  username: string;
+  userAvatar?: string;
+  content: string;
+  tag: PostTag;
+  imageUrl?: string;
+  likes: string[]; // array of user IDs
+  createdAt: number;
+  commentCount: number;
+  comments: SocialComment[];
 }
 
 export interface Card {
@@ -34,8 +57,8 @@ export interface Card {
   createdAt: number;
   rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
   isWishlist?: boolean;
-  pageId?: string; // Reference to a Binder ID
-  priceHistory?: PriceSnapshot[];
+  pageId?: string;
+  isPublic: boolean; // New: Social visibility
 }
 
 export interface CollectionStats {
@@ -48,9 +71,12 @@ export interface CollectionStats {
 }
 
 export enum ViewMode {
+  FEED = 'FEED',
+  EXPLORE = 'EXPLORE',
   DASHBOARD = 'DASHBOARD',
   INVENTORY = 'INVENTORY',
   ADD_CARD = 'ADD_CARD',
+  PROFILE = 'PROFILE',
   SETTINGS = 'SETTINGS'
 }
 

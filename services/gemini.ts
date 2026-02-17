@@ -24,6 +24,13 @@ export interface MarketPriceResult {
   summary: string;
 }
 
+export interface BoundingBox {
+  ymin: number;
+  xmin: number;
+  ymax: number;
+  xmax: number;
+}
+
 const UNIVERSAL_SOCCER_CARD_REGISTRY = `
 UNIVERSAL SOCCER CARD HISTORICAL REGISTRY (Multi-Era):
 
@@ -63,7 +70,7 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
     }));
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-preview',
       contents: {
         parts: [
           ...imageParts,
@@ -83,7 +90,7 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
         ],
       },
       config: {
-        thinkingConfig: { thinkingBudget: 24576 },
+        thinkingConfig: { thinkingBudget: 32768 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -113,6 +120,48 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
   }
 };
 
+/**
+ * Detects the bounding box of the main trading card in an image.
+ */
+export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox | null> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: imageData.split(',')[1] || imageData,
+            },
+          },
+          {
+            text: "Detect the main trading card in this image and provide its bounding box as normalized coordinates [ymin, xmin, ymax, xmax] in the range 0-1000.",
+          },
+        ],
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            ymin: { type: Type.NUMBER },
+            xmin: { type: Type.NUMBER },
+            ymax: { type: Type.NUMBER },
+            xmax: { type: Type.NUMBER },
+          },
+          required: ["ymin", "xmin", "ymax", "xmax"],
+        },
+      },
+    });
+
+    return JSON.parse(response.text || '{}') as BoundingBox;
+  } catch (error) {
+    console.error("Bounding Box Detection Error:", error);
+    return null;
+  }
+};
+
 export const getMarketPrice = async (playerName: string, cardSpecifics: string, set: string): Promise<MarketPriceResult | null> => {
   try {
     const prompt = `Provide a STABLE Market Valuation for: ${playerName} ${cardSpecifics} (${set}).
@@ -124,10 +173,12 @@ export const getMarketPrice = async (playerName: string, cardSpecifics: string, 
       config: { tools: [{ googleSearch: {} }] },
     });
 
-    const priceMatch = response.text.match(/[£](\d+(\.\d{2})?)/) || response.text.match(/(\d+(\.\d{2})?)\s?GBP/);
+    const responseText = response.text || '';
+    const priceMatch = responseText.match(/[£](\d+(\.\d{2})?)/) || responseText.match(/(\d+(\.\d{2})?)\s?GBP/);
+    
     return {
       price: priceMatch ? Math.round(parseFloat(priceMatch[1]) / 5) * 5 : 0,
-      summary: response.text,
+      summary: responseText,
       sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
         title: chunk.web?.title || 'Market Intel',
         uri: chunk.web?.uri || '#'
