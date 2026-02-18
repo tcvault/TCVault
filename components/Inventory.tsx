@@ -203,7 +203,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                <X size={24} />
              </button>
 
-             <div className="flex-1 bg-black/40 flex flex-col items-center justify-center relative p-8 md:p-12 min-h-0">
+             <div className="flex-[1.5] md:flex-1 bg-black/40 flex flex-col items-center justify-center relative p-4 md:p-12 min-h-0">
                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden img-loading">
                    <img 
                     src={selectedCard.images[currentImageIndex]} 
@@ -219,7 +219,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                    )}
                 </div>
              </div>
-             <div className="md:w-[380px] p-8 md:p-12 space-y-10 overflow-y-auto bg-black flex flex-col border-t md:border-t-0 md:border-l border-white/10 h-auto md:h-full">
+             <div className="flex-1 md:w-[380px] p-8 md:p-12 space-y-10 overflow-y-auto bg-black flex flex-col border-t md:border-t-0 md:border-l border-white/10 h-auto md:h-full">
                 <div className="space-y-8">
                   <div className="space-y-2">
                     <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{selectedCard.rarityTier || 'Collection Item'}</span>
