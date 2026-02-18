@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { SocialPost, PostTag, User, ViewMode, SocialComment } from '../types';
 import { MessageSquare, Heart, Share2, Plus, Image as ImageIcon, Send, Filter, X, Loader2, Ghost } from 'lucide-react';
@@ -152,7 +151,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       createdAt: Date.now()
     };
 
-    await vaultStorage.addComment(postId, newComment);
+    await vaultStorage.addComment(postId, commentText);
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
         const updatedComments = [...(p.comments || []), newComment];
@@ -190,29 +189,29 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
     <div className={`space-y-12 max-w-2xl mx-auto pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="flex items-end justify-between">
         <div className="space-y-2">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Community Pulse</span>
-          <h2 className="text-[32px] font-black tracking-tighter text-white leading-tight">Global Feed</h2>
+          <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Community Pulse</span>
+          <h2 className="text-[32px] font-black tracking-tighter text-[#1a1408] leading-tight">Global Feed</h2>
         </div>
         {!user ? (
           <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="btn-primary uppercase text-[10px] tracking-widest">Join to Post</button>
         ) : (
-          <button onClick={fetchPosts} className={`p-2 text-slate-500 hover:text-blue-400 transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
+          <button onClick={fetchPosts} className={`p-2 text-stone-400 hover:text-[#c9a227] transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
             <Ghost size={20} />
           </button>
         )}
       </div>
 
       {user && (
-        <form onSubmit={handlePost} className="glass rounded-[24px] p-6 space-y-4 border-white/10 shadow-2xl relative overflow-hidden">
+        <form onSubmit={handlePost} className="glass rounded-[24px] p-6 space-y-4 border-black/6 shadow-2xl relative overflow-hidden">
           <textarea 
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
             placeholder="Share your latest pickup or PC update..."
-            className="w-full bg-white/[0.03] border border-white/5 rounded-xl p-4 text-sm font-semibold focus:border-blue-500/30 outline-none transition-all resize-none min-h-[100px]"
+            className="w-full bg-black/[0.03] border border-black/6 rounded-xl p-4 text-sm font-semibold text-[#1a1408] focus:border-[#c9a227]/30 outline-none transition-all resize-none min-h-[100px] placeholder:text-stone-400"
           />
           
           {postImage && (
-            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-white/10 group">
+            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-black/10 group">
               <img src={postImage} className="w-full h-full object-cover" />
               <button type="button" onClick={() => setPostImage(null)} className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-rose-500 transition-colors">
                 <X size={12} />
@@ -222,11 +221,11 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
 
           <div className="flex items-center justify-between">
             <div className="flex gap-2">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-slate-500 hover:text-blue-400 transition-colors">
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-stone-400 hover:text-[#c9a227] transition-colors">
                 <ImageIcon size={20} />
               </button>
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
-              <div className="h-6 w-px bg-white/5 mx-1" />
+              <div className="h-6 w-px bg-black/5 mx-1" />
               <TagPicker value={selectedTag} onChange={setSelectedTag} />
             </div>
             <button type="submit" disabled={isPosting || !newPostContent.trim()} className="btn-primary h-10 px-6 uppercase text-[10px] tracking-widest gap-2 disabled:opacity-50">
@@ -237,7 +236,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
         </form>
       )}
 
-      <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-2">
+      <div className="flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar pb-2">
         <FilterButton active={activeFilter === 'All'} onClick={() => setActiveFilter('All')}>All Activity</FilterButton>
         <FilterButton active={activeFilter === 'Pickup'} onClick={() => setActiveFilter('Pickup')}>Pickups</FilterButton>
         <FilterButton active={activeFilter === 'PC Update'} onClick={() => setActiveFilter('PC Update')}>PC Updates</FilterButton>
@@ -246,16 +245,16 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
 
       <div className="space-y-6">
         {filteredPosts.map(post => (
-          <div key={post.id} className="glass rounded-[24px] border-white/5 overflow-hidden group hover:border-white/10 transition-all shadow-lg">
+          <div key={post.id} className="glass rounded-[24px] border-black/6 overflow-hidden group hover:border-black/10 transition-all shadow-lg">
             <div className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 font-bold italic border border-blue-500/20 overflow-hidden">
+                  <div className="w-10 h-10 rounded-full bg-[#c9a227]/10 flex items-center justify-center text-[#c9a227] font-bold italic border border-[#c9a227]/20 overflow-hidden">
                     {post.userAvatar ? <img src={post.userAvatar} className="w-full h-full object-cover" /> : post.username[0]}
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-white hover:text-blue-400 cursor-pointer transition-colors">@{post.username}</h4>
-                    <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">
+                    <h4 className="text-sm font-black text-[#1a1408] hover:text-[#c9a227] cursor-pointer transition-colors">@{post.username}</h4>
+                    <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">
                       {getRelativeTime(post.createdAt)}
                     </span>
                   </div>
@@ -265,12 +264,12 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                 </span>
               </div>
 
-              <p className="text-sm font-semibold text-slate-300 leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm font-semibold text-stone-700 leading-relaxed whitespace-pre-wrap">
                 {post.content}
               </p>
 
               {post.imageUrl && (
-                <div className="rounded-[16px] overflow-hidden aspect-video bg-slate-900 border border-white/5 shadow-inner">
+                <div className="rounded-[16px] overflow-hidden aspect-video bg-stone-100 border border-black/6 shadow-inner">
                   <img src={post.imageUrl} className="w-full h-full object-cover" alt="Post attachment" />
                 </div>
               )}
@@ -285,31 +284,31 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                 <ActionButton 
                   icon={<MessageSquare size={18} />} 
                   label={post.commentCount.toString()} 
-                  color="hover:text-blue-400" 
+                  color="hover:text-[#c9a227]" 
                   onClick={() => setExpandedComments(expandedComments === post.id ? null : post.id)}
                 />
-                <ActionButton icon={<Share2 size={18} />} label="" color="hover:text-emerald-400" onClick={() => handleShare(post)} />
+                <ActionButton icon={<Share2 size={18} />} label="" color="hover:text-emerald-500" onClick={() => handleShare(post)} />
               </div>
 
               {expandedComments === post.id && (
-                <div className="pt-6 border-t border-white/5 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                <div className="pt-6 border-t border-black/5 space-y-4 animate-in slide-in-from-top-2 duration-300">
                   <div className="space-y-4 max-h-64 overflow-y-auto no-scrollbar">
                     {(post.comments || []).map(comment => (
                       <div key={comment.id} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-bold italic shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold italic shrink-0">
                           {comment.userAvatar ? <img src={comment.userAvatar} className="w-full h-full rounded-full object-cover" /> : comment.username[0]}
                         </div>
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center justify-between">
-                            <h5 className="text-[11px] font-black text-white">@{comment.username}</h5>
-                            <span className="text-[9px] font-semibold text-slate-600 uppercase">{getRelativeTime(comment.createdAt)}</span>
+                            <h5 className="text-[11px] font-black text-[#1a1408]">@{comment.username}</h5>
+                            <span className="text-[9px] font-semibold text-stone-400 uppercase">{getRelativeTime(comment.createdAt)}</span>
                           </div>
-                          <p className="text-xs text-slate-400 font-medium leading-relaxed">{comment.content}</p>
+                          <p className="text-xs text-stone-600 font-medium leading-relaxed">{comment.content}</p>
                         </div>
                       </div>
                     ))}
                     {(post.comments || []).length === 0 && (
-                      <p className="text-center text-[10px] font-black text-slate-700 uppercase tracking-widest py-4">No comments yet</p>
+                      <p className="text-center text-[10px] font-black text-stone-300 uppercase tracking-widest py-4">No comments yet</p>
                     )}
                   </div>
 
@@ -321,12 +320,12 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleComment(post.id)}
-                        className="flex-1 bg-white/[0.03] border border-white/5 rounded-xl h-10 px-4 text-xs font-semibold focus:border-blue-500/30 outline-none"
+                        className="flex-1 bg-black/[0.03] border border-black/5 rounded-xl h-10 px-4 text-xs font-semibold focus:border-[#c9a227]/30 outline-none text-[#1a1408]"
                       />
                       <button 
                         onClick={() => handleComment(post.id)}
                         disabled={!commentText.trim()}
-                        className="p-2 text-blue-500 hover:text-blue-400 disabled:opacity-30 active:scale-95 transition-all"
+                        className="p-2 text-[#c9a227] hover:text-[#c9a227]/80 disabled:opacity-30 active:scale-95 transition-all"
                       >
                         <Send size={18} />
                       </button>
@@ -344,17 +343,17 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
 
 const TagPicker = ({ value, onChange }: { value: PostTag; onChange: (val: PostTag) => void }) => (
   <div className="flex items-center gap-2">
-    <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Tag:</span>
+    <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">Tag:</span>
     <select 
       value={value}
       onChange={(e) => onChange(e.target.value as PostTag)}
-      style={{ colorScheme: 'dark' }}
-      className="bg-transparent text-[10px] font-black uppercase text-blue-400 outline-none cursor-pointer hover:text-blue-300 transition-colors"
+      style={{ colorScheme: 'light' }}
+      className="bg-transparent text-[10px] font-black uppercase text-[#c9a227] outline-none cursor-pointer hover:text-[#c9a227]/80 transition-colors"
     >
-      <option value="General" className="bg-slate-900 text-white font-semibold">General</option>
-      <option value="Pickup" className="bg-slate-900 text-white font-semibold">Pickup</option>
-      <option value="PC Update" className="bg-slate-900 text-white font-semibold">PC Update</option>
-      <option value="Show Coverage" className="bg-slate-900 text-white font-semibold">Show Coverage</option>
+      <option value="General" className="bg-white text-stone-800 font-semibold">General</option>
+      <option value="Pickup" className="bg-white text-stone-800 font-semibold">Pickup</option>
+      <option value="PC Update" className="bg-white text-stone-800 font-semibold">PC Update</option>
+      <option value="Show Coverage" className="bg-white text-stone-800 font-semibold">Show Coverage</option>
     </select>
   </div>
 );
@@ -362,14 +361,14 @@ const TagPicker = ({ value, onChange }: { value: PostTag; onChange: (val: PostTa
 const FilterButton = ({ active, onClick, children }: any) => (
   <button 
     onClick={onClick}
-    className={`px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 ${active ? 'bg-white text-black border-white' : 'glass-subtle text-slate-600 border-white/10 hover:border-white/20'}`}
+    className={`px-2.5 md:px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-black uppercase tracking-tight md:tracking-widest border transition-all active:scale-95 ${active ? 'bg-[#1a1408] text-[#c9a227] border-[#1a1408]' : 'glass-subtle text-stone-400 border-black/10 hover:border-black/20'}`}
   >
     {children}
   </button>
 );
 
 const ActionButton = ({ icon, label, color, onClick }: any) => (
-  <button onClick={onClick} className={`flex items-center gap-2 text-slate-600 transition-colors active:scale-90 ${color}`}>
+  <button onClick={onClick} className={`flex items-center gap-2 text-stone-500 transition-colors active:scale-90 ${color}`}>
     {icon}
     <span className="text-xs font-black tabular">{label}</span>
   </button>
@@ -377,10 +376,10 @@ const ActionButton = ({ icon, label, color, onClick }: any) => (
 
 const getTagColor = (tag: PostTag) => {
   switch (tag) {
-    case 'Pickup': return 'bg-blue-500/10 text-blue-400';
-    case 'PC Update': return 'bg-emerald-500/10 text-emerald-400';
-    case 'Show Coverage': return 'bg-amber-500/10 text-amber-400';
-    default: return 'bg-slate-500/10 text-slate-400';
+    case 'Pickup': return 'bg-[#c9a227]/10 text-[#c9a227]';
+    case 'PC Update': return 'bg-emerald-500/10 text-emerald-600';
+    case 'Show Coverage': return 'bg-[#c9a227]/10 text-[#c9a227]';
+    default: return 'bg-stone-500/10 text-stone-600';
   }
 }
 

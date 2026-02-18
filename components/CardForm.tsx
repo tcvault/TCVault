@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
 import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, Scan, ShieldCheck, CheckCircle2, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop } from 'lucide-react';
@@ -35,10 +34,6 @@ const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
   });
 };
 
-/**
- * Crops an image based on normalized coordinates (0-1000).
- * Handles cross-origin images for remote Supabase URLs.
- */
 const performCrop = (imgSrc: string, box: BoundingBox): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -56,7 +51,6 @@ const performCrop = (imgSrc: string, box: BoundingBox): Promise<string> => {
       const width = ((box.xmax - box.xmin) / 1000) * img.width;
       const height = ((box.ymax - box.ymin) / 1000) * img.height;
 
-      // Add 2% padding if possible for a cleaner look
       const padW = width * 0.02;
       const padH = height * 0.02;
 
@@ -66,7 +60,6 @@ const performCrop = (imgSrc: string, box: BoundingBox): Promise<string> => {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       
-      // Draw the cropped portion to the new canvas
       ctx.drawImage(
         img, 
         Math.max(0, x - padW), 
@@ -98,7 +91,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   const [isSaving, setIsSaving] = useState(false);
   const [hasScanned, setHasScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCropping, setIsCropping] = useState<number | null>(null); // Index of image being auto-cropped
+  const [isCropping, setIsCropping] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const standardConditions = ['Ungraded', 'Raw', 'PSA 10', 'PSA 9', 'PSA 8', 'BGS 10 Black Label', 'BGS 10', 'BGS 9.5', 'SGC 10', 'CGC 10'];
@@ -133,8 +126,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         });
         
         const compressed = await processImage(base64);
-        
-        // Auto-crop logic: Detect card box and crop
         const currentIdx = images.length + i;
         setIsCropping(currentIdx);
         
@@ -259,86 +250,62 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   return (
     <div className={`max-w-4xl mx-auto space-y-12 pb-16 ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="flex items-center justify-between gap-8">
-        <h2 className="text-[32px] font-black tracking-tighter text-white leading-tight">
-          {isEditing ? 'Modify Record' : 'Add to Vault'}
+        <h2 className="text-[32px] font-black tracking-tighter text-[#1a1408] leading-tight">
+          {isEditing ? 'Modify Record' : 'Add to Collection'}
         </h2>
-        <button onClick={onCancel} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-xl active:scale-95"><X size={24} /></button>
+        <button onClick={onCancel} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-stone-400 hover:text-[#1a1408] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] rounded-xl active:scale-95"><X size={24} /></button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-5 space-y-8">
-          <div className="glass rounded-[24px] p-6 space-y-8 border-white/5 relative overflow-hidden shadow-lg">
+          <div className="glass rounded-[24px] p-6 space-y-8 border-black/6 relative overflow-hidden shadow-lg">
             {isScanning && (
-              <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-8 space-y-8 text-center animate-in fade-in duration-300">
-                 <div className="relative w-full aspect-[3/4] border border-white/10 rounded-[16px] overflow-hidden bg-slate-900/40">
+              <div className="absolute inset-0 bg-[#faf8f4]/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-8 space-y-8 text-center animate-in fade-in duration-300">
+                 <div className="relative w-full aspect-[3/4] border border-black/6 rounded-[16px] overflow-hidden bg-stone-100">
                    <div className="scanner-line"></div>
-                   <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-blue-500 animate-pulse" /></div>
+                   <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-[#c9a227] animate-pulse" /></div>
                  </div>
                  <div className="space-y-2">
-                   <span className="text-[10px] font-black text-white uppercase tracking-widest bg-blue-600 px-3 py-1 rounded-full shadow-lg shadow-blue-600/20">Identifying...</span>
-                   <p className="text-sm font-semibold text-slate-400 animate-pulse">{scanStep}</p>
+                   <span className="text-[10px] font-black text-white uppercase tracking-widest bg-[#c9a227] px-3 py-1 rounded-full shadow-lg shadow-[#c9a227]/20">Identifying...</span>
+                   <p className="text-sm font-semibold text-stone-400 animate-pulse">{scanStep}</p>
                  </div>
               </div>
             )}
             <div className="flex items-center justify-between px-2">
-              <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-2">
-                Photos <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Auto-Crop Enabled</span>
+              <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-2">
+                Photos <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20">Auto-Crop Enabled</span>
               </label>
-              <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest tabular">{images.length} / 4</span>
+              <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest tabular">{images.length} / 4</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {images.map((img, idx) => (
-                <div key={idx} className="aspect-[3/4] bg-slate-950 rounded-xl overflow-hidden relative group border border-white/5 shadow-md flex items-center justify-center p-2 img-loading">
-                  <img 
-                    src={img} 
-                    onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
-                    className="w-full h-full object-contain select-none z-10" 
-                    alt="Preview" 
-                  />
+                <div key={idx} className="aspect-[3/4] bg-stone-100 rounded-xl overflow-hidden relative group border border-black/6 shadow-md flex items-center justify-center p-2 img-loading">
+                  <img src={img} onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} className="w-full h-full object-contain select-none z-10" alt="Preview" />
                   {isCropping === idx && (
-                    <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2">
-                      <Loader2 size={24} className="text-blue-500 animate-spin" />
-                      <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Recropping...</span>
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2">
+                      <Loader2 size={24} className="text-[#c9a227] animate-spin" />
+                      <span className="text-[8px] font-black text-[#c9a227] uppercase tracking-widest">Recropping...</span>
                     </div>
                   )}
                   <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
-                    <button 
-                      onClick={() => removeImage(idx)} 
-                      className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-rose-600 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <button onClick={() => removeImage(idx)} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-rose-600 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg"><Trash2 size={16} /></button>
                     {isEditing && (
-                      <button 
-                        type="button"
-                        onClick={() => handleRecrop(idx)} 
-                        disabled={isCropping !== null}
-                        title="Auto-crop again"
-                        className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-blue-600 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"
-                      >
-                        <Crop size={16} />
-                      </button>
+                      <button type="button" onClick={() => handleRecrop(idx)} disabled={isCropping !== null} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-[#c9a227] text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
                     )}
                   </div>
                 </div>
               ))}
               {(images.length < 4 || (isCropping !== null && !images[isCropping])) && (
-                <button 
-                  onClick={() => fileInputRef.current?.click()} 
-                  disabled={isSaving || isCropping !== null}
-                  className="aspect-[3/4] rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-4 hover:border-white/20 hover:bg-white/[0.02] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.98] relative"
-                >
+                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-[3/4] rounded-xl border border-dashed border-black/10 flex flex-col items-center justify-center gap-4 hover:border-black/20 hover:bg-black/[0.02] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] active:scale-[0.98] relative">
                   {isSaving || (isCropping !== null && !images[isCropping]) ? (
                     <div className="flex flex-col items-center gap-3">
-                       <Loader2 className="text-blue-500 animate-spin" size={24} />
-                       <span className="text-[8px] font-black text-blue-500 uppercase tracking-[0.2em] animate-pulse">
-                         {isCropping !== null ? 'Precision Cropping...' : 'Processing...'}
-                       </span>
+                       <Loader2 className="text-[#c9a227] animate-spin" size={24} />
+                       <span className="text-[8px] font-black text-[#c9a227] uppercase tracking-[0.2em] animate-pulse">Precision Cropping...</span>
                     </div>
                   ) : (
                     <>
-                      <Plus className="text-slate-600 group-hover:text-slate-400 transition-colors" size={24} />
-                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest group-hover:text-slate-400 transition-colors">Add Photo</span>
+                      <Plus className="text-stone-300 group-hover:text-stone-500 transition-colors" size={24} />
+                      <span className="text-[10px] font-black text-stone-300 group-hover:text-stone-500 uppercase tracking-widest transition-colors">Add Photo</span>
                     </>
                   )}
                 </button>
@@ -346,45 +313,29 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
             {images.length > 0 && (
-              <button 
-                type="button" 
-                onClick={runScanner} 
-                disabled={isScanning || isSaving || isCropping !== null}
-                className={`w-full h-14 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.97] ${hasScanned ? 'btn-secondary text-slate-400' : 'btn-primary'}`}
-              >
+              <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null} className={`w-full h-14 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.97] ${hasScanned ? 'btn-secondary text-stone-500' : 'btn-primary'}`}>
                 {isScanning ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={16} />}
                 <span className="uppercase text-[10px] tracking-widest">{hasScanned ? 'Rescan Identification' : 'Identify with AI'}</span>
               </button>
             )}
           </div>
 
-          <div className="glass rounded-[24px] p-6 space-y-6 border-white/5">
-            <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2">Social Visibility</h3>
+          <div className="glass rounded-[24px] p-6 space-y-6 border-black/6">
+            <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-widest px-2">Visibility</h3>
             <div className="grid grid-cols-2 gap-3">
-              <button 
-                type="button"
-                onClick={() => setFormData({...formData, isPublic: true})}
-                className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all ${formData.isPublic ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-white/[0.02] border-white/5 text-slate-600 hover:border-white/10'}`}
-              >
-                <Globe size={24} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Public</span>
+              <button type="button" onClick={() => setFormData({...formData, isPublic: true})} className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all ${formData.isPublic ? 'bg-[#c9a227]/10 border-[#c9a227]/30 text-[#c9a227]' : 'bg-black/[0.02] border-black/6 text-stone-400 hover:border-black/10'}`}>
+                <Globe size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Public</span>
               </button>
-              <button 
-                type="button"
-                onClick={() => setFormData({...formData, isPublic: false})}
-                className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all ${!formData.isPublic ? 'bg-amber-600/10 border-amber-500/30 text-amber-400' : 'bg-white/[0.02] border-white/5 text-slate-600 hover:border-white/10'}`}
-              >
-                <Lock size={24} />
-                <span className="text-[10px] font-black uppercase tracking-widest">Private</span>
+              <button type="button" onClick={() => setFormData({...formData, isPublic: false})} className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all ${!formData.isPublic ? 'bg-stone-100 border-black/10 text-stone-700' : 'bg-black/[0.02] border-black/6 text-stone-400 hover:border-black/10'}`}>
+                <Lock size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Private</span>
               </button>
             </div>
-            <p className="text-[9px] font-semibold text-slate-600 text-center uppercase tracking-widest">Public cards appear in your profile and explore feed.</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8">
-          <div className="glass rounded-[24px] p-8 md:p-12 space-y-8 border-white/5 shadow-lg bg-white/[0.01]">
-            {error && <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-4 text-rose-400 text-sm font-black tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
+          <div className="glass rounded-[24px] p-8 md:p-12 space-y-8 border-black/6 shadow-lg bg-white/[0.01]">
+            {error && <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-4 text-rose-500 text-sm font-black tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <Field label="Player" value={formData.playerName} onChange={(v: string) => setFormData({...formData, playerName: v})} icon={<User size={16} />} />
@@ -403,37 +354,27 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">Grade / Condition</label>
+                <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Grade / Condition</label>
                 <div className="relative group">
-                   <select 
-                     value={formData.condition} 
-                     onChange={e => setFormData({...formData, condition: e.target.value})} 
-                     style={{ colorScheme: 'dark' }}
-                     className="w-full bg-slate-950/40 border border-white/5 rounded-xl h-14 px-4 outline-none font-black text-sm text-white focus:border-blue-500/40 appearance-none transition-all cursor-pointer"
-                   >
-                    {standardConditions.map(c => <option key={c} value={c} className="bg-slate-900 font-semibold">{c}</option>)}
+                   <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} style={{ colorScheme: 'light' }} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 px-4 outline-none font-black text-sm text-[#1a1408] focus:border-[#c9a227]/40 appearance-none transition-all cursor-pointer">
+                    {standardConditions.map(c => <option key={c} value={c} className="bg-white font-semibold">{c}</option>)}
                    </select>
-                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600" />
+                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400" />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">Assign to Binder</label>
+                <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Assign to Binder</label>
                 <div className="relative group">
-                  <select 
-                    value={formData.pageId || ''} 
-                    onChange={e => setFormData({...formData, pageId: e.target.value})} 
-                    style={{ colorScheme: 'dark' }}
-                    className={`w-full bg-slate-950/40 border rounded-xl h-14 px-4 outline-none font-black text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-blue-500/40 text-blue-400' : 'border-white/5 text-slate-600'}`}
-                  >
-                    <option value="" className="bg-slate-900 font-semibold">Master Archive</option>
-                    {pages.map(p => <option key={p.id} value={p.id} className="bg-slate-900 font-semibold">{p.name}</option>)}
+                  <select value={formData.pageId || ''} onChange={e => setFormData({...formData, pageId: e.target.value})} style={{ colorScheme: 'light' }} className={`w-full bg-black/[0.03] border rounded-xl h-14 px-4 outline-none font-black text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-[#c9a227]/40 text-[#c9a227]' : 'border-black/6 text-stone-400'}`}>
+                    <option value="" className="bg-white font-semibold">Main Collection</option>
+                    {pages.map(p => <option key={p.id} value={p.id} className="bg-white font-semibold">{p.name}</option>)}
                   </select>
-                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-600" />
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400" />
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-8 border-t border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-8 border-t border-black/5">
               <Field label="Price Paid (£)" type="number" value={formData.pricePaid} onChange={(v: string) => setFormData({...formData, pricePaid: Number(v)})} icon={<PoundSterling size={16} />} />
               <Field label="Market Value (£)" type="number" value={formData.marketValue} onChange={(v: string) => setFormData({...formData, marketValue: Number(v)})} icon={<Zap size={16} />} />
             </div>
@@ -441,23 +382,12 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           
           <div className="flex gap-4">
             {isEditing && (
-              <button 
-                type="button" 
-                onClick={() => initialData && onDelete?.(initialData.id)} 
-                className="btn-secondary text-rose-500 border-rose-500/20 hover:bg-rose-500/10 h-14 px-6 uppercase text-[10px] tracking-widest flex items-center justify-center transition-all active:scale-95"
-              >
-                <Trash2 size={20} className="mr-2" />
-                <span className="hidden sm:inline">Delete Record</span>
-              </button>
+              <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-rose-500 border-rose-500/20 hover:bg-rose-500/10 h-14 px-6 uppercase text-[10px] tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Record</span></button>
             )}
             <button type="button" onClick={onCancel} className="btn-secondary flex-1 h-14 uppercase text-[10px] tracking-widest">Discard</button>
-            <button 
-              type="submit" 
-              disabled={isSaving || isCropping !== null}
-              className={`btn-primary flex-[2] h-14 uppercase text-[10px] tracking-widest ${isSaving || isCropping !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
+            <button type="submit" disabled={isSaving || isCropping !== null} className={`btn-primary flex-[2] h-14 uppercase text-[10px] tracking-widest ${isSaving || isCropping !== null ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2" size={20} />}
-              <span>{isEditing ? 'Update Card' : 'Add to Stash'}</span>
+              <span>{isEditing ? 'Update Card' : 'Add to Collection'}</span>
             </button>
           </div>
         </form>
@@ -468,16 +398,10 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
 const Field = ({ label, value, onChange, icon, type = 'text' }: any) => (
   <div className="space-y-2">
-    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">{label}</label>
+    <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-blue-500 transition-colors">{icon}</div>
-      <input 
-        type={type} 
-        step="0.01" 
-        value={value} 
-        onChange={e => onChange(e.target.value)} 
-        className="w-full bg-slate-950/40 border border-white/5 rounded-xl h-14 pl-12 pr-4 focus:border-blue-500/40 outline-none font-semibold text-sm text-white transition-all placeholder:text-slate-800" 
-      />
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-[#c9a227] transition-colors">{icon}</div>
+      <input type={type} step="0.01" value={value} onChange={e => onChange(e.target.value)} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 pl-12 pr-4 focus:border-[#c9a227]/40 outline-none font-semibold text-sm text-[#1a1408] transition-all placeholder:text-stone-300" />
     </div>
   </div>
 );

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   LayoutDashboard as DashboardIcon, 
@@ -18,7 +17,8 @@ import {
   BookOpen,
   Rss,
   Globe,
-  Compass
+  Compass,
+  ChevronDown
 } from 'lucide-react';
 import { Card, ViewMode, CollectionStats, User, BinderPage } from './types';
 import Dashboard from './components/Dashboard';
@@ -32,20 +32,19 @@ import { vaultStorage, supabase } from './services/storage';
 
 const STORAGE_SESSION_KEY = 'tcvault_active_session';
 
+export const goldGradientStyle = {
+  background: 'linear-gradient(135deg, #8b6914 0%, #d4af37 35%, #f5e070 55%, #d4af37 75%, #8b6914 100%)',
+  boxShadow: '0 8px 24px -4px rgba(184,134,11,0.4)',
+  color: '#1a1408',
+};
+
 export const TCLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
-  <div className={`${className} relative flex items-center justify-center`}>
-    <img 
-      src="https://oewvucbsbcxxwtnflbfw.supabase.co/storage/v1/object/public/assets/TCVaultLogo.png" 
-      onError={(e) => {
-        e.currentTarget.style.display = 'none';
-        const parent = e.currentTarget.parentElement;
-        if (parent) {
-          parent.innerHTML = '<div class="w-full h-full bg-blue-600 rounded-full flex items-center justify-center font-black text-white italic text-[10px]">TC</div>';
-        }
-      }}
-      className="w-full h-full object-contain object-center drop-shadow-xl scale-110" 
-      style={{ filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.5))' }}
-      alt="TC Vault" 
+  <div className={`${className} relative flex items-center justify-center shrink-0`}>
+    <img
+      src="https://oewvucbsbcxxwtnflbfw.supabase.co/storage/v1/object/public/assets/TCVaultIcon.png"
+      className="w-full h-full object-contain object-center"
+      alt="TC Vault"
+      draggable={false}
     />
   </div>
 );
@@ -268,7 +267,7 @@ const App: React.FC = () => {
   };
 
   const handleDeleteBinder = async (id: string) => {
-    if (window.confirm("Delete this binder? Cards will stay in your master archive.")) {
+    if (window.confirm("Delete this binder? Cards will stay in your main collection.")) {
       try {
         await vaultStorage.deletePage(id);
         await loadData();
@@ -282,8 +281,8 @@ const App: React.FC = () => {
 
   if (isInitializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
-        <TCLogo className="w-16 h-16 animate-pulse" />
+      <div className="flex items-center justify-center min-h-screen bg-[#faf8f4]">
+        <TCLogo className="w-16 h-16 animate-pulse shrink-0" />
       </div>
     );
   }
@@ -291,70 +290,120 @@ const App: React.FC = () => {
   const isGuest = !currentUser;
   const showAuthTakeover = view === ViewMode.SETTINGS || (isGuest && [ViewMode.DASHBOARD, ViewMode.INVENTORY, ViewMode.ADD_CARD, ViewMode.PROFILE].includes(view));
 
-  return (
-    <div className="flex h-screen bg-black text-slate-200 overflow-hidden relative selection:bg-blue-600/30">
-      <aside className="hidden md:flex flex-col w-64 border-r border-white/5 bg-[#020617] h-full">
-        <div className="p-8 flex flex-col h-full">
-          <div className="flex items-center gap-4 cursor-pointer mb-12 hover:opacity-80 transition-opacity" onClick={() => setView(ViewMode.FEED)}>
-            <TCLogo className="w-10 h-10" />
-            <div>
-              <h1 className="text-base font-black tracking-[-0.05em] leather-none uppercase">
-                <span className="text-blue-500">TC</span>
-                <span className="text-slate-200 ml-1">Vault</span>
-              </h1>
-            </div>
-          </div>
-
-          <nav className="space-y-8 flex-1 overflow-y-auto no-scrollbar">
-            <div className="space-y-2">
-              <span className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Community</span>
-              <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
-              <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
-            </div>
-
-            {!isGuest && (
-              <>
-                <div className="space-y-2">
-                  <span className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Collection</span>
-                  <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Portfolio" />
-                  <NavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={16} />} label="Vault" />
-                  <NavButton active={view === ViewMode.ADD_CARD} onClick={() => setView(ViewMode.ADD_CARD)} icon={<PlusCircle size={16} />} label="Add Card" />
-                </div>
-
-                <div className="space-y-2">
-                  <span className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Identity</span>
-                  <NavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={16} />} label="My Profile" />
-                </div>
-              </>
-            )}
-          </nav>
-
-          <div className="space-y-4 pt-6 mt-8 border-t border-white/5">
-            {!isGuest ? (
-              <div className="flex items-center justify-between px-4 h-12 rounded-xl glass-subtle">
-                <div className="flex items-center gap-2 truncate">
-                  <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center ${currentUser.avatar ? '' : (currentUser.id === 'admin-master' ? 'bg-amber-500/10 text-amber-500' : 'bg-blue-500/10 text-blue-500')}`}>
-                    {currentUser.avatar ? <img src={currentUser.avatar} className="w-full h-full object-cover" /> : <UserIcon size={16} />}
-                  </div>
-                  <span className="text-sm font-bold truncate italic">{currentUser?.username}</span>
-                </div>
-                <button onClick={handleLogout} className="text-slate-500 hover:text-rose-400 transition-colors p-2 active:scale-90" title="Sign Out">
-                  <Power size={16} />
-                </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setView(ViewMode.SETTINGS)}
-                className="w-full btn-primary h-12 uppercase text-[10px] tracking-widest"
-              >
-                Join Vault
-              </button>
-            )}
-          </div>
+  const SidebarContent = () => (
+    <div className="p-8 flex flex-col h-full overflow-hidden">
+      <div className="flex items-center gap-3 cursor-pointer mb-2" onClick={() => setView(ViewMode.FEED)}>
+        <TCLogo className="w-10 h-10 shrink-0" />
+        <div>
+          <p className="text-sm font-black tracking-tighter uppercase leading-none">
+            <span style={{
+              background: 'linear-gradient(135deg, #8b6914 0%, #d4af37 35%, #f5e070 55%, #d4af37 75%, #8b6914 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}>TC</span>
+            <span className="text-stone-800 ml-1">Vault</span>
+          </p>
+          <p style={{ 
+            background: 'linear-gradient(135deg, #8b6914 0%, #d4af37 50%, #8b6914 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+          }} className="text-[9px] font-semibold uppercase tracking-widest leading-none mt-0.5">
+            Collectors Community
+          </p>
         </div>
+      </div>
+
+      <nav className="space-y-8 flex-1 overflow-y-auto no-scrollbar mt-12 pb-8">
+        <div className="space-y-2">
+          <span className="px-4 text-[10px] font-black text-[#c9a227]/40 uppercase tracking-widest">Community</span>
+          <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
+          <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
+        </div>
+
+        {!isGuest && (
+          <>
+            <div className="space-y-2">
+              <span className="px-4 text-[10px] font-black text-[#c9a227]/40 uppercase tracking-widest">Asset Management</span>
+              <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Portfolio" />
+              
+              <div className="space-y-1">
+                <NavButton 
+                  active={view === ViewMode.INVENTORY} 
+                  onClick={() => {
+                    setView(ViewMode.INVENTORY);
+                    setSelectedBinderId('all');
+                  }} 
+                  icon={<BinderIcon size={16} />} 
+                  label="Collection" 
+                  trailing={binders.length > 0 && <ChevronDown size={14} className={`transition-transform duration-300 ${view === ViewMode.INVENTORY ? 'rotate-180' : ''}`} />}
+                />
+                
+                {binders.length > 0 && (view === ViewMode.INVENTORY || binders.some(b => b.id === selectedBinderId)) && (
+                  <div className="pl-9 space-y-1 mt-1 border-l-2 border-black/5 ml-6 animate-in slide-in-from-top-2 duration-300">
+                    <button 
+                      onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId('all'); }}
+                      className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left ${view === ViewMode.INVENTORY && selectedBinderId === 'all' ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-600 hover:bg-black/[0.02]'}`}
+                    >
+                      <span className="text-[11px] uppercase tracking-wider">Main Collection</span>
+                    </button>
+                    {binders.map(binder => (
+                      <button 
+                        key={binder.id}
+                        onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId(binder.id); }}
+                        className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left group ${view === ViewMode.INVENTORY && selectedBinderId === binder.id ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-600 hover:bg-black/[0.02]'}`}
+                      >
+                        <span className="text-[11px] truncate">{binder.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <NavButton active={view === ViewMode.ADD_CARD} onClick={() => setView(ViewMode.ADD_CARD)} icon={<PlusCircle size={16} />} label="Add Card" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="px-4 text-[10px] font-black text-[#c9a227]/40 uppercase tracking-widest">Identity</span>
+              <NavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={16} />} label="My Profile" />
+            </div>
+          </>
+        )}
+      </nav>
+
+      <div className="space-y-4 pt-6 mt-auto border-t border-black/6">
+        {!isGuest ? (
+          <div className="flex items-center justify-between px-4 h-12 rounded-xl glass-subtle">
+            <div className="flex items-center gap-2 truncate">
+              <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center ${currentUser.avatar ? '' : (currentUser.id === 'admin-master' ? 'bg-[#c9a227]/10 text-[#c9a227]' : 'bg-[#c9a227]/10 text-[#c9a227]')}`}>
+                {currentUser.avatar ? <img src={currentUser.avatar} className="w-full h-full object-cover" /> : <UserIcon size={16} />}
+              </div>
+              <span className="text-sm font-bold truncate italic">{currentUser?.username}</span>
+            </div>
+            <button onClick={handleLogout} className="text-stone-400 hover:text-rose-500 transition-colors p-2 active:scale-90" title="Sign Out">
+              <Power size={16} />
+            </button>
+          </div>
+        ) : (
+          <button 
+            onClick={() => setView(ViewMode.SETTINGS)}
+            className="w-full btn-primary h-12 uppercase text-[10px] tracking-widest"
+          >
+            Join Vault
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex h-screen bg-[#faf8f4] text-[#1a1408] overflow-hidden relative selection:bg-[#c9a227]/20">
+      <aside className="hidden md:flex flex-col w-64 border-r border-black/6 bg-[#f5f2ec] h-full shadow-inner">
+        <SidebarContent />
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-black relative pb-32 md:pb-0 scroll-smooth">
+      <main className="flex-1 overflow-y-auto bg-[#faf8f4] relative pb-32 md:pb-0 scroll-smooth">
         <div className="p-8 md:p-16 max-w-6xl mx-auto min-h-screen">
           {view === ViewMode.FEED && <Feed user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
           {view === ViewMode.EXPLORE && <Explore onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
@@ -378,6 +427,7 @@ const App: React.FC = () => {
               onCreatePage={handleCreateBinder}
               onDeletePage={handleDeleteBinder}
               initialActiveBinderId={selectedBinderId}
+              onSelectBinder={(id) => setSelectedBinderId(id)}
               animationClass={animationClass}
             />
           )}
@@ -404,18 +454,19 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 glass border-t border-white/5 flex items-center justify-around px-8 z-[50]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#f5f2ec]/90 backdrop-blur-xl border-t border-black/6 flex items-center justify-around px-8 z-[50] shadow-xl">
         <MobileNavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={20} />} label="Feed" />
         <MobileNavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={20} />} label="Explore" />
         {!isGuest ? (
           <>
             <button 
               onClick={() => setView(ViewMode.ADD_CARD)} 
-              className="w-14 h-14 bg-blue-600 text-white rounded-xl flex items-center justify-center -translate-y-7 shadow-[0_-8px_20px_rgba(37,99,235,0.25)] border-[3px] border-black active:scale-[0.97] transition-all"
+              style={goldGradientStyle}
+              className="w-14 h-14 rounded-xl flex items-center justify-center -translate-y-7 shadow-[0_-6px_20px_rgba(201,162,39,0.3),0_10px_30px_rgba(201,162,39,0.25)] border-[3px] border-[#faf8f4] active:scale-[0.97] transition-all"
             >
               <Plus size={32} />
             </button>
-            <MobileNavButton active={view === ViewMode.INVENTORY} onClick={() => setView(ViewMode.INVENTORY)} icon={<BinderIcon size={20} />} label="Vault" />
+            <MobileNavButton active={view === ViewMode.INVENTORY} onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId('all'); }} icon={<BinderIcon size={20} />} label="Vault" />
             <MobileNavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={20} />} label="You" />
           </>
         ) : (
@@ -434,12 +485,12 @@ const App: React.FC = () => {
 
       <div className="fixed bottom-24 md:bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 z-[150] w-full max-w-sm px-4">
         {toasts.map(toast => (
-          <div key={toast.id} className="flex items-center gap-4 p-4 rounded-xl glass border border-white/10 shadow-2xl animate-in slide-in-from-bottom-4 w-full shrink-0">
+          <div key={toast.id} className="flex items-center gap-4 p-4 rounded-xl glass border border-black/10 shadow-2xl animate-in slide-in-from-bottom-4 w-full shrink-0">
             {toast.type === 'success' && <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />}
             {toast.type === 'error' && <AlertCircle size={20} className="text-rose-500 shrink-0" />}
-            {toast.type === 'info' && <Info size={20} className="text-blue-500 shrink-0" />}
-            <span className="text-sm font-semibold text-slate-100">{toast.message}</span>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-auto text-slate-500 hover:text-white p-2 active:scale-90"><X size={16} /></button>
+            {toast.type === 'info' && <Info size={20} className="text-[#c9a227] shrink-0" />}
+            <span className="text-sm font-semibold text-stone-800">{toast.message}</span>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="ml-auto text-stone-400 hover:text-stone-700 p-2 active:scale-90"><X size={16} /></button>
           </div>
         ))}
       </div>
@@ -447,15 +498,18 @@ const App: React.FC = () => {
   );
 };
 
-const NavButton = ({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] ${active ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-white/[0.02]'}`}>
-    {React.cloneElement(icon, { size: 16 })}
-    <span className="text-sm font-semibold">{label}</span>
+const NavButton = ({ active, onClick, icon, label, trailing }: any) => (
+  <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] ${active ? 'bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 shadow-lg' : 'text-stone-400 hover:text-stone-700 hover:bg-black/[0.03]'}`}>
+    <div className="flex items-center gap-4">
+      {React.cloneElement(icon, { size: 16 })}
+      <span className="text-sm font-semibold">{label}</span>
+    </div>
+    {trailing}
   </button>
 );
 
 const MobileNavButton = ({ active, onClick, icon, label }: any) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] ${active ? 'text-blue-500' : 'text-slate-500'}`}>
+  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] ${active ? 'text-[#c9a227]' : 'text-stone-400'}`}>
     {React.cloneElement(icon, { size: 20 })}
     <span className="text-[10px] font-black uppercase tracking-widest leading-none">{label}</span>
   </button>
