@@ -1,4 +1,3 @@
-
 export interface User {
   id: string;
   username: string;
@@ -59,6 +58,9 @@ export interface Card {
   isWishlist?: boolean;
   pageId?: string;
   isPublic: boolean; // New: Social visibility
+  ownerUsername?: string; // New: Display name of the collector
+  ownerAvatar?: string; // New: Avatar of the collector
+  ownerId?: string; // New: ID to filter by collector
 }
 
 export interface CollectionStats {

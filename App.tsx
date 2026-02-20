@@ -3,23 +3,19 @@ import {
   LayoutDashboard as DashboardIcon, 
   PlusCircle, 
   Database as BinderIcon, 
-  Search, 
   Power, 
   User as UserIcon, 
   ShieldCheck, 
-  RefreshCw, 
   Plus, 
   CheckCircle2, 
   AlertCircle, 
   Info, 
   X, 
-  ChevronRight, 
-  BookOpen,
   Rss,
-  Globe,
   Compass,
   ChevronDown
 } from 'lucide-react';
+import { getMarketPrice } from './services/gemini';
 import { Card, ViewMode, CollectionStats, User, BinderPage } from './types';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
@@ -60,6 +56,7 @@ function usePrevious<T>(value: T): T | undefined {
   useEffect(() => {
     ref.current = value;
   }, [value]);
+  // eslint-disable-next-line react-hooks/refs
   return ref.current;
 }
 
@@ -163,13 +160,13 @@ const App: React.FC = () => {
               const userObj = JSON.parse(savedSession);
               setCurrentUser(userObj);
               await loadData(userObj.id);
-            } catch (e) {
+            } catch {
               localStorage.removeItem(STORAGE_SESSION_KEY);
             }
           }
         }
-      } catch (e) {
-        console.error("Startup auth check failed:", e);
+      } catch {
+        console.error("Startup auth check failed");
       } finally {
         setIsInitializing(false);
       }
@@ -177,7 +174,7 @@ const App: React.FC = () => {
 
     startup();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (isTerminating.current) return;
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
         const userObj: User = { id: session.user.id, username: session.user.email?.split('@')[0] || 'Collector' };
@@ -223,7 +220,7 @@ const App: React.FC = () => {
       setView(ViewMode.INVENTORY);
       addToast(cardData.id ? "Record updated" : "Card stashed");
       loadData();
-    } catch (e) {
+    } catch {
       addToast("Save failed", "error");
     }
   };
@@ -238,7 +235,7 @@ const App: React.FC = () => {
           setEditingCard(null);
           setView(ViewMode.INVENTORY);
         }
-      } catch (e) {
+      } catch {
         addToast("Delete failed", "error");
       }
     }
@@ -249,7 +246,7 @@ const App: React.FC = () => {
       await vaultStorage.saveUserProfile(updatedUser);
       setCurrentUser(updatedUser);
       addToast("Collector identity updated", "success");
-    } catch (e) {
+    } catch {
       addToast("Profile update failed", "error");
     }
   };
@@ -261,7 +258,7 @@ const App: React.FC = () => {
       addToast(`Binder "${name}" created`);
       setSelectedBinderId(newBinder.id);
       setView(ViewMode.INVENTORY);
-    } catch (e) {
+    } catch {
       addToast("Failed to create binder", "error");
     }
   };
@@ -273,9 +270,26 @@ const App: React.FC = () => {
         await loadData();
         if (selectedBinderId === id) setSelectedBinderId('all');
         addToast("Binder deleted", "info");
-      } catch (e) {
+      } catch {
         addToast("Failed to delete binder", "error");
       }
+    }
+  };
+
+  const handleRefreshPrice = async (card: Card) => {
+    try {
+      addToast("Fetching latest market intel...", "info");
+      const result = await getMarketPrice(card.playerName, card.cardSpecifics, card.set);
+      if (result && result.price > 0) {
+        const updatedCard = { ...card, marketValue: result.price };
+        await vaultStorage.saveCard(updatedCard);
+        setCards(prev => prev.map(c => c.id === card.id ? updatedCard : c));
+        addToast(`Price updated to £${result.price}`, "success");
+      } else {
+        addToast("No recent sales found to update price.", "info");
+      }
+    } catch {
+      addToast("Market refresh failed", "error");
     }
   };
 
@@ -406,7 +420,7 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto bg-[#faf8f4] relative pb-32 md:pb-0 scroll-smooth">
         <div className="p-8 md:p-16 max-w-6xl mx-auto min-h-screen">
           {view === ViewMode.FEED && <Feed user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
-          {view === ViewMode.EXPLORE && <Explore onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
+          {view === ViewMode.EXPLORE && <Explore user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
           {view === ViewMode.DASHBOARD && !isGuest && (
             <Dashboard 
               stats={stats} 
@@ -429,6 +443,7 @@ const App: React.FC = () => {
               initialActiveBinderId={selectedBinderId}
               onSelectBinder={(id) => setSelectedBinderId(id)}
               animationClass={animationClass}
+              onRefreshPrice={handleRefreshPrice}
             />
           )}
           {view === ViewMode.ADD_CARD && !isGuest && (

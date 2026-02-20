@@ -1,5 +1,4 @@
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@^2.45.0';
+import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User } from '../types';
 
 const getEnv = (key: string): string | undefined => {
@@ -88,7 +87,7 @@ class CloudStorageService {
     if (supabase) {
       const { data, error } = await supabase.from('social_posts').select('*').order('created_at', { ascending: false });
       if (!error && data) {
-        return data.map(p => ({
+        return data.map((p: any) => ({
           ...p,
           userId: p.user_id,
           userAvatar: p.user_avatar,
@@ -165,7 +164,7 @@ class CloudStorageService {
     if (userId && supabase) {
       const { data, error } = await supabase.from('cards').select('*').eq('user_id', userId).order('created_at', { ascending: false });
       if (!error && data) {
-        return data.map(item => ({
+        return data.map((item: any) => ({
           id: item.id,
           playerName: item.player_name,
           team: item.team,
@@ -192,9 +191,16 @@ class CloudStorageService {
 
   async getPublicCards(): Promise<Card[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('cards').select('*').eq('is_public', true).order('created_at', { ascending: false }).limit(20);
+      // Fetch cards with profile data joined
+      const { data, error } = await supabase
+        .from('cards')
+        .select('*, profiles(username, avatar_url)')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
       if (!error && data) {
-        return data.map(item => ({
+        return data.map((item: any) => ({
           id: item.id,
           playerName: item.player_name,
           team: item.team,
@@ -211,7 +217,10 @@ class CloudStorageService {
           createdAt: new Date(item.created_at).getTime(),
           pageId: item.page_id || '',
           rarityTier: item.rarity_tier as any,
-          isPublic: item.is_public
+          isPublic: item.is_public,
+          ownerUsername: item.profiles?.username || 'Collector',
+          ownerAvatar: item.profiles?.avatar_url,
+          ownerId: item.user_id
         }));
       }
     }

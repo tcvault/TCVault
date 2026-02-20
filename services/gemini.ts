@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
 
 export interface IdentifiedCard {
   playerName: string;
@@ -62,15 +62,35 @@ UNIVERSAL SOCCER CARD HISTORICAL REGISTRY (Multi-Era):
  */
 export const identifyCard = async (images: string[]): Promise<IdentifiedCard | null> => {
   try {
-    const imageParts = images.map((img) => ({
-      inlineData: {
-        mimeType: 'image/jpeg',
-        data: img.split(',')[1] || img,
-      },
+    const imageParts = await Promise.all(images.map(async (img) => {
+      let base64Data = img;
+      
+      // If it's a URL, fetch it
+      if (img.startsWith('http')) {
+        try {
+          const response = await fetch(img);
+          const blob = await response.blob();
+          base64Data = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch (fetchError) {
+          console.error("Failed to fetch image URL for identification:", fetchError);
+          // If fetch fails, we might still try to send the URL but it will likely fail Gemini API
+        }
+      }
+
+      return {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: base64Data.split(',')[1] || base64Data,
+        },
+      };
     }));
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
+      model: 'gemini-3-flash-preview',
       contents: {
         parts: [
           ...imageParts,
@@ -90,7 +110,6 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
         ],
       },
       config: {
-        thinkingConfig: { thinkingBudget: 32768 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -125,6 +144,22 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
  */
 export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox | null> => {
   try {
+    let base64Data = imageData;
+    
+    if (imageData.startsWith('http')) {
+      try {
+        const response = await fetch(imageData);
+        const blob = await response.blob();
+        base64Data = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error("Failed to fetch image for bounding box:", e);
+      }
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: {
@@ -132,7 +167,7 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
           {
             inlineData: {
               mimeType: 'image/jpeg',
-              data: imageData.split(',')[1] || imageData,
+              data: base64Data.split(',')[1] || base64Data,
             },
           },
           {

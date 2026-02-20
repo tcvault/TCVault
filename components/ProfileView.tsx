@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, Card } from '../types';
-import { User as UserIcon, Settings, Grid, Lock, Unlock, MapPin, Trophy, ShieldCheck, Heart, Camera, X, Check, Loader2, Save, Edit3 } from 'lucide-react';
+import { User as UserIcon, Settings, Grid, Lock, Unlock, MapPin, Trophy, ShieldCheck, Heart, Camera, Loader2, Save, Edit3 } from 'lucide-react';
 import EmptyState from './EmptyState';
 import { vaultStorage } from '../services/storage';
 
@@ -235,7 +235,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
         </div>
 
         <div className="md:col-span-8 space-y-8">
-          <div className="flex items-center gap-4 border-b border-black/5 pb-4">
+          <div className="flex items-center gap-2 md:gap-4 border-b border-black/5 pb-4 overflow-x-auto no-scrollbar">
              <TabButton active={activeTab === 'Public'} onClick={() => setActiveTab('Public')} icon={<Unlock size={14} />} label="Public Vault" count={publicCards.length} />
              <TabButton active={activeTab === 'Private'} onClick={() => setActiveTab('Private')} icon={<Lock size={14} />} label="Private Stash" count={privateCards.length} />
           </div>
@@ -317,15 +317,15 @@ const EditField = ({ label, value, onChange }: { label: string, value: string, o
 const TabButton = ({ active, onClick, icon, label, count }: any) => (
   <button 
     onClick={onClick}
-    className={`flex items-center gap-2 px-4 h-10 rounded-full transition-all active:scale-95 ${
+    className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 h-9 md:h-10 rounded-full transition-all active:scale-95 whitespace-nowrap ${
       active 
-        ? 'bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 font-black shadow-[0_0_15px_rgba(201,162,39,0.1)]' 
+        ? 'bg-[#1a1408] text-[#c9a227] border border-[#1a1408] font-black shadow-[0_0_15px_rgba(201,162,39,0.1)]' 
         : 'text-stone-400 hover:text-stone-700 border border-transparent font-medium'
     }`}
   >
     {icon}
-    <span className="text-[10px] uppercase tracking-widest">{label}</span>
-    <span className={`text-[10px] ${active ? 'opacity-50' : 'text-stone-300'}`}>{count}</span>
+    <span className="text-[9px] md:text-[10px] uppercase tracking-tighter md:tracking-widest">{label}</span>
+    <span className={`text-[9px] md:text-[10px] ${active ? 'opacity-50' : 'text-stone-300'}`}>{count}</span>
   </button>
 );
 

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
-import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, Scan, ShieldCheck, CheckCircle2, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop } from 'lucide-react';
+import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop } from 'lucide-react';
 import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
 import { vaultStorage, supabase } from '../services/storage';
 
@@ -216,7 +216,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         setHasScanned(true);
         if (onToast) onToast("AI Identification complete", 'success');
       }
-    } catch (e: any) {
+    } catch {
       setError("AI analysis failed.");
     } finally { 
       setIsScanning(false); 

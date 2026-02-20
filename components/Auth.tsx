@@ -3,10 +3,6 @@ import { ShieldCheck, User as UserIcon, Lock, KeyRound, RefreshCcw, ArrowLeft, L
 import { User } from '../types';
 import { supabase } from '../services/storage';
 
-interface AuthMode {
-  id: 'login' | 'register' | 'forgot-password' | 'update-password';
-}
-
 interface AuthProps {
   onLogin: (user: User) => void;
   onCancel?: () => void;
@@ -24,7 +20,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 
   useEffect(() => {
     if (!supabase) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any) => {
       if (event === 'PASSWORD_RECOVERY') setAuthMode('update-password');
     });
     return () => subscription.unsubscribe();

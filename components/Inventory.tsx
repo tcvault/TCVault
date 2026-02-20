@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Card, BinderPage, ViewMode } from '../types';
-import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, RotateCcw, Check } from 'lucide-react';
+import { Card, BinderPage } from '../types';
+import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw } from 'lucide-react';
 import EmptyState from './EmptyState';
-import { goldGradientStyle } from '../App';
 
 interface InventoryProps {
   cards: Card[];
@@ -16,6 +15,7 @@ interface InventoryProps {
   initialActiveBinderId?: string | 'all';
   onSelectBinder?: (id: string | 'all') => void;
   animationClass?: string;
+  onRefreshPrice?: (card: Card) => void;
 }
 
 interface FilterState {
@@ -26,7 +26,7 @@ interface FilterState {
   rarity: string;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass }) => {
+const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onClearSearch, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice }) => {
   const [filters, setFilters] = useState<FilterState>({ player: '', team: 'all', set: 'all', condition: 'all', rarity: 'all' });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -162,7 +162,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <img 
                   src={card.images[0]} 
                   onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
-                  className="max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-[1.02] transition-transform duration-[150ms] z-10" 
+                  className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-[150ms] z-10" 
                   alt={card.playerName} 
                 />
                 <button 
@@ -249,7 +249,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                    <img 
                     src={selectedCard.images[currentImageIndex]} 
                     onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
-                    className="max-w-full max-h-full w-auto h-auto object-contain select-none animate-in fade-in zoom-in-95 duration-500 drop-shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-10" 
+                    className="w-full h-full object-contain select-none animate-in fade-in zoom-in-95 duration-500 drop-shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-10" 
                     alt={selectedCard.playerName} 
                    />
                    {selectedCard.images.length > 1 && (
@@ -278,7 +278,21 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <div className="pt-8 border-t border-black/10 space-y-8 mt-auto">
                    <div className="grid grid-cols-2 gap-4">
                       <div className="p-5 rounded-xl glass-subtle space-y-1"><span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Paid</span><p className="text-xl font-black text-[#1a1408]">£{selectedCard.pricePaid}</p></div>
-                      <div className="p-5 rounded-xl bg-[#c9a227]/5 border border-[#c9a227]/10 space-y-1"><span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest">Market</span><p className="text-xl font-black text-[#c9a227]">£{selectedCard.marketValue}</p></div>
+                      <div className="p-5 rounded-xl bg-[#c9a227]/5 border border-[#c9a227]/10 space-y-1 relative group">
+                        <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest">Market</span>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xl font-black text-[#c9a227]">£{selectedCard.marketValue}</p>
+                          {onRefreshPrice && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); onRefreshPrice(selectedCard); }}
+                              className="p-2 text-[#c9a227] hover:bg-[#c9a227]/10 rounded-lg transition-all active:scale-90"
+                              title="Refresh Market Price"
+                            >
+                              <RefreshCw size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                    </div>
                    <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary w-full h-14">Edit Record</button>
                 </div>

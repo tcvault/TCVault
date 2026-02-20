@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CollectionStats, Card, ViewMode } from '../types';
-import { TrendingUp, Layers, Activity, Star, Clock, Plus, ChevronRight, Zap, Ghost, Edit3 } from 'lucide-react';
+import { TrendingUp, Layers, Activity, Star, Clock, Plus, ChevronRight, Ghost, Edit3 } from 'lucide-react';
 import EmptyState from './EmptyState';
 
 interface DashboardProps {

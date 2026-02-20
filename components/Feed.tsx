@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SocialPost, PostTag, User, ViewMode, SocialComment } from '../types';
-import { MessageSquare, Heart, Share2, Plus, Image as ImageIcon, Send, Filter, X, Loader2, Ghost } from 'lucide-react';
+import { MessageSquare, Heart, Share2, ImageIcon, Send, X, Loader2, Ghost } from 'lucide-react';
 import { vaultStorage } from '../services/storage';
 
 interface FeedProps {
@@ -108,7 +108,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       setPostImage(null);
       setSelectedTag('General');
       if (onToast) onToast("Post published to the hobby feed!", "success");
-    } catch (error) {
+    } catch {
       if (onToast) onToast("Post failed to publish.", "error");
     } finally {
       setIsPosting(false);
@@ -151,7 +151,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       createdAt: Date.now()
     };
 
-    await vaultStorage.addComment(postId, commentText);
+    await vaultStorage.addComment(postId, newComment);
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
         const updatedComments = [...(p.comments || []), newComment];
@@ -211,9 +211,9 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
           />
           
           {postImage && (
-            <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-black/10 group">
-              <img src={postImage} className="w-full h-full object-cover" />
-              <button type="button" onClick={() => setPostImage(null)} className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-full hover:bg-rose-500 transition-colors">
+            <div className="relative w-24 h-32 rounded-xl overflow-hidden border border-black/10 group bg-stone-900/5 flex items-center justify-center p-1">
+              <img src={postImage} className="max-w-full max-h-full object-contain z-10" />
+              <button type="button" onClick={() => setPostImage(null)} className="absolute top-1 right-1 bg-black/60 text-white p-1.5 rounded-full hover:bg-rose-500 transition-colors z-20">
                 <X size={12} />
               </button>
             </div>
@@ -236,7 +236,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
         </form>
       )}
 
-      <div className="flex items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar pb-2">
+      <div className="flex items-center gap-1.5 md:gap-3 overflow-x-auto no-scrollbar pb-2">
         <FilterButton active={activeFilter === 'All'} onClick={() => setActiveFilter('All')}>All Activity</FilterButton>
         <FilterButton active={activeFilter === 'Pickup'} onClick={() => setActiveFilter('Pickup')}>Pickups</FilterButton>
         <FilterButton active={activeFilter === 'PC Update'} onClick={() => setActiveFilter('PC Update')}>PC Updates</FilterButton>
@@ -269,8 +269,13 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
               </p>
 
               {post.imageUrl && (
-                <div className="rounded-[16px] overflow-hidden aspect-video bg-stone-100 border border-black/6 shadow-inner">
-                  <img src={post.imageUrl} className="w-full h-full object-cover" alt="Post attachment" />
+                <div className="rounded-[24px] overflow-hidden bg-stone-900/5 border border-black/6 shadow-inner relative group/image">
+                  <img 
+                    src={post.imageUrl} 
+                    className="max-w-full h-auto max-h-[70vh] block mx-auto object-contain bg-stone-50/50" 
+                    alt="Post attachment" 
+                  />
+                  <div className="absolute inset-0 bg-stone-900/5 pointer-events-none opacity-0 group-hover/image:opacity-100 transition-opacity"></div>
                 </div>
               )}
 
@@ -361,7 +366,7 @@ const TagPicker = ({ value, onChange }: { value: PostTag; onChange: (val: PostTa
 const FilterButton = ({ active, onClick, children }: any) => (
   <button 
     onClick={onClick}
-    className={`px-2.5 md:px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-black uppercase tracking-tight md:tracking-widest border transition-all active:scale-95 ${active ? 'bg-[#1a1408] text-[#c9a227] border-[#1a1408]' : 'glass-subtle text-stone-400 border-black/10 hover:border-black/20'}`}
+    className={`px-2 md:px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-black uppercase tracking-tighter md:tracking-widest border transition-all active:scale-95 ${active ? 'bg-[#1a1408] text-[#c9a227] border-[#1a1408]' : 'glass-subtle text-stone-400 border-black/10 hover:border-black/20'}`}
   >
     {children}
   </button>
