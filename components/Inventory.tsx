@@ -26,7 +26,7 @@ interface FilterState {
   rarity: string;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onClearSearch, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice }) => {
+const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice }) => {
   const [filters, setFilters] = useState<FilterState>({ player: '', team: 'all', set: 'all', condition: 'all', rarity: 'all' });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -278,9 +278,9 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <div className="pt-8 border-t border-black/10 space-y-8 mt-auto">
                    <div className="grid grid-cols-2 gap-4">
                       <div className="p-5 rounded-xl glass-subtle space-y-1"><span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Paid</span><p className="text-xl font-black text-[#1a1408]">£{selectedCard.pricePaid}</p></div>
-                      <div className="p-5 rounded-xl bg-[#c9a227]/5 border border-[#c9a227]/10 space-y-1 relative group">
+                      <div className="p-5 rounded-xl bg-[#c9a227]/5 border border-[#c9a227]/10 space-y-1 relative group text-center">
                         <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest">Market</span>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-center gap-2">
                           <p className="text-xl font-black text-[#c9a227]">£{selectedCard.marketValue}</p>
                           {onRefreshPrice && (
                             <button 
@@ -288,13 +288,16 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                               className="p-2 text-[#c9a227] hover:bg-[#c9a227]/10 rounded-lg transition-all active:scale-90"
                               title="Refresh Market Price"
                             >
-                              <RefreshCw size={14} />
+                              <RefreshCw size={16} />
                             </button>
                           )}
                         </div>
                       </div>
                    </div>
-                   <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary w-full h-14">Edit Record</button>
+                    <div className="flex gap-3">
+                      <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 uppercase text-[10px] tracking-widest font-black">Edit Record</button>
+                      <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-rose-500/20 text-rose-500 hover:bg-rose-50 transition-all active:scale-95 shadow-sm" title="Delete Asset"><Trash2 size={20} /></button>
+                    </div>
                 </div>
              </div>
           </div>

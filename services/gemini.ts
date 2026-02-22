@@ -90,7 +90,7 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
     }));
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-flash-latest',
       contents: {
         parts: [
           ...imageParts,
@@ -161,7 +161,7 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-flash-latest',
       contents: {
         parts: [
           {
@@ -203,7 +203,7 @@ export const getMarketPrice = async (playerName: string, cardSpecifics: string, 
     Search only for RECENT VERIFIED SOLD items on eBay. Average the results and round to the nearest £5. Provide the value in GBP (£).`;
     
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', 
+      model: 'gemini-flash-latest', 
       contents: prompt,
       config: { tools: [{ googleSearch: {} }] },
     });

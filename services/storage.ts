@@ -1,19 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User } from '../types';
 
-const getEnv = (key: string): string | undefined => {
-  try {
-    return typeof process !== 'undefined' ? process.env[key] : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const envUrl = getEnv('SUPABASE_URL') || 'https://oewvucbsbcxxwtnflbfw.supabase.co';
-const envKey = getEnv('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ld3Z1Y2JzYmN4eHd0bmZsYmZ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMTI3NDcsImV4cCI6MjA4NjU4ODc0N30.WDT-RaQW8svrqeT2tiH6Cuaf6BxBMlQIOqrld9yaON0';
+const envUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
-export const supabase = isSupabaseConfigured ? createClient(envUrl, envKey!) : null as any;
+export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
 
 const LOCAL_CARDS_KEY = 'tcvault_local_cards';
 const LOCAL_PAGES_KEY = 'tcvault_local_pages';
@@ -30,14 +22,16 @@ class CloudStorageService {
   async uploadImage(userId: string, base64Data: string): Promise<string> {
     if (userId === 'local-guest' || !supabase || !base64Data.startsWith('data:')) return base64Data;
     try {
+      const mimeType = base64Data.split(';')[0].split(':')[1] || 'image/jpeg';
+      const extension = mimeType.split('/')[1] || 'jpg';
       const base64Content = base64Data.split(',')[1];
       const byteCharacters = atob(base64Content);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'image/jpeg' });
-      const fileName = `${userId}/${crypto.randomUUID()}.jpg`;
-      const { data, error } = await supabase.storage.from('card-images').upload(fileName, blob, { contentType: 'image/jpeg' });
+      const blob = new Blob([byteArray], { type: mimeType });
+      const fileName = `${userId}/${crypto.randomUUID()}.${extension}`;
+      const { data, error } = await supabase.storage.from('card-images').upload(fileName, blob, { contentType: mimeType });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('card-images').getPublicUrl(data.path);
       return publicUrl;
@@ -119,11 +113,17 @@ class CloudStorageService {
       };
       await supabase.from('social_posts').upsert(payload);
     }
-    const posts = await this.getPosts();
-    if (!posts.some(p => p.id === post.id)) {
-      posts.unshift(post);
-      localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(posts));
+    
+    // Always update local storage for fallback
+    const localPostsJson = localStorage.getItem(LOCAL_POSTS_KEY);
+    const localPosts: SocialPost[] = localPostsJson ? JSON.parse(localPostsJson) : [];
+    const existingIdx = localPosts.findIndex(p => p.id === post.id);
+    if (existingIdx > -1) {
+      localPosts[existingIdx] = post;
+    } else {
+      localPosts.unshift(post);
     }
+    localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(localPosts.slice(0, 50)));
   }
 
   async toggleLike(postId: string, userId: string): Promise<void> {

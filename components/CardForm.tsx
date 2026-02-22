@@ -19,6 +19,7 @@ const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
     const img = new Image();
     img.src = base64Str;
     img.onload = () => {
+      const isPng = base64Str.includes('image/png');
       const canvas = document.createElement('canvas');
       const scale = Math.min(1, maxWidth / img.width);
       canvas.width = img.width * scale;
@@ -28,7 +29,7 @@ const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
+      resolve(canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : 0.85));
     };
     img.onerror = () => resolve(base64Str);
   });

@@ -33,11 +33,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
     setIsLoading(true);
 
     try {
-      if (email === 'admin@tcvault.app' && password === 'vault-admin-2025') {
-        onLogin({ id: 'admin-master', username: 'Administrator' });
-        return;
+      if (!supabase) {
+        throw new Error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY in your environment variables.");
       }
-
       const formattedEmail = email.includes('@') ? email : `${email}@tcvault.app`;
 
       if (authMode === 'register') {

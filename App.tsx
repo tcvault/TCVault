@@ -105,7 +105,8 @@ const App: React.FC = () => {
 
   const loadData = useCallback(async (userId?: string) => {
     try {
-      const effectiveId = userId || currentUser?.id;
+      // Use the passed ID or the current user state
+      const effectiveId = userId;
       if (effectiveId) {
         const fullProfile = await vaultStorage.getUserProfile(effectiveId);
         if (fullProfile) setCurrentUser(fullProfile);
@@ -120,7 +121,7 @@ const App: React.FC = () => {
     } catch (e) {
       console.error("Vault load error:", e);
     }
-  }, [currentUser?.id]);
+  }, []); // Removed currentUser.id dependency to avoid loops
 
   const resetLocalUiState = useCallback(() => {
     setCurrentUser(null);
@@ -173,6 +174,8 @@ const App: React.FC = () => {
     };
 
     startup();
+    
+    if (!supabase) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (isTerminating.current) return;
@@ -202,7 +205,13 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     if (!window.confirm("Seal your vault and sign out?")) return;
     isTerminating.current = true;
-    localStorage.clear();
+    
+    // Only clear app-specific keys
+    const keys = Object.keys(localStorage);
+    keys.forEach(key => {
+      if (key.startsWith('tcvault_')) localStorage.removeItem(key);
+    });
+    
     sessionStorage.clear();
     window.location.replace(window.location.origin);
   };
@@ -210,6 +219,7 @@ const App: React.FC = () => {
   const handleSaveCard = async (cardData: Card) => {
     try {
       setGlobalSearch('');
+      const isUpdate = cards.some(c => c.id === cardData.id);
       const savedCard = await vaultStorage.saveCard(cardData);
       setCards(prev => {
         const exists = prev.some(c => c.id === savedCard.id);
@@ -218,7 +228,7 @@ const App: React.FC = () => {
       });
       setEditingCard(null);
       setView(ViewMode.INVENTORY);
-      addToast(cardData.id ? "Record updated" : "Card stashed");
+      addToast(isUpdate ? "Record updated" : "Card stashed");
       loadData();
     } catch {
       addToast("Save failed", "error");
