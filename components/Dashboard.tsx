@@ -110,7 +110,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
           {recentCards.slice(0, 5).map(card => (
             <div key={card.id} className="group cursor-pointer space-y-4" onClick={() => onNavigate(ViewMode.INVENTORY)}>
-              <div className="aspect-[3/4] rounded-[16px] overflow-hidden border border-black/6 shadow-lg bg-stone-100 flex items-center justify-center p-4 relative img-loading">
+              <div className="aspect-square rounded-[16px] overflow-hidden border border-black/6 shadow-lg bg-stone-100 flex items-center justify-center p-4 relative img-loading">
                 {card.images && card.images[0] ? (
                   <img 
                     src={card.images[0]} 

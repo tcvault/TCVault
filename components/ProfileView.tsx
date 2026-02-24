@@ -140,7 +140,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
               <div className="space-y-3 animate-in fade-in slide-in-from-left-2 duration-300">
                 <input 
                   type="text" 
-                  value={editDraft.username} 
+                  value={editDraft.username ?? ''} 
                   onChange={e => setEditDraft({...editDraft, username: e.target.value})}
                   className="bg-black/[0.03] border border-black/10 rounded-xl h-10 px-4 text-sm font-black italic focus:border-[#c9a227]/40 outline-none transition-all text-[#1a1408] w-full max-w-sm" 
                   placeholder="Username"
@@ -307,7 +307,7 @@ const EditField = ({ label, value, onChange }: { label: string, value: string, o
     <label className="text-[8px] font-black text-stone-400 uppercase tracking-widest ml-1">{label}</label>
     <input 
       type="text" 
-      value={value} 
+      value={value ?? ''} 
       onChange={e => onChange(e.target.value)}
       className="w-full bg-black/[0.03] border border-black/10 rounded-xl h-9 px-4 text-xs font-semibold focus:border-[#c9a227]/40 outline-none transition-all text-[#1a1408]" 
     />

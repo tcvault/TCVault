@@ -16,7 +16,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { getMarketPrice } from './services/gemini';
-import { Card, ViewMode, CollectionStats, User, BinderPage } from './types';
+import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost } from './types';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import CardForm from './components/CardForm';
@@ -105,23 +105,21 @@ const App: React.FC = () => {
 
   const loadData = useCallback(async (userId?: string) => {
     try {
-      // Use the passed ID or the current user state
-      const effectiveId = userId;
-      if (effectiveId) {
-        const fullProfile = await vaultStorage.getUserProfile(effectiveId);
-        if (fullProfile) setCurrentUser(fullProfile);
-      }
+      if (!userId) return;
+      
+      const profile = await vaultStorage.getUserProfile(userId);
+      if (profile) setCurrentUser(profile);
       
       const [storedCards, storedBinders] = await Promise.all([
-        vaultStorage.getCards(),
-        vaultStorage.getPages()
+        vaultStorage.getCards(userId),
+        vaultStorage.getPages(userId)
       ]);
       setCards(storedCards || []);
       setBinders(storedBinders || []);
     } catch (e) {
       console.error("Vault load error:", e);
     }
-  }, []); // Removed currentUser.id dependency to avoid loops
+  }, []);
 
   const resetLocalUiState = useCallback(() => {
     setCurrentUser(null);
@@ -204,15 +202,23 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     if (!window.confirm("Seal your vault and sign out?")) return;
-    isTerminating.current = true;
     
-    // Only clear app-specific keys
+    try {
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (e) {
+      console.error("Sign out error:", e);
+    }
+
+    // Clear app-specific keys
     const keys = Object.keys(localStorage);
     keys.forEach(key => {
       if (key.startsWith('tcvault_')) localStorage.removeItem(key);
     });
     
     sessionStorage.clear();
+    resetLocalUiState();
     window.location.replace(window.location.origin);
   };
 
@@ -229,7 +235,7 @@ const App: React.FC = () => {
       setEditingCard(null);
       setView(ViewMode.INVENTORY);
       addToast(isUpdate ? "Record updated" : "Card stashed");
-      loadData();
+      if (currentUser) loadData(currentUser.id);
     } catch {
       addToast("Save failed", "error");
     }
@@ -264,7 +270,7 @@ const App: React.FC = () => {
   const handleCreateBinder = async (name: string) => {
     try {
       const newBinder = await vaultStorage.createPage(name);
-      await loadData();
+      if (currentUser) await loadData(currentUser.id);
       addToast(`Binder "${name}" created`);
       setSelectedBinderId(newBinder.id);
       setView(ViewMode.INVENTORY);
@@ -277,7 +283,7 @@ const App: React.FC = () => {
     if (window.confirm("Delete this binder? Cards will stay in your main collection.")) {
       try {
         await vaultStorage.deletePage(id);
-        await loadData();
+        if (currentUser) await loadData(currentUser.id);
         if (selectedBinderId === id) setSelectedBinderId('all');
         addToast("Binder deleted", "info");
       } catch {
@@ -289,7 +295,7 @@ const App: React.FC = () => {
   const handleRefreshPrice = async (card: Card) => {
     try {
       addToast("Fetching latest market intel...", "info");
-      const result = await getMarketPrice(card.playerName, card.cardSpecifics, card.set);
+      const result = await getMarketPrice(card.playerName, card.cardSpecifics, card.set, card.condition, card.certNumber);
       if (result && result.price > 0) {
         const updatedCard = { ...card, marketValue: result.price };
         await vaultStorage.saveCard(updatedCard);
@@ -300,6 +306,36 @@ const App: React.FC = () => {
       }
     } catch {
       addToast("Market refresh failed", "error");
+    }
+  };
+
+  const handleShareCard = async (card: Card) => {
+    if (!currentUser) {
+      addToast("Please sign in to share cards.", "error");
+      return;
+    }
+
+    try {
+      const newPost: SocialPost = {
+        id: crypto.randomUUID(),
+        userId: currentUser.id,
+        username: currentUser.username,
+        userAvatar: currentUser.avatar,
+        content: `Just shared this ${card.playerName} from my vault! ${card.cardSpecifics} ${card.set} ${card.serialNumber ? `(${card.serialNumber})` : ''}`,
+        tag: 'Pickup',
+        likes: [],
+        commentCount: 0,
+        createdAt: Date.now(),
+        imageUrl: card.images[0],
+        comments: []
+      };
+
+      await vaultStorage.savePost(newPost);
+      addToast("Card shared to global feed!", "success");
+      setView(ViewMode.FEED);
+    } catch (error) {
+      console.error("Share error:", error);
+      addToast("Failed to share card.", "error");
     }
   };
 
@@ -428,7 +464,7 @@ const App: React.FC = () => {
       </aside>
 
       <main className="flex-1 overflow-y-auto bg-[#faf8f4] relative pb-32 md:pb-0 scroll-smooth">
-        <div className="p-8 md:p-16 max-w-6xl mx-auto min-h-screen">
+        <div className="p-4 md:p-16 max-w-6xl mx-auto min-h-screen">
           {view === ViewMode.FEED && <Feed user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
           {view === ViewMode.EXPLORE && <Explore user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
           {view === ViewMode.DASHBOARD && !isGuest && (
@@ -454,6 +490,7 @@ const App: React.FC = () => {
               onSelectBinder={(id) => setSelectedBinderId(id)}
               animationClass={animationClass}
               onRefreshPrice={handleRefreshPrice}
+              onShareCard={handleShareCard}
             />
           )}
           {view === ViewMode.ADD_CARD && !isGuest && (
@@ -502,7 +539,11 @@ const App: React.FC = () => {
       {showAuthTakeover && (
         <div className="fixed inset-0 z-[200] animate-in fade-in duration-300">
           <Auth 
-            onLogin={(u) => { setCurrentUser(u); loadData(u.id); setView(ViewMode.FEED); }} 
+            onLogin={(u) => { 
+              setCurrentUser(u); 
+              setView(ViewMode.FEED);
+              // loadData will be triggered by onAuthStateChange
+            }} 
             onCancel={() => setView(ViewMode.FEED)}
           />
         </div>

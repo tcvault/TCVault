@@ -159,10 +159,22 @@ class CloudStorageService {
     localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(posts));
   }
 
-  async getCards(): Promise<Card[]> {
-    const userId = await this.getUserId();
-    if (userId && supabase) {
-      const { data, error } = await supabase.from('cards').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+  async deletePost(postId: string): Promise<void> {
+    if (supabase) {
+      await supabase.from('social_posts').delete().eq('id', postId);
+    }
+    const localPostsJson = localStorage.getItem(LOCAL_POSTS_KEY);
+    if (localPostsJson) {
+      const localPosts: SocialPost[] = JSON.parse(localPostsJson);
+      const filtered = localPosts.filter(p => p.id !== postId);
+      localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(filtered));
+    }
+  }
+
+  async getCards(userId?: string): Promise<Card[]> {
+    const effectiveUserId = userId || await this.getUserId();
+    if (effectiveUserId && supabase) {
+      const { data, error } = await supabase.from('cards').select('*').eq('user_id', effectiveUserId).order('created_at', { ascending: false });
       if (!error && data) {
         return data.map((item: any) => ({
           id: item.id,
@@ -176,6 +188,7 @@ class CloudStorageService {
           marketValue: Number(item.market_value),
           purchaseDate: item.purchase_date,
           serialNumber: item.serial_number,
+          certNumber: item.cert_number,
           images: item.images,
           notes: item.notes,
           createdAt: new Date(item.created_at).getTime(),
@@ -220,7 +233,8 @@ class CloudStorageService {
           isPublic: item.is_public,
           ownerUsername: item.profiles?.username || 'Collector',
           ownerAvatar: item.profiles?.avatar_url,
-          ownerId: item.user_id
+          ownerId: item.user_id,
+          certNumber: item.cert_number
         }));
       }
     }
@@ -230,8 +244,12 @@ class CloudStorageService {
 
   async saveCard(card: Partial<Card>): Promise<Card> {
     const userId = await this.getUserId();
+    const cardId = card.id || crypto.randomUUID();
+    const createdAt = card.createdAt || Date.now();
+
     if (userId && supabase) {
-      const payload = {
+      const payload: any = {
+        id: cardId,
         user_id: userId,
         player_name: card.playerName,
         team: card.team,
@@ -243,13 +261,32 @@ class CloudStorageService {
         market_value: card.marketValue,
         purchase_date: card.purchaseDate,
         serial_number: card.serialNumber,
+        cert_number: card.certNumber,
         images: card.images,
         notes: card.notes,
         page_id: card.pageId || null,
         rarity_tier: card.rarityTier,
-        is_public: card.isPublic ?? true
+        is_public: card.isPublic ?? true,
+        created_at: new Date(createdAt).toISOString()
       };
-      const { data, error } = await supabase.from('cards').upsert({ ...payload, id: card.id || undefined }).select().single();
+
+      let { data, error } = await supabase.from('cards').upsert(payload).select().single();
+      
+      // Handle missing column errors (e.g. if columns were recently added but DB not updated)
+      if (error && (error.code === '42703' || error.message?.includes('column'))) {
+        console.warn("Detected missing column, retrying with minimal payload...", error.message);
+        const minimalPayload = { ...payload };
+        // Remove columns that are likely to be missing in older schemas
+        delete minimalPayload.cert_number;
+        delete minimalPayload.rarity_tier;
+        delete minimalPayload.is_public;
+        delete minimalPayload.page_id;
+        
+        const retry = await supabase.from('cards').upsert(minimalPayload).select().single();
+        data = retry.data;
+        error = retry.error;
+      }
+      
       if (!error && data) {
         return {
           id: data.id,
@@ -263,18 +300,24 @@ class CloudStorageService {
           marketValue: Number(data.market_value),
           purchaseDate: data.purchase_date,
           serialNumber: data.serial_number,
+          certNumber: data.cert_number,
           images: data.images,
           notes: data.notes,
           createdAt: new Date(data.created_at).getTime(),
           pageId: data.page_id || '',
           rarityTier: data.rarity_tier as any,
-          isPublic: data.is_public
+          isPublic: data.is_public ?? true
         };
       }
-      if (error) console.error("Card save sync error:", error);
+      if (error) {
+        console.error("Card save sync error:", error);
+        // If it's a missing column error (like cert_number), we might want to try without it
+        // but for now we just log and fallback to local.
+      }
     }
+
     const current = await this.getCards();
-    const newCard = { ...card, id: card.id || crypto.randomUUID(), createdAt: card.createdAt || Date.now() } as Card;
+    const newCard = { ...card, id: cardId, createdAt } as Card;
     const existingIdx = current.findIndex(c => c.id === newCard.id);
     if (existingIdx > -1) current[existingIdx] = newCard; else current.unshift(newCard);
     localStorage.setItem(LOCAL_CARDS_KEY, JSON.stringify(current));
@@ -288,10 +331,10 @@ class CloudStorageService {
     localStorage.setItem(LOCAL_CARDS_KEY, JSON.stringify(current.filter(c => c.id !== id)));
   }
 
-  async getPages(): Promise<BinderPage[]> {
-    const userId = await this.getUserId();
-    if (userId && supabase) {
-      const { data, error } = await supabase.from('pages').select('*').eq('user_id', userId).order('name');
+  async getPages(userId?: string): Promise<BinderPage[]> {
+    const effectiveUserId = userId || await this.getUserId();
+    if (effectiveUserId && supabase) {
+      const { data, error } = await supabase.from('pages').select('*').eq('user_id', effectiveUserId).order('name');
       if (!error && data) return data;
     }
     const local = localStorage.getItem(LOCAL_PAGES_KEY);
@@ -302,6 +345,12 @@ class CloudStorageService {
     const userId = await this.getUserId();
     if (userId && supabase) {
       const { data, error } = await supabase.from('pages').insert({ user_id: userId, name }).select().single();
+      
+      // Handle potential missing columns or other errors
+      if (error) {
+        console.error("Page creation sync error:", error);
+      }
+      
       if (!error && data) return data;
     }
     const current = await this.getPages();

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
-import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw } from 'lucide-react';
+import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw, Share2, ExternalLink } from 'lucide-react';
 import EmptyState from './EmptyState';
 
 interface InventoryProps {
@@ -16,6 +16,7 @@ interface InventoryProps {
   onSelectBinder?: (id: string | 'all') => void;
   animationClass?: string;
   onRefreshPrice?: (card: Card) => void;
+  onShareCard?: (card: Card) => void;
 }
 
 interface FilterState {
@@ -26,7 +27,7 @@ interface FilterState {
   rarity: string;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice }) => {
+const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice, onShareCard }) => {
   const [filters, setFilters] = useState<FilterState>({ player: '', team: 'all', set: 'all', condition: 'all', rarity: 'all' });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -158,7 +159,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
           {filteredCards.map(card => (
             <div key={card.id} className="group cursor-pointer space-y-4" onClick={() => setSelectedCard(card)}>
-              <div className="aspect-[3/4] rounded-[16px] overflow-hidden border border-black/6 shadow-lg bg-stone-100 relative flex items-center justify-center p-4 img-loading">
+              <div className="aspect-square rounded-[16px] overflow-hidden border border-black/6 shadow-lg bg-stone-100 relative flex items-center justify-center p-4 img-loading">
                 <img 
                   src={card.images[0]} 
                   onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
@@ -273,6 +274,24 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                     <Detail label="Parallel #" value={selectedCard.serialNumber || 'N/A'} />
                     <Detail label="Grade" value={selectedCard.condition} />
                     <Detail label="Variant" value={selectedCard.cardSpecifics} />
+                    {selectedCard.certNumber && (
+                      <div className="col-span-2">
+                        <Detail 
+                          label="PSA Cert #" 
+                          value={
+                            <a 
+                              href={`https://www.psacard.com/cert/${selectedCard.certNumber}/psa`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-[#c9a227] hover:underline flex items-center gap-1"
+                            >
+                              {selectedCard.certNumber}
+                              <ExternalLink size={12} />
+                            </a>
+                          } 
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="pt-8 border-t border-black/10 space-y-8 mt-auto">
@@ -296,6 +315,15 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                    </div>
                     <div className="flex gap-3">
                       <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 uppercase text-[10px] tracking-widest font-black">Edit Record</button>
+                      {onShareCard && (
+                        <button 
+                          onClick={() => { onShareCard(selectedCard); setSelectedCard(null); }} 
+                          className="w-14 h-14 flex items-center justify-center rounded-xl border border-[#c9a227]/20 text-[#c9a227] hover:bg-[#c9a227]/5 transition-all active:scale-95 shadow-sm" 
+                          title="Share to Feed"
+                        >
+                          <Share2 size={20} />
+                        </button>
+                      )}
                       <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-rose-500/20 text-rose-500 hover:bg-rose-50 transition-all active:scale-95 shadow-sm" title="Delete Asset"><Trash2 size={20} /></button>
                     </div>
                 </div>

@@ -51,6 +51,7 @@ export interface Card {
   marketValue: number;
   purchaseDate: string;
   serialNumber?: string;
+  certNumber?: string;
   images: string[];
   notes?: string;
   createdAt: number;

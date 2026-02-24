@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SocialPost, PostTag, User, ViewMode, SocialComment } from '../types';
-import { MessageSquare, Heart, Share2, ImageIcon, Send, X, Loader2, Ghost } from 'lucide-react';
+import { MessageSquare, Heart, Share2, ImageIcon, Send, X, Loader2, Ghost, Trash2 } from 'lucide-react';
 import { vaultStorage } from '../services/storage';
 
 interface FeedProps {
@@ -115,6 +115,18 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
     }
   };
 
+  const handleDeletePost = async (postId: string) => {
+    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    
+    try {
+      await vaultStorage.deletePost(postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      if (onToast) onToast("Post deleted.", "success");
+    } catch {
+      if (onToast) onToast("Failed to delete post.", "error");
+    }
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -186,11 +198,11 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
     : posts.filter(p => p.tag === activeFilter);
 
   return (
-    <div className={`space-y-12 max-w-2xl mx-auto pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
-      <div className="flex items-end justify-between">
-        <div className="space-y-2">
-          <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Community Pulse</span>
-          <h2 className="text-[32px] font-black tracking-tighter text-[#1a1408] leading-tight">Global Feed</h2>
+    <div className={`space-y-8 md:space-y-12 max-w-2xl mx-auto pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
+      <div className="flex items-end justify-between px-1 md:px-0">
+        <div className="space-y-1 md:space-y-2">
+          <span className="text-[9px] md:text-[10px] font-black text-stone-400 uppercase tracking-widest">Community Pulse</span>
+          <h2 className="text-2xl md:text-[32px] font-black tracking-tighter text-[#1a1408] leading-tight">Global Feed</h2>
         </div>
         {!user ? (
           <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="btn-primary uppercase text-[10px] tracking-widest">Join to Post</button>
@@ -219,8 +231,8 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
             </div>
           )}
 
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-y-4">
+            <div className="flex items-center gap-1 md:gap-2">
               <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-stone-400 hover:text-[#c9a227] transition-colors">
                 <ImageIcon size={20} />
               </button>
@@ -228,7 +240,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
               <div className="h-6 w-px bg-black/5 mx-1" />
               <TagPicker value={selectedTag} onChange={setSelectedTag} />
             </div>
-            <button type="submit" disabled={isPosting || !newPostContent.trim()} className="btn-primary h-10 px-6 uppercase text-[10px] tracking-widest gap-2 disabled:opacity-50">
+            <button type="submit" disabled={isPosting || !newPostContent.trim()} className="btn-primary h-10 px-6 uppercase text-[10px] tracking-widest gap-2 disabled:opacity-50 ml-auto sm:ml-0">
               {isPosting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} 
               Post
             </button>
@@ -259,9 +271,20 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                     </span>
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${getTagColor(post.tag)}`}>
-                  {post.tag}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${getTagColor(post.tag)}`}>
+                    {post.tag}
+                  </span>
+                  {user && post.userId === user.id && (
+                    <button 
+                      onClick={() => handleDeletePost(post.id)}
+                      className="p-1.5 text-stone-300 hover:text-rose-500 transition-colors active:scale-90"
+                      title="Delete Post"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p className="text-sm font-semibold text-stone-700 leading-relaxed whitespace-pre-wrap">

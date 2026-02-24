@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
-import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop } from 'lucide-react';
+import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop, ShieldCheck } from 'lucide-react';
 import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
 import { vaultStorage, supabase } from '../services/storage';
 
@@ -43,34 +43,49 @@ const performCrop = (imgSrc: string, box: BoundingBox): Promise<string> => {
     }
     img.src = imgSrc;
     img.onload = () => {
+      const isPng = imgSrc.includes('image/png');
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) { resolve(imgSrc); return; }
 
+      // Normalized coordinates (0-1000) to pixel coordinates
       const x = (box.xmin / 1000) * img.width;
       const y = (box.ymin / 1000) * img.height;
       const width = ((box.xmax - box.xmin) / 1000) * img.width;
       const height = ((box.ymax - box.ymin) / 1000) * img.height;
 
-      const padW = width * 0.02;
-      const padH = height * 0.02;
+      // Add 5% padding
+      const padW = width * 0.05;
+      const padH = height * 0.05;
 
-      canvas.width = width + (padW * 2);
-      canvas.height = height + (padH * 2);
+      let sx = x - padW;
+      let sy = y - padH;
+      let sw = width + padW * 2;
+      let sh = height + padH * 2;
+
+      // Clamp to image boundaries
+      if (sx < 0) { sw += sx; sx = 0; }
+      if (sy < 0) { sh += sy; sy = 0; }
+      if (sx + sw > img.width) sw = img.width - sx;
+      if (sy + sh > img.height) sh = img.height - sy;
+
+      // Ensure we have valid dimensions and avoid zero-size canvas
+      sw = Math.max(1, Math.floor(sw));
+      sh = Math.max(1, Math.floor(sh));
+
+      canvas.width = sw;
+      canvas.height = sh;
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       
-      ctx.drawImage(
-        img, 
-        Math.max(0, x - padW), 
-        Math.max(0, y - padH), 
-        Math.min(img.width, width + padW * 2), 
-        Math.min(img.height, height + padH * 2), 
-        0, 0, canvas.width, canvas.height
-      );
-      
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
+      try {
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+        resolve(canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : 0.9));
+      } catch (e) {
+        console.error("Crop failed (likely CORS or Canvas limit):", e);
+        resolve(imgSrc); // Fallback to original
+      }
     };
     img.onerror = () => resolve(imgSrc);
   });
@@ -82,7 +97,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     playerName: '', team: '', cardSpecifics: '', set: '', setNumber: '',
     condition: 'Ungraded', pricePaid: 0, marketValue: 0,
     purchaseDate: new Date().toISOString().split('T')[0],
-    serialNumber: '', notes: '', pageId: '', rarityTier: 'Base',
+    serialNumber: '', certNumber: '', notes: '', pageId: '', rarityTier: 'Base',
     isPublic: true
   });
 
@@ -119,6 +134,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       }
 
       for (let i = 0; i < files.length; i++) {
+        if (i > 0) await new Promise(res => setTimeout(res, 500));
         const file = files[i];
         const base64 = await new Promise<string>((res) => {
           const reader = new FileReader();
@@ -201,19 +217,24 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     try {
       const result = await identifyCard(images);
       if (result) {
-        setFormData(prev => ({
-          ...prev,
-          playerName: result.playerName,
-          team: result.team || prev.team || '',
-          cardSpecifics: result.cardSpecifics,
-          set: result.set,
-          setNumber: result.setNumber || prev.setNumber || '',
-          condition: result.condition || prev.condition || 'Ungraded',
-          marketValue: result.estimatedValue,
-          serialNumber: result.serialNumber || prev.serialNumber || '',
-          notes: result.description,
-          rarityTier: result.rarityTier
-        }));
+        setFormData(prev => {
+          const newCondition = result.condition || prev.condition || 'Ungraded';
+          const isPSA = newCondition.startsWith('PSA');
+          return {
+            ...prev,
+            playerName: result.playerName,
+            team: result.team || prev.team || '',
+            cardSpecifics: result.cardSpecifics,
+            set: result.set,
+            setNumber: result.setNumber || prev.setNumber || '',
+            condition: newCondition,
+            marketValue: result.estimatedValue,
+            serialNumber: result.serialNumber || prev.serialNumber || '',
+            certNumber: isPSA ? (result.certNumber || prev.certNumber || '') : '',
+            notes: result.description,
+            rarityTier: result.rarityTier
+          };
+        });
         setHasScanned(true);
         if (onToast) onToast("AI Identification complete", 'success');
       }
@@ -262,7 +283,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           <div className="glass rounded-[24px] p-6 space-y-8 border-black/6 relative overflow-hidden shadow-lg">
             {isScanning && (
               <div className="absolute inset-0 bg-[#faf8f4]/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-8 space-y-8 text-center animate-in fade-in duration-300">
-                 <div className="relative w-full aspect-[3/4] border border-black/6 rounded-[16px] overflow-hidden bg-stone-100">
+                 <div className="relative w-full aspect-square border border-black/6 rounded-[16px] overflow-hidden bg-stone-100">
                    <div className="scanner-line"></div>
                    <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-[#c9a227] animate-pulse" /></div>
                  </div>
@@ -280,7 +301,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             </div>
             <div className="grid grid-cols-2 gap-4">
               {images.map((img, idx) => (
-                <div key={idx} className="aspect-[3/4] bg-stone-100 rounded-xl overflow-hidden relative group border border-black/6 shadow-md flex items-center justify-center p-2 img-loading">
+                <div key={idx} className="aspect-square bg-stone-100 rounded-xl overflow-hidden relative group border border-black/6 shadow-md flex items-center justify-center p-2 img-loading">
                   <img src={img} onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} className="w-full h-full object-contain select-none z-10" alt="Preview" />
                   {isCropping === idx && (
                     <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2">
@@ -297,7 +318,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                 </div>
               ))}
               {(images.length < 4 || (isCropping !== null && !images[isCropping])) && (
-                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-[3/4] rounded-xl border border-dashed border-black/10 flex flex-col items-center justify-center gap-4 hover:border-black/20 hover:bg-black/[0.02] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] active:scale-[0.98] relative">
+                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-square rounded-xl border border-dashed border-black/10 flex flex-col items-center justify-center gap-4 hover:border-black/20 hover:bg-black/[0.02] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] active:scale-[0.98] relative">
                   {isSaving || (isCropping !== null && !images[isCropping]) ? (
                     <div className="flex flex-col items-center gap-3">
                        <Loader2 className="text-[#c9a227] animate-spin" size={24} />
@@ -350,14 +371,32 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <Field label="Parallel / Variant" value={formData.cardSpecifics} onChange={(v: string) => setFormData({...formData, cardSpecifics: v})} icon={<FileText size={16} />} />
-              <Field label="Serial / Parallel #" value={formData.serialNumber} onChange={(v: string) => setFormData({...formData, serialNumber: v})} icon={<BookOpen size={16} />} />
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Serial #" value={formData.serialNumber} onChange={(v: string) => setFormData({...formData, serialNumber: v})} icon={<BookOpen size={16} />} />
+                {formData.condition?.startsWith('PSA') && (
+                  <Field label="PSA Cert #" value={formData.certNumber} onChange={(v: string) => setFormData({...formData, certNumber: v})} icon={<ShieldCheck size={16} />} />
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Grade / Condition</label>
                 <div className="relative group">
-                   <select value={formData.condition} onChange={e => setFormData({...formData, condition: e.target.value})} style={{ colorScheme: 'light' }} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 px-4 outline-none font-black text-sm text-[#1a1408] focus:border-[#c9a227]/40 appearance-none transition-all cursor-pointer">
+                   <select 
+                    value={formData.condition || ''} 
+                    onChange={e => {
+                      const newCondition = e.target.value;
+                      const isPSA = newCondition.startsWith('PSA');
+                      setFormData({
+                        ...formData, 
+                        condition: newCondition,
+                        certNumber: isPSA ? formData.certNumber : ''
+                      });
+                    }} 
+                    style={{ colorScheme: 'light' }} 
+                    className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 px-4 outline-none font-black text-sm text-[#1a1408] focus:border-[#c9a227]/40 appearance-none transition-all cursor-pointer"
+                  >
                     {standardConditions.map(c => <option key={c} value={c} className="bg-white font-semibold">{c}</option>)}
                    </select>
                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400" />
@@ -402,7 +441,7 @@ const Field = ({ label, value, onChange, icon, type = 'text' }: any) => (
     <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative group">
       <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-[#c9a227] transition-colors">{icon}</div>
-      <input type={type} step="0.01" value={value} onChange={e => onChange(e.target.value)} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 pl-12 pr-4 focus:border-[#c9a227]/40 outline-none font-semibold text-sm text-[#1a1408] transition-all placeholder:text-stone-300" />
+      <input type={type} step="0.01" value={value ?? ''} onChange={e => onChange(e.target.value)} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 pl-12 pr-4 focus:border-[#c9a227]/40 outline-none font-semibold text-sm text-[#1a1408] transition-all placeholder:text-stone-300" />
     </div>
   </div>
 );

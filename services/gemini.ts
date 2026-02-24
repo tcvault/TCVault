@@ -1,7 +1,39 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || process.env.API_KEY });
+let aiInstance: GoogleGenAI | null = null;
+
+const getAi = () => {
+  if (!aiInstance) {
+    // Direct access to process.env.GEMINI_API_KEY is the recommended way
+    // Vite will replace this during build if defined, or we can use a fallback
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error("Gemini API Key is missing. Please check your environment variables.");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
+
+const DEFAULT_MODEL = "gemini-3-flash-preview";
+
+async function generateWithRetry(params: any, retries = 2, delay = 1000) {
+  const ai = getAi();
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (error: any) {
+      const is503 = error?.message?.includes('503') || error?.status === 503 || (error?.error?.code === 503);
+      if (is503 && i < retries) {
+        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
 
 export interface IdentifiedCard {
   playerName: string;
@@ -13,6 +45,7 @@ export interface IdentifiedCard {
   estimatedValue: number;
   description: string;
   serialNumber?: string;
+  certNumber?: string;
   reasoning?: string;
   rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
   checklistVerified?: boolean;
@@ -55,6 +88,12 @@ UNIVERSAL SOCCER CARD HISTORICAL REGISTRY (Multi-Era):
 3. TOPPS CHROME UEFA:
    - Refractor, Speckle, RayWave.
    - Numbered: /250 (Aqua), /150 (Blue), /99 (Green), /75 (Yellow), /50 (Gold), /25 (Orange), /10 (Red), /5 (Frozen).
+
+4. PANINI DONRUSS (2023-24 & Modern):
+   - Press Proofs: Silver, Gold (/10), Black (1/1).
+   - Optic Parallels: Holo, Red (/199), Blue (/99), Orange (/49), Pink (/25), Gold (/10), Gold Vinyl (1/1).
+   - Inserts (SSP): Kaboom!, Night Moves, Crunch Time.
+   - Rated Rookies: Look for the "RR" logo.
 `;
 
 /**
@@ -77,7 +116,6 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
           });
         } catch (fetchError) {
           console.error("Failed to fetch image URL for identification:", fetchError);
-          // If fetch fails, we might still try to send the URL but it will likely fail Gemini API
         }
       }
 
@@ -89,23 +127,29 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
       };
     }));
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+    const response = await generateWithRetry({
+      model: DEFAULT_MODEL,
       contents: {
         parts: [
           ...imageParts,
           {
-            text: `Act as a Senior Soccer Card Historian. 
+            text: `Act as a Senior Soccer Card Historian and Authenticator. 
             Master Registry: ${UNIVERSAL_SOCCER_CARD_REGISTRY}
 
-            DETERMINISTIC VALUATION PROTOCOL:
+            IDENTIFICATION PROTOCOL:
+            1. **Visual Analysis**: Examine logos (Panini, Topps, Donruss, Optic), year, and player.
+            2. **Parallel Detection**: Check for refractors, patterns (Mojo, Wave, Ice), and colors. 
+            3. **Donruss Specifics**: For Donruss 2023-24, distinguish between standard Donruss and "Optic" versions. Check for "Press Proof" text.
+            4. **Serial Number**: If a number like "XX/YY" is visible, use it to confirm the parallel type from the Registry.
+            5. **Grading Detection**: Check if the card is in a graded slab (PSA, BGS, SGC, CGC). If so, identify the grading company and the numeric grade (e.g., "PSA 10", "BGS 9.5"). Populate the 'condition' field with this information. If not graded, use 'Ungraded' or a descriptive condition like 'Near Mint'.
+            6. **Certification Number**: ONLY if the card is identified as a PSA graded slab, look for the unique PSA certification number (usually 8-10 digits). Populate the 'certNumber' field. If the card is BGS, SGC, CGC or Ungraded, do NOT populate the 'certNumber' field.
+            
+            VALUATION PROTOCOL:
             1. **Valuation Anchor**: Identify the 3 most common RECENT SOLD prices for this exact parallel and grade. 
             2. **Calculate Mean**: Calculate the Volume-Weighted Mean of these 3 prices.
-            3. **Consistency Check**: Round the 'estimatedValue' to the nearest £5. This ensures that uploading the same card results in a stable, consistent price.
-            4. **Parallel Accuracy**: If a serial number is visible (e.g., 20/75), you MUST identify the parallel using the Registry Mapping (e.g., Blue Ice /75).
-            5. **Set Identification**: Identify the specific year and product release.
+            3. **Consistency Check**: Round the 'estimatedValue' to the nearest £5.
 
-            Output JSON. The 'estimatedValue' must be a stable number based on grounded historical sales.`,
+            Output JSON. Be extremely precise with the 'set' name (e.g., "2023-24 Panini Donruss Soccer").`,
           },
         ],
       },
@@ -116,13 +160,14 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
           properties: {
             playerName: { type: Type.STRING },
             team: { type: Type.STRING },
-            cardSpecifics: { type: Type.STRING },
-            set: { type: Type.STRING },
+            cardSpecifics: { type: Type.STRING, description: "Parallel type, e.g. 'Optic Holo' or 'Press Proof Silver'" },
+            set: { type: Type.STRING, description: "Full set name, e.g. '2023-24 Panini Donruss Soccer'" },
             setNumber: { type: Type.STRING },
-            condition: { type: Type.STRING },
+            condition: { type: Type.STRING, description: "Grade if graded (e.g. 'PSA 10') or condition if raw (e.g. 'Near Mint')" },
             estimatedValue: { type: Type.NUMBER },
             description: { type: Type.STRING },
             serialNumber: { type: Type.STRING },
+            certNumber: { type: Type.STRING, description: "Grading certification number (e.g. PSA cert #)" },
             reasoning: { type: Type.STRING },
             rarityTier: { type: Type.STRING, enum: ['Base', 'Parallel', 'Chase', '1/1'] },
             checklistVerified: { type: Type.BOOLEAN }
@@ -132,6 +177,7 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
       },
     });
 
+    if (!response) return null;
     return JSON.parse(response.text || '{}') as IdentifiedCard;
   } catch (error: any) {
     console.error("Identification Error:", error);
@@ -160,8 +206,8 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
       }
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
+    const response = await generateWithRetry({
+      model: DEFAULT_MODEL,
       contents: {
         parts: [
           {
@@ -171,7 +217,7 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
             },
           },
           {
-            text: "Detect the main trading card in this image and provide its bounding box as normalized coordinates [ymin, xmin, ymax, xmax] in the range 0-1000.",
+            text: "Identify the single most prominent trading card or graded slab in this image. If it is a graded slab (e.g., PSA, BGS, SGC), ensure the bounding box includes the entire plastic holder and label. Provide its bounding box as normalized coordinates [ymin, xmin, ymax, xmax] in the range 0-1000. Return only the JSON object.",
           },
         ],
       },
@@ -190,6 +236,7 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
       },
     });
 
+    if (!response) return null;
     return JSON.parse(response.text || '{}') as BoundingBox;
   } catch (error) {
     console.error("Bounding Box Detection Error:", error);
@@ -197,17 +244,26 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
   }
 };
 
-export const getMarketPrice = async (playerName: string, cardSpecifics: string, set: string): Promise<MarketPriceResult | null> => {
+export const getMarketPrice = async (playerName: string, cardSpecifics: string, set: string, condition?: string, certNumber?: string): Promise<MarketPriceResult | null> => {
   try {
-    const prompt = `Provide a STABLE Market Valuation for: ${playerName} ${cardSpecifics} (${set}).
-    Search only for RECENT VERIFIED SOLD items on eBay. Average the results and round to the nearest £5. Provide the value in GBP (£).`;
+    const psaUrl = certNumber ? `https://www.psacard.com/cert/${certNumber}/psa` : null;
+    const prompt = `Provide a STABLE Market Valuation for: ${playerName} ${cardSpecifics} (${set}) ${condition ? `in ${condition} condition` : ''}.
+    ${certNumber ? `PSA Certification Number: ${certNumber}. Official PSA Cert Page: ${psaUrl}` : ''}
+    Search only for RECENT VERIFIED SOLD items on eBay. Average the results and round to the nearest £5. Provide the value in GBP (£). 
+    If a PSA certification is provided, verify the card details against the PSA registry to ensure accuracy.`;
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest', 
+    const response = await generateWithRetry({
+      model: DEFAULT_MODEL, 
       contents: prompt,
-      config: { tools: [{ googleSearch: {} }] },
+      config: { 
+        tools: [
+          { googleSearch: {} },
+          ...(psaUrl ? [{ urlContext: {} }] : [])
+        ] 
+      },
     });
 
+    if (!response) return null;
     const responseText = response.text || '';
     const priceMatch = responseText.match(/[£](\d+(\.\d{2})?)/) || responseText.match(/(\d+(\.\d{2})?)\s?GBP/);
     
