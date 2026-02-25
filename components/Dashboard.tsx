@@ -110,7 +110,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
           {recentCards.slice(0, 5).map(card => (
             <div key={card.id} className="group cursor-pointer space-y-4" onClick={() => onNavigate(ViewMode.INVENTORY)}>
-              <div className="aspect-square rounded-[16px] overflow-hidden border border-black/6 shadow-lg bg-stone-100 flex items-center justify-center p-4 relative img-loading">
+              <div className="aspect-[3/4] rounded-[16px] overflow-hidden border border-black/6 shadow-lg bg-stone-100 flex items-center justify-center relative img-loading">
                 {card.images && card.images[0] ? (
                   <img 
                     src={card.images[0]} 
@@ -149,9 +149,9 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
 };
 
 const StatCard = ({ label, value, icon }: any) => (
-  <div className="glass p-8 rounded-[16px] border border-black/6 hover:border-black/10 transition-all space-y-4 shadow-lg active:scale-[0.99] group">
+  <div className="glass p-8 rounded-[16px] border border-black/6 hover:border-[#c9a227]/20 transition-all space-y-4 shadow-lg active:scale-[0.99] group">
     <div className="flex items-center gap-4">
-      <div className="p-3 rounded-xl glass-subtle opacity-40 group-hover:opacity-80 transition-opacity duration-200">{icon}</div>
+      <div className="p-3 rounded-xl glass-subtle">{icon}</div>
       <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{label}</span>
     </div>
     <span className="text-3xl font-black text-[#1a1408] tracking-tighter tabular block">{value}</span>

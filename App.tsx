@@ -24,26 +24,11 @@ import Auth from './components/Auth';
 import Feed from './components/Feed';
 import Explore from './components/Explore';
 import ProfileView from './components/ProfileView';
+import { goldGradientStyle } from './theme';
+import { TCLogo } from './components/TCLogo';
 import { vaultStorage, supabase } from './services/storage';
 
 const STORAGE_SESSION_KEY = 'tcvault_active_session';
-
-export const goldGradientStyle = {
-  background: 'linear-gradient(135deg, #8b6914 0%, #d4af37 35%, #f5e070 55%, #d4af37 75%, #8b6914 100%)',
-  boxShadow: '0 8px 24px -4px rgba(184,134,11,0.4)',
-  color: '#1a1408',
-};
-
-export const TCLogo = ({ className = "w-8 h-8" }: { className?: string }) => (
-  <div className={`${className} relative flex items-center justify-center shrink-0`}>
-    <img
-      src="https://oewvucbsbcxxwtnflbfw.supabase.co/storage/v1/object/public/assets/TCVaultIcon.png"
-      className="w-full h-full object-contain object-center"
-      alt="TC Vault"
-      draggable={false}
-    />
-  </div>
-);
 
 interface Toast {
   id: string;
@@ -404,7 +389,7 @@ const App: React.FC = () => {
                   <div className="pl-9 space-y-1 mt-1 border-l-2 border-black/5 ml-6 animate-in slide-in-from-top-2 duration-300">
                     <button 
                       onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId('all'); }}
-                      className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left ${view === ViewMode.INVENTORY && selectedBinderId === 'all' ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-600 hover:bg-black/[0.02]'}`}
+                      className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left ${view === ViewMode.INVENTORY && selectedBinderId === 'all' ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-700 hover:bg-black/[0.05]'}`}
                     >
                       <span className="text-[11px] uppercase tracking-wider">Main Collection</span>
                     </button>
@@ -412,7 +397,7 @@ const App: React.FC = () => {
                       <button 
                         key={binder.id}
                         onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId(binder.id); }}
-                        className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left group ${view === ViewMode.INVENTORY && selectedBinderId === binder.id ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-600 hover:bg-black/[0.02]'}`}
+                        className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left group ${view === ViewMode.INVENTORY && selectedBinderId === binder.id ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-700 hover:bg-black/[0.05]'}`}
                       >
                         <span className="text-[11px] truncate">{binder.name}</span>
                       </button>
@@ -524,7 +509,7 @@ const App: React.FC = () => {
             <button 
               onClick={() => setView(ViewMode.ADD_CARD)} 
               style={goldGradientStyle}
-              className="w-14 h-14 rounded-xl flex items-center justify-center -translate-y-7 shadow-[0_-6px_20px_rgba(201,162,39,0.3),0_10px_30px_rgba(201,162,39,0.25)] border-[3px] border-[#faf8f4] active:scale-[0.97] transition-all"
+              className="w-14 h-14 rounded-xl flex items-center justify-center -translate-y-4 shadow-[0_-6px_20px_rgba(201,162,39,0.3),0_10px_30px_rgba(201,162,39,0.25)] border-[3px] border-[#faf8f4] active:scale-[0.97] transition-all"
             >
               <Plus size={32} />
             </button>
@@ -565,7 +550,7 @@ const App: React.FC = () => {
 };
 
 const NavButton = ({ active, onClick, icon, label, trailing }: any) => (
-  <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] ${active ? 'bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 shadow-lg' : 'text-stone-400 hover:text-stone-700 hover:bg-black/[0.03]'}`}>
+  <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-10 rounded-xl transition-all active:scale-[0.97] ${active ? 'bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 shadow-lg' : 'text-stone-400 hover:text-stone-700 hover:bg-black/[0.03]'}`}>
     <div className="flex items-center gap-4">
       {React.cloneElement(icon, { size: 16 })}
       <span className="text-sm font-semibold">{label}</span>

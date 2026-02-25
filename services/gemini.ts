@@ -7,7 +7,8 @@ const getAi = () => {
   if (!aiInstance) {
     // Direct access to process.env.GEMINI_API_KEY is the recommended way
     // Vite will replace this during build if defined, or we can use a fallback
-    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
+    const processEnv = typeof process !== 'undefined' ? process.env : undefined;
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || processEnv?.GEMINI_API_KEY || processEnv?.API_KEY;
 
     if (!apiKey) {
       throw new Error("Gemini API Key is missing. Please check your environment variables.");
@@ -107,7 +108,7 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
       // If it's a URL, fetch it
       if (img.startsWith('http')) {
         try {
-          const response = await fetch(img);
+          const response = await window.fetch(img);
           const blob = await response.blob();
           base64Data = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -194,7 +195,7 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
     
     if (imageData.startsWith('http')) {
       try {
-        const response = await fetch(imageData);
+        const response = await window.fetch(imageData);
         const blob = await response.blob();
         base64Data = await new Promise((resolve) => {
           const reader = new FileReader();

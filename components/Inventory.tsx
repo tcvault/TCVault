@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
-import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw, Share2, ExternalLink } from 'lucide-react';
+import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw, Share2, ExternalLink, Instagram } from 'lucide-react';
+import { toPng } from 'html-to-image';
 import EmptyState from './EmptyState';
 
 interface InventoryProps {
@@ -36,6 +37,8 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
   const [newPageName, setNewPageName] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showBinderSelector, setShowBinderSelector] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const shareRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setActivePageId(initialActiveBinderId);
@@ -89,6 +92,34 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
     setActivePageId(id);
     if (onSelectBinder) onSelectBinder(id);
     setShowBinderSelector(false);
+  };
+
+  const handleShareToSocials = async () => {
+    if (!selectedCard || !shareRef.current) return;
+    
+    try {
+      setIsExporting(true);
+      // Wait for the UI to update and hide the sections
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const dataUrl = await toPng(shareRef.current, {
+        backgroundColor: '#faf8f4',
+        cacheBust: true,
+        style: {
+          borderRadius: '0'
+        }
+      });
+      
+      const link = document.createElement('a');
+      link.download = `${selectedCard.playerName.replace(/\s+/g, '_')}_TCVault.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      setIsExporting(false);
+    } catch (err) {
+      console.error('Failed to capture image', err);
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -240,28 +271,44 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
 
       {selectedCard && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-stone-900/60 backdrop-blur-xl animate-in fade-in duration-[300ms]" onClick={() => setSelectedCard(null)}>
-          <div className="w-full h-full md:h-auto md:max-h-[90vh] md:max-w-4xl glass md:rounded-[24px] overflow-hidden flex flex-col md:flex-row border-black/10 shadow-2xl relative" onClick={e => e.stopPropagation()}>
-             <button onClick={() => setSelectedCard(null)} className="absolute top-4 left-4 md:top-8 md:right-8 md:left-auto z-[110] p-3 min-w-[44px] min-h-[44px] flex items-center justify-center glass-subtle rounded-full text-stone-500 hover:bg-black/5 transition-colors active:scale-95 shadow-xl">
-               <X size={24} />
-             </button>
+          <div ref={shareRef} className={`w-full ${isExporting ? 'h-auto max-w-[500px]' : 'h-full md:h-auto md:max-h-[90vh] md:max-w-4xl'} glass md:rounded-[24px] overflow-hidden flex flex-col ${isExporting ? '' : 'md:flex-row'} border-black/10 shadow-2xl relative`} onClick={e => e.stopPropagation()}>
+             {!isExporting && (
+               <button onClick={() => setSelectedCard(null)} className="absolute top-4 left-4 md:top-8 md:right-8 md:left-auto z-[110] p-3 min-w-[44px] min-h-[44px] flex items-center justify-center glass-subtle rounded-full text-stone-500 hover:bg-black/5 transition-colors active:scale-95 shadow-xl">
+                 <X size={24} />
+               </button>
+             )}
 
-             <div className="flex-[1.5] md:flex-1 bg-black/5 flex flex-col items-center justify-center relative p-4 md:p-12 min-h-0">
-                <div className="relative w-full h-full flex items-center justify-center overflow-hidden img-loading">
-                   <img 
-                    src={selectedCard.images[currentImageIndex]} 
-                    onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
-                    className="w-full h-full object-contain select-none animate-in fade-in zoom-in-95 duration-500 drop-shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-10" 
-                    alt={selectedCard.playerName} 
-                   />
-                   {selectedCard.images.length > 1 && (
-                     <>
-                        <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === 0 ? selectedCard.images.length - 1 : prev - 1); }} className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/10 text-stone-800 hover:bg-[#c9a227] hover:text-white transition-all ml-2 shadow-xl z-20 active:scale-90"><ChevronLeft size={24} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === selectedCard.images.length - 1 ? 0 : prev + 1); }} className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/10 text-stone-800 hover:bg-[#c9a227] hover:text-white transition-all mr-2 shadow-xl z-20 active:scale-90"><ChevronRight size={24} /></button>
-                     </>
-                   )}
-                </div>
+             <div className={`flex-1 ${isExporting ? 'w-full' : 'md:flex-1'} bg-black/5 flex flex-col items-center justify-center relative p-4 md:p-12 min-h-0 ${isExporting && selectedCard.images.length === 1 ? 'aspect-square' : ''}`}>
+                {isExporting && selectedCard.images.length > 1 ? (
+                  <div className="grid grid-cols-2 gap-4 w-full p-4">
+                    {selectedCard.images.map((img, idx) => (
+                      <div key={idx} className="relative aspect-[3/4] flex items-center justify-center">
+                        <img 
+                          src={img} 
+                          className="w-full h-full object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.1)]" 
+                          alt={`${selectedCard.playerName} - ${idx + 1}`} 
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="relative w-full h-full flex items-center justify-center overflow-hidden img-loading">
+                     <img 
+                      src={selectedCard.images[currentImageIndex]} 
+                      onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
+                      className="w-full h-full object-contain select-none animate-in fade-in zoom-in-95 duration-500 drop-shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-10" 
+                      alt={selectedCard.playerName} 
+                     />
+                     {!isExporting && selectedCard.images.length > 1 && (
+                       <>
+                          <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === 0 ? selectedCard.images.length - 1 : prev - 1); }} className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/10 text-stone-800 hover:bg-[#c9a227] hover:text-white transition-all ml-2 shadow-xl z-20 active:scale-90"><ChevronLeft size={24} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === selectedCard.images.length - 1 ? 0 : prev + 1); }} className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/10 text-stone-800 hover:bg-[#c9a227] hover:text-white transition-all mr-2 shadow-xl z-20 active:scale-90"><ChevronRight size={24} /></button>
+                       </>
+                     )}
+                  </div>
+                )}
              </div>
-             <div className="flex-1 md:w-[380px] p-8 md:p-12 space-y-10 overflow-y-auto bg-white flex flex-col border-t md:border-t-0 md:border-l border-black/10 h-auto md:h-full">
+             <div className={`flex-1 ${isExporting ? 'w-full' : 'md:w-[380px]'} p-8 md:p-12 space-y-10 ${isExporting ? '' : 'overflow-y-auto'} bg-white flex flex-col border-t ${isExporting ? 'border-t' : 'md:border-t-0 md:border-l'} border-black/10 h-auto ${isExporting ? '' : 'md:h-full'}`}>
                 <div className="space-y-8">
                   <div className="space-y-2">
                     <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">{selectedCard.rarityTier || 'Collection Item'}</span>
@@ -294,38 +341,49 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                     )}
                   </div>
                 </div>
-                <div className="pt-8 border-t border-black/10 space-y-8 mt-auto">
-                   <div className="grid grid-cols-2 gap-4">
-                      <div className="p-5 rounded-xl glass-subtle space-y-1"><span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Paid</span><p className="text-xl font-black text-[#1a1408]">£{selectedCard.pricePaid}</p></div>
-                      <div className="p-5 rounded-xl bg-[#c9a227]/5 border border-[#c9a227]/10 space-y-1 relative group text-center">
-                        <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest">Market</span>
-                        <div className="flex items-center justify-center gap-2">
-                          <p className="text-xl font-black text-[#c9a227]">£{selectedCard.marketValue}</p>
-                          {onRefreshPrice && (
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); onRefreshPrice(selectedCard); }}
-                              className="p-2 text-[#c9a227] hover:bg-[#c9a227]/10 rounded-lg transition-all active:scale-90"
-                              title="Refresh Market Price"
-                            >
-                              <RefreshCw size={16} />
-                            </button>
-                          )}
+                <div className={`pt-8 border-t border-black/10 space-y-8 mt-auto ${isExporting ? 'pb-8' : ''}`}>
+                   {!isExporting && (
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="p-5 rounded-xl glass-subtle space-y-1"><span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Paid</span><p className="text-xl font-black text-[#1a1408]">£{selectedCard.pricePaid}</p></div>
+                        <div className="p-5 rounded-xl bg-[#c9a227]/5 border border-[#c9a227]/10 space-y-1 relative group text-center">
+                          <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest">Market</span>
+                          <div className="flex items-center justify-center gap-2">
+                            <p className="text-xl font-black text-[#c9a227]">£{selectedCard.marketValue}</p>
+                            {onRefreshPrice && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); onRefreshPrice(selectedCard); }}
+                                className="p-2 text-[#c9a227] hover:bg-[#c9a227]/10 rounded-lg transition-all active:scale-90"
+                                title="Refresh Market Price"
+                              >
+                                <RefreshCw size={16} />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                   </div>
-                    <div className="flex gap-3">
-                      <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 uppercase text-[10px] tracking-widest font-black">Edit Record</button>
-                      {onShareCard && (
+                     </div>
+                   )}
+                    {!isExporting && (
+                      <div className="flex gap-3">
+                        <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 uppercase text-[10px] tracking-widest font-black">Edit Record</button>
+                        {onShareCard && (
+                          <button 
+                            onClick={() => { onShareCard(selectedCard); setSelectedCard(null); }} 
+                            className="w-14 h-14 flex items-center justify-center rounded-xl border border-[#c9a227]/20 text-[#c9a227] hover:bg-[#c9a227]/5 transition-all active:scale-95 shadow-sm" 
+                            title="Share to Feed"
+                          >
+                            <Share2 size={20} />
+                          </button>
+                        )}
                         <button 
-                          onClick={() => { onShareCard(selectedCard); setSelectedCard(null); }} 
+                          onClick={handleShareToSocials}
                           className="w-14 h-14 flex items-center justify-center rounded-xl border border-[#c9a227]/20 text-[#c9a227] hover:bg-[#c9a227]/5 transition-all active:scale-95 shadow-sm" 
-                          title="Share to Feed"
+                          title="Share to Socials"
                         >
-                          <Share2 size={20} />
+                          <Instagram size={20} />
                         </button>
-                      )}
-                      <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-rose-500/20 text-rose-500 hover:bg-rose-50 transition-all active:scale-95 shadow-sm" title="Delete Asset"><Trash2 size={20} /></button>
-                    </div>
+                        <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-rose-500/20 text-rose-500 hover:bg-rose-50 transition-all active:scale-95 shadow-sm" title="Delete Asset"><Trash2 size={20} /></button>
+                      </div>
+                    )}
                 </div>
              </div>
           </div>

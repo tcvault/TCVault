@@ -89,17 +89,17 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
     <div className="min-h-screen bg-[#faf8f4] flex flex-col items-center justify-center p-8 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,rgba(201,162,39,0.06)_0%,transparent_70%)] pointer-events-none"></div>
       
-      {/* Absolute Close Button */}
-      {onCancel && (
-        <button 
-          onClick={onCancel}
-          className="absolute top-8 right-8 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center glass-subtle rounded-full text-stone-400 hover:text-stone-700 hover:bg-black/5 transition-all active:scale-95 z-50 shadow-xl"
-        >
-          <X size={24} />
-        </button>
-      )}
-
       <div className="w-full max-w-sm relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-2">
+        {/* Close Button - Moved inside container for clear placement */}
+        {onCancel && (
+          <button 
+            onClick={onCancel}
+            className="absolute -top-4 -right-4 md:-top-6 md:-right-6 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white rounded-full text-stone-500 hover:text-[#1a1408] transition-all active:scale-95 z-[100] shadow-xl border border-black/10"
+          >
+            <X size={20} />
+          </button>
+        )}
+        
         <div className="flex flex-col items-center gap-3">
           <img
             src="https://oewvucbsbcxxwtnflbfw.supabase.co/storage/v1/object/public/assets/TCVaultIcon.png"

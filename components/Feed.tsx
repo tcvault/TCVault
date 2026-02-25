@@ -214,7 +214,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       </div>
 
       {user && (
-        <form onSubmit={handlePost} className="glass rounded-[24px] p-6 space-y-4 border-black/6 shadow-2xl relative overflow-hidden">
+        <form onSubmit={handlePost} className="bg-[#f5f2ec] rounded-[24px] p-6 space-y-4 border border-black/6 border-b-black/8 shadow-2xl relative overflow-hidden">
           <textarea 
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
