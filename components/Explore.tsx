@@ -434,10 +434,10 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
   );
 };
 
-const Detail = ({ label, value }: { label: string, value: string }) => (
+const Detail = ({ label, value }: { label: string, value: React.ReactNode }) => (
   <div className="space-y-1">
     <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest block">{label}</span>
-    <p className="text-base font-black text-[#1a1408] truncate tracking-tight">{value}</p>
+    <div className="text-base font-black text-[#1a1408] truncate tracking-tight">{value}</div>
   </div>
 );
 

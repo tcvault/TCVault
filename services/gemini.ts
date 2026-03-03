@@ -7,8 +7,7 @@ const getAi = () => {
   if (!aiInstance) {
     // Direct access to process.env.GEMINI_API_KEY is the recommended way
     // Vite will replace this during build if defined, or we can use a fallback
-    const processEnv = typeof process !== 'undefined' ? process.env : undefined;
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || processEnv?.GEMINI_API_KEY || processEnv?.API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || (import.meta as any).env?.VITE_GEMINI_API_KEY;
 
     if (!apiKey) {
       throw new Error("Gemini API Key is missing. Please check your environment variables.");
@@ -56,6 +55,33 @@ export interface MarketPriceResult {
   price: number;
   sources: { title: string; uri: string }[];
   summary: string;
+}
+
+export interface MarketIntel {
+  sold: Array<{
+    title: string;
+    uri: string;
+    soldDate?: string;       // ISO
+    price: number;
+    currency: string;        // "GBP", "USD", ...
+    shipping?: number;
+    grade?: string;
+    matchConfidence: number; // 0..1
+    source: string;          // "eBay", ...
+    flags?: string[];
+  }>;
+  active: Array<{
+    title: string;
+    uri: string;
+    price: number;
+    currency: string;
+    shipping?: number;
+    source: string;
+    flags?: string[];
+  }>;
+  notes?: string;
+  fxRateUsed?: string;       // "1 USD = 0.79 GBP @ YYYY-MM-DD"
+  sources?: { title: string; uri: string }[];
 }
 
 export interface BoundingBox {
@@ -108,7 +134,7 @@ export const identifyCard = async (images: string[]): Promise<IdentifiedCard | n
       // If it's a URL, fetch it
       if (img.startsWith('http')) {
         try {
-          const response = await window.fetch(img);
+          const response = await fetch(img);
           const blob = await response.blob();
           base64Data = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -195,7 +221,7 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
     
     if (imageData.startsWith('http')) {
       try {
-        const response = await window.fetch(imageData);
+        const response = await fetch(imageData);
         const blob = await response.blob();
         base64Data = await new Promise((resolve) => {
           const reader = new FileReader();
@@ -245,6 +271,60 @@ export const getCardBoundingBox = async (imageData: string): Promise<BoundingBox
   }
 };
 
+export const getMarketIntel = async (
+  playerName: string,
+  cardSpecifics: string,
+  set: string,
+  condition?: string,
+  certNumber?: string
+): Promise<MarketIntel | null> => {
+  try {
+    const psaUrl = certNumber ? `https://www.psacard.com/cert/${certNumber}/psa` : null;
+
+    const prompt = `
+Return VERIFIED MARKET INTEL as JSON only.
+
+TARGET CARD:
+- Player: ${playerName}
+- Set: ${set}
+- Parallel/Variant: ${cardSpecifics}
+- Condition/Grade: ${condition || 'unknown'}
+${certNumber ? `- PSA cert: ${certNumber} (verify against ${psaUrl})` : ''}
+
+TASK:
+1) Find 8–15 RECENT SOLD comps (last 90 days) for the *exact* card + grade.
+2) Also find 6–12 ACTIVE listings for the exact card + grade.
+3) Exclude: lots/multipacks, obvious mis-matches, damaged unless explicitly stated, reprints, "custom", "digital", “case hit lot”.
+4) For each item: title, uri, soldDate (sold only), price, currency, shipping, grade (if stated), matchConfidence 0..1, source, flags.
+5) Convert everything to GBP via a stated FX rate note (fxRateUsed). Keep original currency in the item too.
+
+Output schema: { sold: [...], active: [...], notes, fxRateUsed }.
+`;
+
+    const response = await generateWithRetry({
+      model: DEFAULT_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }, ...(psaUrl ? [{ urlContext: {} }] : [])]
+      }
+    });
+
+    if (!response) return null;
+    const result = JSON.parse(response.text || '{}');
+    return {
+      ...result,
+      sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
+        title: chunk.web?.title || 'Market Intel',
+        uri: chunk.web?.uri || '#'
+      })) || []
+    } as MarketIntel;
+  } catch (error) {
+    console.error("Market Intel Error:", error);
+    return null;
+  }
+};
+
 export const getMarketPrice = async (playerName: string, cardSpecifics: string, set: string, condition?: string, certNumber?: string): Promise<MarketPriceResult | null> => {
   try {
     const psaUrl = certNumber ? `https://www.psacard.com/cert/${certNumber}/psa` : null;
@@ -257,6 +337,15 @@ export const getMarketPrice = async (playerName: string, cardSpecifics: string, 
       model: DEFAULT_MODEL, 
       contents: prompt,
       config: { 
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            price: { type: Type.NUMBER, description: "The estimated market value in GBP" },
+            summary: { type: Type.STRING, description: "A brief summary of the market analysis" }
+          },
+          required: ["price", "summary"]
+        },
         tools: [
           { googleSearch: {} },
           ...(psaUrl ? [{ urlContext: {} }] : [])
@@ -265,12 +354,11 @@ export const getMarketPrice = async (playerName: string, cardSpecifics: string, 
     });
 
     if (!response) return null;
-    const responseText = response.text || '';
-    const priceMatch = responseText.match(/[£](\d+(\.\d{2})?)/) || responseText.match(/(\d+(\.\d{2})?)\s?GBP/);
+    const result = JSON.parse(response.text || '{}');
     
     return {
-      price: priceMatch ? Math.round(parseFloat(priceMatch[1]) / 5) * 5 : 0,
-      summary: responseText,
+      price: Math.round((result.price || 0) / 5) * 5,
+      summary: result.summary || '',
       sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks?.map((chunk: any) => ({
         title: chunk.web?.title || 'Market Intel',
         uri: chunk.web?.uri || '#'

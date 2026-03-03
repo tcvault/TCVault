@@ -39,6 +39,34 @@ export interface SocialPost {
   comments: SocialComment[];
 }
 
+export interface MarketComp {
+  title: string;
+  uri: string;
+  soldDate?: string;         // ISO
+  priceGbp: number;          // normalized GBP
+  shippingGbp?: number;
+  source: 'eBay' | 'PWCC' | 'Goldin' | 'MySlabs' | 'COMC' | 'Other';
+  matchConfidence: number;   // 0..1
+  grade?: string;            // "PSA 10", "BGS 9.5", "RAW NM"
+  flags?: string[];          // ["lot", "damaged", "unknownParallel"]
+}
+
+export interface MarketMeta {
+  valuationVersion: string;  // "v1"
+  updatedAt: number;         // epoch ms
+  compsUsed: number;
+  liquidity30d?: number;     // sold count in last 30d
+  confidence: 'low' | 'medium' | 'high';
+  low: number;               // quick-sale
+  mid: number;               // fair
+  high: number;              // premium
+  spreadPct?: number;        // active-vs-sold signal
+  summary?: string;
+  sources?: { title: string; uri: string }[];
+  comps?: MarketComp[];      // keep last N (e.g. 12)
+  fxNote?: string;
+}
+
 export interface Card {
   id: string;
   playerName: string;
@@ -62,6 +90,8 @@ export interface Card {
   ownerUsername?: string; // New: Display name of the collector
   ownerAvatar?: string; // New: Avatar of the collector
   ownerId?: string; // New: ID to filter by collector
+  marketMeta?: MarketMeta;
+  marketValueLocked?: boolean; // manual override protection
 }
 
 export interface CollectionStats {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SocialPost, PostTag, User, ViewMode, SocialComment } from '../types';
 import { MessageSquare, Heart, Share2, ImageIcon, Send, X, Loader2, Ghost, Trash2 } from 'lucide-react';
 import { vaultStorage } from '../services/storage';
+import EmptyState from './EmptyState';
 
 interface FeedProps {
   user: User | null;
@@ -37,45 +38,22 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     setIsRefreshing(true);
-    const data = await vaultStorage.getPosts();
-    if (data.length === 0) {
-      const mockPosts: SocialPost[] = [
-        {
-          id: '1',
-          userId: 'u1',
-          username: 'SakaPC_07',
-          content: 'Just secured the 2024 Prizm Silver Refractor of the Starboy! The collection is nearly complete. #Arsenal #Saka',
-          tag: 'Pickup',
-          likes: ['u2'],
-          commentCount: 5,
-          createdAt: Date.now() - 3600000,
-          imageUrl: 'https://images.unsplash.com/photo-1540747913346-19e3adbb17c1?auto=format&fit=crop&q=80&w=400',
-          comments: []
-        },
-        {
-          id: '2',
-          userId: 'u2',
-          username: 'PalaceVault',
-          content: 'Great session at the London Card Show today. Met some fantastic collectors. The UK scene is growing so fast!',
-          tag: 'Show Coverage',
-          likes: ['u1'],
-          commentCount: 2,
-          createdAt: Date.now() - 7200000,
-          comments: []
-        }
-      ];
-      setPosts(mockPosts);
-    } else {
+    try {
+      const data = await vaultStorage.getPosts();
       setPosts(data);
+    } catch (error) {
+      console.error("Failed to fetch posts:", error);
+      if (onToast) onToast("Failed to sync with the hobby feed.", "error");
+    } finally {
+      setIsRefreshing(false);
     }
-    setIsRefreshing(false);
-  };
+  }, [onToast]);
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +192,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       </div>
 
       {user && (
-        <form onSubmit={handlePost} className="bg-[#f5f2ec] rounded-[24px] p-6 space-y-4 border border-black/6 border-b-black/8 shadow-2xl relative overflow-hidden">
+        <form onSubmit={handlePost} className="glass rounded-[24px] p-6 space-y-4 border-black/6 shadow-2xl relative overflow-hidden">
           <textarea 
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
@@ -256,114 +234,123 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       </div>
 
       <div className="space-y-6">
-        {filteredPosts.map(post => (
-          <div key={post.id} className="glass rounded-[24px] border-black/6 overflow-hidden group hover:border-black/10 transition-all shadow-lg">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#c9a227]/10 flex items-center justify-center text-[#c9a227] font-bold italic border border-[#c9a227]/20 overflow-hidden">
-                    {post.userAvatar ? <img src={post.userAvatar} className="w-full h-full object-cover" /> : post.username[0]}
+        {filteredPosts.length > 0 ? (
+          filteredPosts.map(post => (
+            <div key={post.id} className="glass rounded-[24px] border-black/6 overflow-hidden group hover:border-black/10 transition-all shadow-lg">
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#c9a227]/10 flex items-center justify-center text-[#c9a227] font-bold italic border border-[#c9a227]/20 overflow-hidden">
+                      {post.userAvatar ? <img src={post.userAvatar} className="w-full h-full object-cover" /> : post.username[0]}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-[#1a1408] hover:text-[#c9a227] cursor-pointer transition-colors">@{post.username}</h4>
+                      <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">
+                        {getRelativeTime(post.createdAt)}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-[#1a1408] hover:text-[#c9a227] cursor-pointer transition-colors">@{post.username}</h4>
-                    <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">
-                      {getRelativeTime(post.createdAt)}
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${getTagColor(post.tag)}`}>
+                      {post.tag}
                     </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${getTagColor(post.tag)}`}>
-                    {post.tag}
-                  </span>
-                  {user && post.userId === user.id && (
-                    <button 
-                      onClick={() => handleDeletePost(post.id)}
-                      className="p-1.5 text-stone-300 hover:text-rose-500 transition-colors active:scale-90"
-                      title="Delete Post"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <p className="text-sm font-semibold text-stone-700 leading-relaxed whitespace-pre-wrap">
-                {post.content}
-              </p>
-
-              {post.imageUrl && (
-                <div className="rounded-[24px] overflow-hidden bg-stone-900/5 border border-black/6 shadow-inner relative group/image">
-                  <img 
-                    src={post.imageUrl} 
-                    className="max-w-full h-auto max-h-[70vh] block mx-auto object-contain bg-stone-50/50" 
-                    alt="Post attachment" 
-                  />
-                  <div className="absolute inset-0 bg-stone-900/5 pointer-events-none opacity-0 group-hover/image:opacity-100 transition-opacity"></div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-6 pt-2">
-                <ActionButton 
-                  icon={<Heart size={18} className={user && post.likes.includes(user.id) ? 'fill-rose-500 text-rose-500' : ''} />} 
-                  label={post.likes.length.toString()} 
-                  color={user && post.likes.includes(user.id) ? 'text-rose-500' : 'hover:text-rose-500'} 
-                  onClick={() => toggleLike(post.id)}
-                />
-                <ActionButton 
-                  icon={<MessageSquare size={18} />} 
-                  label={post.commentCount.toString()} 
-                  color="hover:text-[#c9a227]" 
-                  onClick={() => setExpandedComments(expandedComments === post.id ? null : post.id)}
-                />
-                <ActionButton icon={<Share2 size={18} />} label="" color="hover:text-emerald-500" onClick={() => handleShare(post)} />
-              </div>
-
-              {expandedComments === post.id && (
-                <div className="pt-6 border-t border-black/5 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                  <div className="space-y-4 max-h-64 overflow-y-auto no-scrollbar">
-                    {(post.comments || []).map(comment => (
-                      <div key={comment.id} className="flex gap-3">
-                        <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold italic shrink-0">
-                          {comment.userAvatar ? <img src={comment.userAvatar} className="w-full h-full rounded-full object-cover" /> : comment.username[0]}
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <h5 className="text-[11px] font-black text-[#1a1408]">@{comment.username}</h5>
-                            <span className="text-[9px] font-semibold text-stone-400 uppercase">{getRelativeTime(comment.createdAt)}</span>
-                          </div>
-                          <p className="text-xs text-stone-600 font-medium leading-relaxed">{comment.content}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {(post.comments || []).length === 0 && (
-                      <p className="text-center text-[10px] font-black text-stone-300 uppercase tracking-widest py-4">No comments yet</p>
+                    {user && post.userId === user.id && (
+                      <button 
+                        onClick={() => handleDeletePost(post.id)}
+                        className="p-1.5 text-stone-300 hover:text-rose-500 transition-colors active:scale-90"
+                        title="Delete Post"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     )}
                   </div>
-
-                  {user && (
-                    <div className="flex gap-3">
-                      <input 
-                        type="text" 
-                        placeholder="Add a comment..." 
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleComment(post.id)}
-                        className="flex-1 bg-black/[0.03] border border-black/5 rounded-xl h-10 px-4 text-xs font-semibold focus:border-[#c9a227]/30 outline-none text-[#1a1408]"
-                      />
-                      <button 
-                        onClick={() => handleComment(post.id)}
-                        disabled={!commentText.trim()}
-                        className="p-2 text-[#c9a227] hover:text-[#c9a227]/80 disabled:opacity-30 active:scale-95 transition-all"
-                      >
-                        <Send size={18} />
-                      </button>
-                    </div>
-                  )}
                 </div>
-              )}
+
+                <p className="text-sm font-semibold text-stone-700 leading-relaxed whitespace-pre-wrap">
+                  {post.content}
+                </p>
+
+                {post.imageUrl && (
+                  <div className="rounded-[24px] overflow-hidden bg-stone-900/5 border border-black/6 shadow-inner relative group/image">
+                    <img 
+                      src={post.imageUrl} 
+                      loading="lazy"
+                      className="max-w-full h-auto max-h-[70vh] block mx-auto object-contain bg-stone-50/50" 
+                      alt="Post attachment" 
+                    />
+                    <div className="absolute inset-0 bg-stone-900/5 pointer-events-none opacity-0 group-hover/image:opacity-100 transition-opacity"></div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-6 pt-2">
+                  <ActionButton 
+                    icon={<Heart size={18} className={user && post.likes.includes(user.id) ? 'fill-rose-500 text-rose-500' : ''} />} 
+                    label={post.likes.length.toString()} 
+                    color={user && post.likes.includes(user.id) ? 'text-rose-500' : 'hover:text-rose-500'} 
+                    onClick={() => toggleLike(post.id)}
+                  />
+                  <ActionButton 
+                    icon={<MessageSquare size={18} />} 
+                    label={post.commentCount.toString()} 
+                    color="hover:text-[#c9a227]" 
+                    onClick={() => setExpandedComments(expandedComments === post.id ? null : post.id)}
+                  />
+                  <ActionButton icon={<Share2 size={18} />} label="" color="hover:text-emerald-500" onClick={() => handleShare(post)} />
+                </div>
+
+                {expandedComments === post.id && (
+                  <div className="pt-6 border-t border-black/5 space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-4 max-h-64 overflow-y-auto no-scrollbar">
+                      {(post.comments || []).map(comment => (
+                        <div key={comment.id} className="flex gap-3">
+                          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold italic shrink-0">
+                            {comment.userAvatar ? <img src={comment.userAvatar} className="w-full h-full rounded-full object-cover" /> : comment.username[0]}
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-[11px] font-black text-[#1a1408]">@{comment.username}</h5>
+                              <span className="text-[9px] font-semibold text-stone-400 uppercase">{getRelativeTime(comment.createdAt)}</span>
+                            </div>
+                            <p className="text-xs text-stone-600 font-medium leading-relaxed">{comment.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {(post.comments || []).length === 0 && (
+                        <p className="text-center text-[10px] font-black text-stone-300 uppercase tracking-widest py-4">No comments yet</p>
+                      )}
+                    </div>
+
+                    {user && (
+                      <div className="flex gap-3">
+                        <input 
+                          type="text" 
+                          placeholder="Add a comment..." 
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleComment(post.id)}
+                          className="flex-1 bg-black/[0.03] border border-black/5 rounded-xl h-10 px-4 text-xs font-semibold focus:border-[#c9a227]/30 outline-none text-[#1a1408]"
+                        />
+                        <button 
+                          onClick={() => handleComment(post.id)}
+                          disabled={!commentText.trim()}
+                          className="p-2 text-[#c9a227] hover:text-[#c9a227]/80 disabled:opacity-30 active:scale-95 transition-all"
+                        >
+                          <Send size={18} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <EmptyState 
+            icon={<Ghost />} 
+            title="The Feed is Quiet" 
+            message={activeFilter === 'All' ? "Be the first to share a pickup or update with the community!" : `No posts found in the ${activeFilter} category.`}
+          />
+        )}
       </div>
     </div>
   );
@@ -386,7 +373,13 @@ const TagPicker = ({ value, onChange }: { value: PostTag; onChange: (val: PostTa
   </div>
 );
 
-const FilterButton = ({ active, onClick, children }: any) => (
+interface FilterButtonProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+const FilterButton = ({ active, onClick, children }: FilterButtonProps) => (
   <button 
     onClick={onClick}
     className={`px-2 md:px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-black uppercase tracking-tighter md:tracking-widest border transition-all active:scale-95 ${active ? 'bg-[#1a1408] text-[#c9a227] border-[#1a1408]' : 'glass-subtle text-stone-400 border-black/10 hover:border-black/20'}`}
@@ -395,7 +388,14 @@ const FilterButton = ({ active, onClick, children }: any) => (
   </button>
 );
 
-const ActionButton = ({ icon, label, color, onClick }: any) => (
+interface ActionButtonProps {
+  icon: React.ReactNode;
+  label: string;
+  color: string;
+  onClick: () => void;
+}
+
+const ActionButton = ({ icon, label, color, onClick }: ActionButtonProps) => (
   <button onClick={onClick} className={`flex items-center gap-2 text-stone-500 transition-colors active:scale-90 ${color}`}>
     {icon}
     <span className="text-xs font-black tabular">{label}</span>

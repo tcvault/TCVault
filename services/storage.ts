@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User } from '../types';
 
-const processEnv = typeof process !== 'undefined' ? process.env : undefined;
-const envUrl = import.meta.env.VITE_SUPABASE_URL || processEnv?.SUPABASE_URL;
-const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || processEnv?.SUPABASE_ANON_KEY;
+const envUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
 export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
 
 const LOCAL_CARDS_KEY = 'tcvault_local_cards';
 const LOCAL_PAGES_KEY = 'tcvault_local_pages';
-const LOCAL_POSTS_KEY = 'tcvault_local_posts';
 const LOCAL_PROFILE_PREFIX = 'tcvault_profile_';
 
 class CloudStorageService {
@@ -81,7 +79,11 @@ class CloudStorageService {
   async getPosts(): Promise<SocialPost[]> {
     if (supabase) {
       const { data, error } = await supabase.from('social_posts').select('*').order('created_at', { ascending: false });
-      if (!error && data) {
+      if (error) {
+        console.error("Error fetching posts:", error);
+        throw error;
+      }
+      if (data) {
         return data.map((p: any) => ({
           ...p,
           userId: p.user_id,
@@ -94,8 +96,7 @@ class CloudStorageService {
         }));
       }
     }
-    const local = localStorage.getItem(LOCAL_POSTS_KEY);
-    return local ? JSON.parse(local) : [];
+    return [];
   }
 
   async savePost(post: SocialPost): Promise<void> {
@@ -112,63 +113,58 @@ class CloudStorageService {
         comments: post.comments,
         created_at: new Date(post.createdAt).toISOString()
       };
-      await supabase.from('social_posts').upsert(payload);
+      const { error } = await supabase.from('social_posts').upsert(payload);
+      if (error) throw error;
     }
-    
-    // Always update local storage for fallback
-    const localPostsJson = localStorage.getItem(LOCAL_POSTS_KEY);
-    const localPosts: SocialPost[] = localPostsJson ? JSON.parse(localPostsJson) : [];
-    const existingIdx = localPosts.findIndex(p => p.id === post.id);
-    if (existingIdx > -1) {
-      localPosts[existingIdx] = post;
-    } else {
-      localPosts.unshift(post);
-    }
-    localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(localPosts.slice(0, 50)));
   }
 
   async toggleLike(postId: string, userId: string): Promise<void> {
-    const posts = await this.getPosts();
-    const postIdx = posts.findIndex(p => p.id === postId);
-    if (postIdx === -1) return;
-
-    const likes = [...posts[postIdx].likes];
+    if (!supabase) return;
+    
+    // Fetch only the likes for this specific post to minimize race window
+    const { data, error: fetchError } = await supabase
+      .from('social_posts')
+      .select('likes')
+      .eq('id', postId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+    
+    const likes = [...(data?.likes || [])];
     const likeIdx = likes.indexOf(userId);
     if (likeIdx > -1) likes.splice(likeIdx, 1);
     else likes.push(userId);
 
-    if (supabase) {
-      await supabase.from('social_posts').update({ likes }).eq('id', postId);
-    }
-    posts[postIdx].likes = likes;
-    localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(posts));
+    const { error: updateError } = await supabase.from('social_posts').update({ likes }).eq('id', postId);
+    if (updateError) throw updateError;
   }
 
   async addComment(postId: string, comment: SocialComment): Promise<void> {
-    const posts = await this.getPosts();
-    const postIdx = posts.findIndex(p => p.id === postId);
-    if (postIdx === -1) return;
+    if (!supabase) return;
 
-    const comments = [...(posts[postIdx].comments || [])];
+    // Fetch only the comments for this specific post
+    const { data, error: fetchError } = await supabase
+      .from('social_posts')
+      .select('comments')
+      .eq('id', postId)
+      .single();
+    
+    if (fetchError) throw fetchError;
+
+    const comments = [...(data?.comments || [])];
     comments.push(comment);
 
-    if (supabase) {
-      await supabase.from('social_posts').update({ comments }).eq('id', postId);
-    }
-    posts[postIdx].comments = comments;
-    posts[postIdx].commentCount = comments.length;
-    localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(posts));
+    const { error: updateError } = await supabase.from('social_posts').update({ comments }).eq('id', postId);
+    if (updateError) throw updateError;
   }
 
   async deletePost(postId: string): Promise<void> {
     if (supabase) {
-      await supabase.from('social_posts').delete().eq('id', postId);
-    }
-    const localPostsJson = localStorage.getItem(LOCAL_POSTS_KEY);
-    if (localPostsJson) {
-      const localPosts: SocialPost[] = JSON.parse(localPostsJson);
-      const filtered = localPosts.filter(p => p.id !== postId);
-      localStorage.setItem(LOCAL_POSTS_KEY, JSON.stringify(filtered));
+      const { error } = await supabase.from('social_posts').delete().eq('id', postId);
+      if (error) {
+        console.error("Error deleting post:", error);
+        throw error;
+      }
     }
   }
 
@@ -195,7 +191,9 @@ class CloudStorageService {
           createdAt: new Date(item.created_at).getTime(),
           pageId: item.page_id || '',
           rarityTier: item.rarity_tier as any,
-          isPublic: item.is_public ?? true
+          isPublic: item.is_public ?? true,
+          marketMeta: item.market_meta || undefined,
+          marketValueLocked: item.market_value_locked ?? false
         }));
       }
     }
@@ -235,7 +233,9 @@ class CloudStorageService {
           ownerUsername: item.profiles?.username || 'Collector',
           ownerAvatar: item.profiles?.avatar_url,
           ownerId: item.user_id,
-          certNumber: item.cert_number
+          certNumber: item.cert_number,
+          marketMeta: item.market_meta || undefined,
+          marketValueLocked: item.market_value_locked ?? false
         }));
       }
     }
@@ -268,7 +268,9 @@ class CloudStorageService {
         page_id: card.pageId || null,
         rarity_tier: card.rarityTier,
         is_public: card.isPublic ?? true,
-        created_at: new Date(createdAt).toISOString()
+        created_at: new Date(createdAt).toISOString(),
+        market_meta: (card as any).marketMeta ?? null,
+        market_value_locked: (card as any).marketValueLocked ?? false
       };
 
       let { data, error } = await supabase.from('cards').upsert(payload).select().single();
@@ -277,19 +279,25 @@ class CloudStorageService {
       if (error && (error.code === '42703' || error.message?.includes('column'))) {
         console.warn("Detected missing column, retrying with minimal payload...", error.message);
         const minimalPayload = { ...payload };
-        // Remove columns that are likely to be missing in older schemas
         delete minimalPayload.cert_number;
         delete minimalPayload.rarity_tier;
         delete minimalPayload.is_public;
         delete minimalPayload.page_id;
+        delete minimalPayload.market_meta;
+        delete minimalPayload.market_value_locked;
         
         const retry = await supabase.from('cards').upsert(minimalPayload).select().single();
         data = retry.data;
         error = retry.error;
       }
       
-      if (!error && data) {
-        return {
+      if (error) {
+        console.error("Card save sync error:", error);
+        throw error; // Propagate error to UI
+      }
+
+      if (data) {
+        const savedCard: Card = {
           id: data.id,
           playerName: data.player_name,
           team: data.team,
@@ -307,16 +315,22 @@ class CloudStorageService {
           createdAt: new Date(data.created_at).getTime(),
           pageId: data.page_id || '',
           rarityTier: data.rarity_tier as any,
-          isPublic: data.is_public ?? true
+          isPublic: data.is_public ?? true,
+          marketMeta: data.market_meta || undefined,
+          marketValueLocked: data.market_value_locked ?? false
         };
-      }
-      if (error) {
-        console.error("Card save sync error:", error);
-        // If it's a missing column error (like cert_number), we might want to try without it
-        // but for now we just log and fallback to local.
+        
+        // Update local storage only on success
+        const current = await this.getCards();
+        const existingIdx = current.findIndex(c => c.id === savedCard.id);
+        if (existingIdx > -1) current[existingIdx] = savedCard; else current.unshift(savedCard);
+        localStorage.setItem(LOCAL_CARDS_KEY, JSON.stringify(current));
+        
+        return savedCard;
       }
     }
 
+    // Guest mode or fallback
     const current = await this.getCards();
     const newCard = { ...card, id: cardId, createdAt } as Card;
     const existingIdx = current.findIndex(c => c.id === newCard.id);
@@ -327,7 +341,13 @@ class CloudStorageService {
 
   async deleteCard(id: string): Promise<void> {
     const userId = await this.getUserId();
-    if (userId && supabase) await supabase.from('cards').delete().eq('id', id);
+    if (userId && supabase) {
+      const { error } = await supabase.from('cards').delete().eq('id', id);
+      if (error) {
+        console.error("Error deleting card:", error);
+        throw error;
+      }
+    }
     const current = await this.getCards();
     localStorage.setItem(LOCAL_CARDS_KEY, JSON.stringify(current.filter(c => c.id !== id)));
   }
@@ -336,7 +356,11 @@ class CloudStorageService {
     const effectiveUserId = userId || await this.getUserId();
     if (effectiveUserId && supabase) {
       const { data, error } = await supabase.from('pages').select('*').eq('user_id', effectiveUserId).order('name');
-      if (!error && data) return data;
+      if (error) {
+        console.error("Error fetching pages:", error);
+        throw error;
+      }
+      if (data) return data;
     }
     const local = localStorage.getItem(LOCAL_PAGES_KEY);
     return local ? JSON.parse(local) : [];
@@ -347,12 +371,17 @@ class CloudStorageService {
     if (userId && supabase) {
       const { data, error } = await supabase.from('pages').insert({ user_id: userId, name }).select().single();
       
-      // Handle potential missing columns or other errors
       if (error) {
         console.error("Page creation sync error:", error);
+        throw error;
       }
       
-      if (!error && data) return data;
+      if (data) {
+        const current = await this.getPages();
+        current.push(data);
+        localStorage.setItem(LOCAL_PAGES_KEY, JSON.stringify(current));
+        return data;
+      }
     }
     const current = await this.getPages();
     const newPage = { id: crypto.randomUUID(), name };
@@ -363,7 +392,13 @@ class CloudStorageService {
 
   async deletePage(id: string): Promise<void> {
     const userId = await this.getUserId();
-    if (userId && supabase) await supabase.from('pages').delete().eq('id', id);
+    if (userId && supabase) {
+      const { error } = await supabase.from('pages').delete().eq('id', id);
+      if (error) {
+        console.error("Error deleting page:", error);
+        throw error;
+      }
+    }
     const current = await this.getPages();
     localStorage.setItem(LOCAL_PAGES_KEY, JSON.stringify(current.filter(p => p.id !== id)));
   }

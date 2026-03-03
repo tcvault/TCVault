@@ -406,7 +406,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                 <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Assign to Binder</label>
                 <div className="relative group">
                   <select value={formData.pageId || ''} onChange={e => setFormData({...formData, pageId: e.target.value})} style={{ colorScheme: 'light' }} className={`w-full bg-black/[0.03] border rounded-xl h-14 px-4 outline-none font-black text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-[#c9a227]/40 text-[#c9a227]' : 'border-black/6 text-stone-400'}`}>
-                    <option value="" className="bg-white font-semibold">Main Collection</option>
+                    <option value="" className="bg-white font-semibold">All Cards</option>
                     {pages.map(p => <option key={p.id} value={p.id} className="bg-white font-semibold">{p.name}</option>)}
                   </select>
                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400" />
@@ -436,7 +436,15 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   );
 };
 
-const Field = ({ label, value, onChange, icon, type = 'text' }: any) => (
+interface FieldProps {
+  label: string;
+  value: string | number | undefined;
+  onChange: (v: string) => void;
+  icon: React.ReactNode;
+  type?: string;
+}
+
+const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
   <div className="space-y-2">
     <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative group">
