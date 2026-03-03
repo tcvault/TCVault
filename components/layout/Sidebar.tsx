@@ -30,30 +30,30 @@ export const Sidebar = ({
       <div className="flex items-center gap-3 cursor-pointer mb-2" onClick={() => setView(ViewMode.FEED)}>
         <TCLogo className="w-10 h-10 shrink-0" />
         <div>
-          <p className="text-sm font-black tracking-tighter uppercase leading-none">
+          <p className="text-sm font-bold tracking-tighter leading-none">
             <span style={goldTextStyle}>TC</span>
-            <span className="text-stone-800 ml-1">Vault</span>
+            <span className="text-ink-primary ml-1">Vault</span>
           </p>
-          <p style={goldTextStyle} className="text-[9px] font-semibold uppercase tracking-widest leading-none mt-0.5">
+          <p style={goldTextStyle} className="text-[9px] font-semibold tracking-widest leading-none mt-0.5">
             Collectors Community
           </p>
         </div>
       </div>
 
-      <nav className="space-y-8 flex-1 overflow-y-auto no-scrollbar mt-12 pb-8">
-        <div className="space-y-2">
-          <span className="px-4 text-[10px] font-black text-[#c9a227]/40 uppercase tracking-widest">Community</span>
+      <nav className="space-y-major flex-1 overflow-y-auto no-scrollbar mt-12 pb-8">
+        <div className="space-y-control">
+          <span className="px-4 text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Community</span>
           <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
           <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
         </div>
 
         {!isGuest && (
           <>
-            <div className="space-y-2">
-              <span className="px-4 text-[10px] font-black text-[#c9a227]/40 uppercase tracking-widest">Asset Management</span>
+            <div className="space-y-control">
+              <span className="px-4 text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Asset Management</span>
               <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Portfolio" />
               
-              <div className="space-y-1">
+              <div className="space-y-control">
                 <NavButton 
                   active={view === ViewMode.INVENTORY} 
                   onClick={() => {
@@ -66,18 +66,18 @@ export const Sidebar = ({
                 />
                 
                 {binders.length > 0 && (view === ViewMode.INVENTORY || binders.some(b => b.id === selectedBinderId)) && (
-                  <div className="pl-9 space-y-1 mt-1 border-l-2 border-black/5 ml-6 animate-in slide-in-from-top-2 duration-300">
+                  <div className="pl-9 space-y-control mt-1 border-l-2 border-border-soft ml-6 animate-in slide-in-from-top-2 duration-300">
                     <button 
                       onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId('all'); }}
-                      className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left ${view === ViewMode.INVENTORY && selectedBinderId === 'all' ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-600 hover:bg-black/[0.02]'}`}
+                      className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left ${view === ViewMode.INVENTORY && selectedBinderId === 'all' ? 'text-ink-primary font-bold' : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated'}`}
                     >
-                      <span className="text-[11px] uppercase tracking-wider">All Cards</span>
+                      <span className="text-[11px] tracking-wider">All Cards</span>
                     </button>
                     {binders.map(binder => (
                       <button 
                         key={binder.id}
                         onClick={() => { setView(ViewMode.INVENTORY); setSelectedBinderId(binder.id); }}
-                        className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left group ${view === ViewMode.INVENTORY && selectedBinderId === binder.id ? 'text-[#c9a227] font-bold' : 'text-stone-400 hover:text-stone-600 hover:bg-black/[0.02]'}`}
+                        className={`w-full flex items-center gap-2 px-3 h-8 rounded-lg transition-all text-left group ${view === ViewMode.INVENTORY && selectedBinderId === binder.id ? 'text-ink-primary font-bold' : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated'}`}
                       >
                         <span className="text-[11px] truncate">{binder.name}</span>
                       </button>
@@ -89,19 +89,19 @@ export const Sidebar = ({
               <NavButton active={view === ViewMode.ADD_CARD} onClick={() => setView(ViewMode.ADD_CARD)} icon={<PlusCircle size={16} />} label="Add Card" />
             </div>
 
-            <div className="space-y-2">
-              <span className="px-4 text-[10px] font-black text-[#c9a227]/40 uppercase tracking-widest">Identity</span>
+            <div className="space-y-control">
+              <span className="px-4 text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Identity</span>
               <NavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={16} />} label="My Profile" />
             </div>
           </>
         )}
       </nav>
 
-      <div className="space-y-4 pt-6 mt-auto border-t border-black/6">
+      <div className="space-y-4 pt-6 mt-auto border-t border-border-soft">
         {!isGuest ? (
-          <div className="flex items-center justify-between px-4 h-12 rounded-xl glass-subtle">
+          <div className="flex items-center justify-between px-4 h-12 rounded-xl bg-surface-elevated border border-border-soft">
             <div className="flex items-center gap-2 truncate">
-              <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center ${currentUser.avatar ? '' : 'bg-[#c9a227]/10 text-[#c9a227]'}`}>
+              <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center ${currentUser.avatar ? '' : 'bg-gold-500/10 text-gold-500'}`}>
                 {currentUser.avatar ? <img src={currentUser.avatar} className="w-full h-full object-cover" /> : <UserIcon size={16} />}
               </div>
               <span className="text-sm font-bold truncate italic">{currentUser?.username}</span>
@@ -132,11 +132,12 @@ interface NavButtonProps {
 }
 
 const NavButton = ({ active, onClick, icon, label, trailing }: NavButtonProps) => (
-  <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] ${active ? 'bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20 shadow-lg' : 'text-stone-400 hover:text-stone-700 hover:bg-black/[0.03]'}`}>
+  <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] relative group ${active ? 'bg-surface-elevated text-ink-primary' : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated/50'}`}>
     <div className="flex items-center gap-4">
-      {React.cloneElement(icon, { size: 16 } as any)}
-      <span className="text-sm font-semibold">{label}</span>
+      {React.cloneElement(icon, { size: 16, className: active ? 'text-ink-primary' : '' } as any)}
+      <span className={`text-sm ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
     </div>
+    {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-gold-500 rounded-full" />}
     {trailing}
   </button>
 );

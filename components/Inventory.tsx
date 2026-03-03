@@ -145,33 +145,33 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
   };
 
   return (
-    <div className={`space-y-12 pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Your Collection</span>
+    <div className={`space-y-major pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-section">
+        <div className="space-y-control">
+          <div className="flex items-center gap-control">
+            <span className="text-[10px] font-semibold text-ink-secondary/60 uppercase tracking-widest">Your Collection</span>
             {activeBinder && (
               <>
-                <span className="text-stone-300">/</span>
-                <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest">Binders</span>
+                <span className="text-ink-secondary/20">/</span>
+                <span className="text-[10px] font-semibold text-gold-500 uppercase tracking-widest">Binders</span>
               </>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-padding">
             <button 
               onClick={() => setShowBinderSelector(true)}
-              className="flex items-center gap-3 group text-left transition-all active:scale-[0.98]"
+              className="flex items-center gap-control group text-left transition-all active:scale-[0.98]"
             >
-              <h2 className="text-[32px] font-black tracking-tighter text-[#1a1408] leading-tight group-hover:text-[#c9a227]">
+              <h1 className="group-hover:text-gold-500 transition-colors">
                 {activeBinder ? activeBinder.name : 'Your Portfolio'}
-              </h2>
-              <ChevronDown className={`text-stone-300 group-hover:text-[#c9a227] transition-all ${showBinderSelector ? 'rotate-180' : ''}`} size={24} />
+              </h1>
+              <ChevronDown className={`text-ink-secondary/20 group-hover:text-gold-500 transition-all ${showBinderSelector ? 'rotate-180' : ''}`} size={24} />
             </button>
             
             {activeBinder && (
               <button 
                 onClick={() => onDeletePage(activeBinder.id)} 
-                className="p-2 text-stone-300 hover:text-rose-500 transition-colors active:scale-95"
+                className="p-2 text-ink-secondary/20 hover:text-rose-500 transition-colors active:scale-95"
                 title="Delete Binder"
               >
                 <Trash2 size={20} />
@@ -179,40 +179,40 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
             )}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setIsCreatingPage(true)} className="btn-secondary h-12 px-6 uppercase text-[10px] tracking-widest font-black active:scale-[0.97]">
+        <div className="flex items-center gap-control">
+          <button onClick={() => setIsCreatingPage(true)} className="btn-secondary h-12 px-6 text-[10px] tracking-widest font-bold active:scale-[0.97]">
             <Plus size={16} className="mr-2" /> New Binder
           </button>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
+      <div className="space-y-control">
+        <div className="flex items-center justify-between gap-control">
           <div className="relative flex-1 group">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-[#c9a227] transition-colors" size={16} />
-             <input type="text" placeholder="Search current view..." value={filters.player} onChange={(e) => setFilters({...filters, player: e.target.value})} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-12 pl-11 pr-4 text-sm font-semibold text-[#1a1408] focus:border-[#c9a227]/40 outline-none transition-all placeholder:text-stone-400" />
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-secondary/40 group-focus-within:text-gold-500 transition-colors" size={16} />
+             <input type="text" placeholder="Search current view..." value={filters.player} onChange={(e) => setFilters({...filters, player: e.target.value})} className="w-full bg-surface-elevated border border-border-soft rounded-xl h-12 pl-11 pr-4 text-sm font-semibold text-ink-primary focus:border-gold-500/40 outline-none transition-all placeholder:text-ink-secondary/40" />
           </div>
-          <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary h-12 px-6 flex items-center gap-2 active:scale-[0.97] ${showFilters ? 'bg-[#c9a227]/10 text-[#c9a227] border-[#c9a227]/20' : ''}`}>
-            <FilterIcon size={16} /><span className="hidden md:inline uppercase text-[10px] tracking-widest font-black">Refine</span>
+          <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary h-12 px-6 flex items-center gap-control active:scale-[0.97] ${showFilters ? 'bg-gold-500/10 text-gold-500 border-gold-500/20' : ''}`}>
+            <FilterIcon size={16} /><span className="hidden md:inline text-[10px] tracking-widest font-bold">Refine</span>
           </button>
         </div>
 
         {showFilters && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-top-2 duration-300">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-control animate-in slide-in-from-top-2 duration-300">
             <FilterSelect value={filters.team} onChange={(v: string) => setFilters({...filters, team: v})} options={uniqueTeams} placeholder="Team" />
             <FilterSelect value={filters.set} onChange={(v: string) => setFilters({...filters, set: v})} options={uniqueSets} placeholder="Set" />
             <FilterSelect value={filters.condition} onChange={(v: string) => setFilters({...filters, condition: v})} options={uniqueConditions} placeholder="Grade" />
             <FilterSelect value={filters.rarity} onChange={(v: string) => setFilters({...filters, rarity: v})} options={uniqueRarities} placeholder="Rarity" />
-            {hasActiveFilters && <button onClick={resetAllViewFilters} className="col-span-full text-center text-[10px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-400 transition-colors py-4 active:scale-95">Reset Filters</button>}
+            {hasActiveFilters && <button onClick={resetAllViewFilters} className="col-span-full text-center text-[10px] font-bold text-rose-500 uppercase tracking-widest hover:text-rose-400 transition-colors py-control active:scale-95">Reset Filters</button>}
           </div>
         )}
       </div>
 
       {filteredCards.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-section">
           {filteredCards.map(card => (
-            <div key={card.id} className="group cursor-pointer space-y-4" onClick={() => setSelectedCard(card)}>
-              <div className="aspect-square rounded-[16px] overflow-hidden border border-black/6 shadow-lg bg-stone-100 relative flex items-center justify-center p-4 img-loading">
+            <div key={card.id} className="group cursor-pointer space-y-control" onClick={() => setSelectedCard(card)}>
+              <div className="aspect-square rounded-xl overflow-hidden border border-border-soft shadow-sm bg-surface-elevated relative flex items-center justify-center p-padding img-loading">
                 <img 
                   src={card.images[0]} 
                   loading="lazy"
@@ -222,18 +222,18 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 />
                 <button 
                   onClick={(e) => { e.stopPropagation(); onUpdate(card); }} 
-                  className="absolute top-2 left-2 p-2.5 bg-[#1a1408] text-[#c9a227] rounded-lg shadow-xl z-30 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:scale-95"
+                  className="absolute top-control left-control p-2 bg-ink-primary text-gold-500 rounded-lg shadow-xl z-30 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:scale-95"
                   title="Modify Record"
                 >
                   <Edit3 size={14} />
                 </button>
               </div>
-              <div className="space-y-1">
-                <h4 className="font-black text-sm text-[#1a1408] truncate group-hover:text-[#c9a227] transition-colors">{card.playerName}</h4>
-                <p className="text-[10px] text-stone-400 font-black uppercase tracking-widest truncate">{card.set} {card.setNumber ? `#${card.setNumber}` : ''}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-black text-stone-500 tabular">£{card.marketValue.toLocaleString()}</span>
-                  {card.serialNumber && <span className="text-[9px] font-black text-[#c9a227] px-1.5 py-0.5 glass-subtle rounded border border-[#c9a227]/20">{card.serialNumber}</span>}
+              <div className="space-y-0.5">
+                <h4 className="font-bold text-sm text-ink-primary truncate group-hover:text-gold-500 transition-colors">{card.playerName}</h4>
+                <p className="text-[10px] text-ink-secondary/60 font-semibold uppercase tracking-widest truncate">{card.set} {card.setNumber ? `#${card.setNumber}` : ''}</p>
+                <div className="flex items-center justify-between pt-0.5">
+                  <span className="text-sm font-bold text-ink-secondary/80 tabular">£{card.marketValue.toLocaleString()}</span>
+                  {card.serialNumber && <span className="text-[9px] font-bold text-gold-500 px-1.5 py-0.5 bg-gold-500/5 rounded border border-gold-500/10">{card.serialNumber}</span>}
                 </div>
               </div>
             </div>
@@ -251,18 +251,18 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
 
       {/* Binder Selector Overlay */}
       {showBinderSelector && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-stone-900/60 backdrop-blur-xl p-6" onClick={() => setShowBinderSelector(false)}>
-          <div className="w-full max-w-sm glass rounded-[32px] overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-            <div className="p-8 border-b border-black/5 flex items-center justify-between">
-              <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Select Binder</span>
-              <button onClick={() => setShowBinderSelector(false)} className="p-2 text-stone-400 active:scale-90"><X size={20} /></button>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-ink-primary/40 backdrop-blur-md p-padding" onClick={() => setShowBinderSelector(false)}>
+          <div className="w-full max-w-sm card-vault overflow-hidden animate-in zoom-in-95 duration-200 p-0" onClick={e => e.stopPropagation()}>
+            <div className="p-padding border-b border-border-soft flex items-center justify-between">
+              <span className="text-[10px] font-bold text-ink-secondary/60 uppercase tracking-widest">Select Binder</span>
+              <button onClick={() => setShowBinderSelector(false)} className="p-2 text-ink-secondary/40 active:scale-90"><X size={20} /></button>
             </div>
-            <div className="p-4 max-h-[60vh] overflow-y-auto no-scrollbar space-y-2">
+            <div className="p-control max-h-[60vh] overflow-y-auto no-scrollbar space-y-control">
               <button 
                 onClick={() => handleSelectBinder('all')}
-                className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${activePageId === 'all' ? 'bg-[#c9a227]/10 text-[#c9a227]' : 'hover:bg-black/5 text-stone-600'}`}
+                className={`w-full flex items-center justify-between p-padding rounded-xl transition-all ${activePageId === 'all' ? 'bg-gold-500/10 text-gold-500' : 'hover:bg-surface-base text-ink-secondary/80'}`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-control">
                   <Layers size={18} />
                   <span className="text-sm font-bold">All Cards</span>
                 </div>
@@ -273,9 +273,9 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <button 
                   key={binder.id}
                   onClick={() => handleSelectBinder(binder.id)}
-                  className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all ${activePageId === binder.id ? 'bg-[#c9a227]/10 text-[#c9a227]' : 'hover:bg-black/5 text-stone-600'}`}
+                  className={`w-full flex items-center justify-between p-padding rounded-xl transition-all ${activePageId === binder.id ? 'bg-gold-500/10 text-gold-500' : 'hover:bg-surface-base text-ink-secondary/80'}`}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-control">
                     <BookOpen size={18} />
                     <span className="text-sm font-bold truncate">{binder.name}</span>
                   </div>
@@ -283,8 +283,8 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 </button>
               ))}
             </div>
-            <div className="p-6 bg-black/[0.02]">
-              <button onClick={() => { setShowBinderSelector(false); setIsCreatingPage(true); }} className="btn-primary w-full h-12 uppercase text-[10px] tracking-widest font-black">
+            <div className="p-padding bg-surface-base border-t border-border-soft">
+              <button onClick={() => { setShowBinderSelector(false); setIsCreatingPage(true); }} className="btn-primary w-full h-12 text-[10px] tracking-widest font-bold">
                 <Plus size={16} className="mr-2" /> New Binder
               </button>
             </div>
@@ -293,23 +293,23 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
       )}
 
       {selectedCard && (
-        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-stone-900/60 backdrop-blur-xl animate-in fade-in duration-[300ms]" onClick={() => setSelectedCard(null)}>
-          <div ref={shareRef} className={`w-full ${isExporting ? 'w-[1080px] h-[1350px] flex flex-col bg-[#faf8f4]' : 'h-full md:h-auto md:max-h-[90vh] md:max-w-4xl flex flex-col md:flex-row glass md:rounded-[24px]'} overflow-hidden border-black/10 shadow-2xl relative`} onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-ink-primary/40 backdrop-blur-md animate-in fade-in duration-[300ms]" onClick={() => setSelectedCard(null)}>
+          <div ref={shareRef} className={`w-full ${isExporting ? 'w-[1080px] h-[1350px] flex flex-col bg-surface-base' : 'h-full md:h-auto md:max-h-[90vh] md:max-w-4xl flex flex-col md:flex-row card-vault md:rounded-xl p-0'} overflow-hidden border-border-soft shadow-2xl relative`} onClick={e => e.stopPropagation()}>
              {isExporting && (
                <div className="absolute top-12 left-12 flex items-center gap-3 z-50">
-                 <div className="w-10 h-10 bg-[#c9a227] rounded-lg flex items-center justify-center shadow-lg">
+                 <div className="w-10 h-10 bg-gold-500 rounded-lg flex items-center justify-center shadow-lg">
                    <img src="https://oewvucbsbcxxwtnflbfw.supabase.co/storage/v1/object/public/assets/TCVaultIcon.png" className="w-6 h-6 invert brightness-0" alt="" />
                  </div>
-                 <span className="text-xl font-black tracking-tighter uppercase text-[#1a1408]">TC <span className="text-[#c9a227]">Vault</span></span>
+                 <span className="text-xl font-bold tracking-tighter text-ink-primary">TC <span className="text-gold-500">Vault</span></span>
                </div>
              )}
              {!isExporting && (
-               <button onClick={() => setSelectedCard(null)} className="absolute top-4 left-4 md:top-8 md:right-8 md:left-auto z-[110] p-3 min-w-[44px] min-h-[44px] flex items-center justify-center glass-subtle rounded-full text-stone-500 hover:bg-black/5 transition-colors active:scale-95 shadow-xl">
+               <button onClick={() => setSelectedCard(null)} className="absolute top-4 left-4 md:top-8 md:right-8 md:left-auto z-[110] p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-surface-elevated border border-border-soft rounded-full text-ink-secondary/60 hover:bg-surface-base transition-colors active:scale-95 shadow-xl">
                  <X size={24} />
                </button>
              )}
 
-             <div className={`${isExporting ? 'h-[720px] w-full p-16' : 'flex-[1.4] md:flex-1 p-4 md:p-12'} bg-black/[0.02] flex flex-col items-center justify-center relative min-h-0`}>
+             <div className={`${isExporting ? 'h-[720px] w-full p-16' : 'flex-[1.4] md:flex-1 p-padding md:p-major'} bg-surface-base flex flex-col items-center justify-center relative min-h-0`}>
                 {isExporting && selectedCard.images.length > 1 ? (
                   <div className="grid grid-cols-2 gap-16 w-full max-w-[960px]">
                     {selectedCard.images.map((img, idx) => (
@@ -332,20 +332,20 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                      />
                      {!isExporting && selectedCard.images.length > 1 && (
                        <>
-                          <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === 0 ? selectedCard.images.length - 1 : prev - 1); }} className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/10 text-stone-800 hover:bg-[#c9a227] hover:text-white transition-all ml-2 shadow-xl z-20 active:scale-90"><ChevronLeft size={24} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === selectedCard.images.length - 1 ? 0 : prev + 1); }} className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-black/10 text-stone-800 hover:bg-[#c9a227] hover:text-white transition-all mr-2 shadow-xl z-20 active:scale-90"><ChevronRight size={24} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === 0 ? selectedCard.images.length - 1 : prev - 1); }} className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-ink-primary/5 text-ink-primary hover:bg-gold-500 hover:text-white transition-all ml-2 shadow-xl z-20 active:scale-90"><ChevronLeft size={24} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === selectedCard.images.length - 1 ? 0 : prev + 1); }} className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-ink-primary/5 text-ink-primary hover:bg-gold-500 hover:text-white transition-all mr-2 shadow-xl z-20 active:scale-90"><ChevronRight size={24} /></button>
                        </>
                      )}
                   </div>
                 )}
              </div>
-             <div className={`${isExporting ? 'h-[630px] w-full p-16' : 'flex-1 md:w-[380px] p-8 md:p-12'} space-y-10 ${isExporting ? '' : 'overflow-y-auto'} bg-white flex flex-col border-t ${isExporting ? 'border-t' : 'md:border-t-0 md:border-l'} border-black/10 h-auto ${isExporting ? '' : 'md:h-full'}`}>
-                <div className={`${isExporting ? 'space-y-10' : 'space-y-8'}`}>
-                  <div className="space-y-4">
-                    <span className={`${isExporting ? 'text-lg' : 'text-[10px]'} font-black text-stone-400 uppercase tracking-widest`}>{selectedCard.rarityTier || 'Collection Item'}</span>
-                    <h3 className={`${isExporting ? 'text-7xl' : 'text-2xl'} font-black text-[#1a1408] tracking-tighter leading-tight`}>{selectedCard.playerName}</h3>
+             <div className={`${isExporting ? 'h-[630px] w-full p-16' : 'flex-1 md:w-[380px] p-padding md:p-section'} space-y-major ${isExporting ? '' : 'overflow-y-auto'} bg-surface-elevated flex flex-col border-t ${isExporting ? 'border-t' : 'md:border-t-0 md:border-l'} border-border-soft h-auto ${isExporting ? '' : 'md:h-full'}`}>
+                <div className={`${isExporting ? 'space-y-10' : 'space-y-section'}`}>
+                  <div className="space-y-control">
+                    <span className={`${isExporting ? 'text-lg' : 'text-[10px]'} font-bold text-ink-secondary/40 uppercase tracking-widest`}>{selectedCard.rarityTier || 'Collection Item'}</span>
+                    <h3 className={`${isExporting ? 'text-7xl' : 'text-2xl'} font-bold text-ink-primary tracking-tighter leading-tight`}>{selectedCard.playerName}</h3>
                   </div>
-                  <div className={`grid grid-cols-2 ${isExporting ? 'gap-x-20 gap-y-12' : 'gap-x-6 gap-y-10'}`}>
+                  <div className={`grid grid-cols-2 ${isExporting ? 'gap-x-20 gap-y-12' : 'gap-x-padding gap-y-section'}`}>
                     <Detail label="Team" value={selectedCard.team || 'N/A'} isExporting={isExporting} />
                     <Detail label="Set" value={selectedCard.set} isExporting={isExporting} />
                     <Detail label="Set #" value={selectedCard.setNumber || 'N/A'} isExporting={isExporting} />
@@ -362,7 +362,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                               target="_blank" 
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
-                              className="text-[#c9a227] hover:underline flex items-center gap-1 w-fit relative z-[110]"
+                              className="text-gold-500 hover:underline flex items-center gap-control w-fit relative z-[110]"
                             >
                               {selectedCard.certNumber}
                               <ExternalLink size={12} />
@@ -373,17 +373,17 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                     )}
                   </div>
                 </div>
-                <div className={`pt-8 border-t border-black/10 space-y-8 mt-auto ${isExporting ? 'pb-8' : ''}`}>
+                <div className={`pt-section border-t border-border-soft space-y-section mt-auto ${isExporting ? 'pb-8' : ''}`}>
                    {!isExporting && (
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-5 rounded-xl glass-subtle space-y-1"><span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Paid</span><p className="text-xl font-black text-[#1a1408]">£{selectedCard.pricePaid}</p></div>
-                        <div className="p-5 rounded-xl bg-[#c9a227]/5 border border-[#c9a227]/10 space-y-1 relative group text-center">
-                          <span className="text-[10px] font-black text-[#c9a227] uppercase tracking-widest">Market</span>
-                          <div className="flex items-center justify-center gap-2">
+                     <div className="grid grid-cols-2 gap-control">
+                        <div className="p-padding rounded-xl bg-surface-base border border-border-soft space-y-control"><span className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest">Paid</span><p className="text-xl font-bold text-ink-primary">£{selectedCard.pricePaid}</p></div>
+                        <div className="p-padding rounded-xl bg-gold-500/5 border border-gold-500/10 space-y-control relative group text-center">
+                          <span className="text-[10px] font-bold text-gold-500 uppercase tracking-widest">Market</span>
+                          <div className="flex items-center justify-center gap-control">
                             <div className="space-y-0.5">
-                              <p className="text-xl font-black text-[#c9a227]">£{selectedCard.marketValue}</p>
+                              <p className="text-xl font-bold text-gold-500">£{selectedCard.marketValue}</p>
                               {selectedCard.marketMeta && (
-                                <p className="text-[10px] font-bold text-stone-500 uppercase tracking-tight">
+                                <p className="text-[10px] font-semibold text-ink-secondary/60 uppercase tracking-tight">
                                   £{selectedCard.marketMeta.low}–£{selectedCard.marketMeta.high} · {selectedCard.marketMeta.confidence}
                                 </p>
                               )}
@@ -391,7 +391,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                             {onRefreshPrice && (
                               <button 
                                 onClick={(e) => { e.stopPropagation(); onRefreshPrice(selectedCard); }}
-                                className="p-2 text-[#c9a227] hover:bg-[#c9a227]/10 rounded-lg transition-all active:scale-90"
+                                className="p-2 text-gold-500 hover:bg-gold-500/10 rounded-lg transition-all active:scale-90"
                                 title="Refresh Market Price"
                               >
                                 <RefreshCw size={16} />
@@ -402,12 +402,12 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                      </div>
                    )}
                     {!isExporting && (
-                      <div className="flex gap-3">
-                        <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 uppercase text-[10px] tracking-widest font-black">Edit Record</button>
+                      <div className="flex gap-control">
+                        <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 text-[10px] tracking-widest font-bold">Edit Record</button>
                         {onShareCard && (
                           <button 
                             onClick={() => { onShareCard(selectedCard); setSelectedCard(null); }} 
-                            className="w-14 h-14 flex items-center justify-center rounded-xl border border-[#c9a227]/20 text-[#c9a227] hover:bg-[#c9a227]/5 transition-all active:scale-95 shadow-sm" 
+                            className="w-14 h-14 flex items-center justify-center rounded-xl border border-border-soft text-gold-500 hover:bg-gold-500/5 transition-all active:scale-95 shadow-sm" 
                             title="Share to Feed"
                           >
                             <Share2 size={20} />
@@ -415,7 +415,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                         )}
                         <button 
                           onClick={handleShareToSocials}
-                          className="w-14 h-14 flex items-center justify-center rounded-xl border border-[#c9a227]/20 text-[#c9a227] hover:bg-[#c9a227]/5 transition-all active:scale-95 shadow-sm" 
+                          className="w-14 h-14 flex items-center justify-center rounded-xl border border-border-soft text-gold-500 hover:bg-gold-500/5 transition-all active:scale-95 shadow-sm" 
                           title="Share to Socials"
                         >
                           <Instagram size={20} />
@@ -430,12 +430,12 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
       )}
 
       {isCreatingPage && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-stone-900/40 backdrop-blur-xl p-6" onClick={() => setIsCreatingPage(false)}>
-          <div className="w-full max-w-sm glass rounded-[24px] p-8 space-y-6 animate-in zoom-in-95 duration-[150ms]" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between"><h3 className="text-xl font-black text-[#1a1408]">New Binder</h3><button onClick={() => setIsCreatingPage(false)} className="text-stone-400 hover:text-[#1a1408] p-2 min-w-[44px] min-h-[44px] active:scale-90"><X size={20} /></button></div>
-            <form onSubmit={handleCreatePage} className="space-y-4">
-              <input autoFocus type="text" placeholder="Binder Name..." value={newPageName} onChange={e => setNewPageName(e.target.value)} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-12 px-4 text-sm font-semibold text-[#1a1408] focus:border-[#c9a227]/40 outline-none transition-all placeholder:text-stone-300" />
-              <button type="submit" className="btn-primary w-full h-12 uppercase text-[10px] tracking-widest">Create Binder</button>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-ink-primary/40 backdrop-blur-md p-padding" onClick={() => setIsCreatingPage(false)}>
+          <div className="w-full max-w-sm card-vault p-major space-y-section animate-in zoom-in-95 duration-[150ms]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between"><h3>New Binder</h3><button onClick={() => setIsCreatingPage(false)} className="text-ink-secondary/40 hover:text-ink-primary p-2 min-w-[44px] min-h-[44px] active:scale-90"><X size={20} /></button></div>
+            <form onSubmit={handleCreatePage} className="space-y-padding">
+              <input autoFocus type="text" placeholder="Binder Name..." value={newPageName} onChange={e => setNewPageName(e.target.value)} className="w-full bg-surface-base border border-border-soft rounded-xl h-12 px-padding text-sm font-semibold text-ink-primary focus:border-gold-500/40 outline-none transition-all placeholder:text-ink-secondary/20" />
+              <button type="submit" className="btn-primary w-full h-12 text-[10px] tracking-widest font-bold">Create Binder</button>
             </form>
           </div>
         </div>
@@ -457,12 +457,12 @@ const FilterSelect = ({ value, onChange, options, placeholder }: FilterSelectPro
       value={value} 
       onChange={(e) => onChange(e.target.value)} 
       style={{ colorScheme: 'light' }}
-      className={`w-full bg-black/[0.03] border rounded-xl h-12 px-4 text-[10px] font-black uppercase tracking-widest appearance-none cursor-pointer outline-none transition-all focus:border-[#c9a227]/40 ${value !== 'all' ? 'border-[#c9a227]/40 text-[#c9a227]' : 'border-black/6 text-stone-400 hover:text-stone-600'}`}
+      className={`w-full bg-surface-elevated border rounded-xl h-12 px-4 text-[10px] font-bold uppercase tracking-widest appearance-none cursor-pointer outline-none transition-all focus:border-gold-500/40 ${value !== 'all' ? 'border-gold-500/40 text-gold-500' : 'border-border-soft text-ink-secondary/40 hover:text-ink-secondary/60'}`}
     >
       <option value="all">{placeholder}</option>
-      {options.map((opt: string) => <option key={opt} value={opt} className="bg-white text-stone-800 font-semibold">{opt}</option>)}
+      {options.map((opt: string) => <option key={opt} value={opt} className="bg-surface-base text-ink-primary font-semibold">{opt}</option>)}
     </select>
-    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400" />
+    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-secondary/40" />
   </div>
 );
 
@@ -473,9 +473,9 @@ interface DetailProps {
 }
 
 const Detail = ({ label, value, isExporting }: DetailProps) => (
-  <div className="space-y-2">
-    <span className={`${isExporting ? 'text-sm' : 'text-[10px]'} font-black text-stone-400 uppercase tracking-widest block`}>{label}</span>
-    <div className={`${isExporting ? 'text-2xl' : 'text-sm'} font-bold text-stone-600 leading-tight`}>{value}</div>
+  <div className="space-y-control">
+    <span className={`${isExporting ? 'text-sm' : 'text-[10px]'} font-bold text-ink-secondary/40 uppercase tracking-widest block`}>{label}</span>
+    <div className={`${isExporting ? 'text-2xl' : 'text-sm'} font-semibold text-ink-secondary/80 leading-tight`}>{value}</div>
   </div>
 );
 

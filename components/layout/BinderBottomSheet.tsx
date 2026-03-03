@@ -31,7 +31,7 @@ export const BinderBottomSheet = ({
 
       {/* Sheet */}
       <div
-        className="relative bg-[#f5f2ec] rounded-t-[32px] border-t border-black/8 shadow-2xl animate-in slide-in-from-bottom duration-300 pb-safe"
+        className="relative bg-surface-elevated rounded-t-[32px] border-t border-ink-primary/10 shadow-2xl animate-in slide-in-from-bottom duration-300 pb-safe"
         onClick={e => e.stopPropagation()}
       >
         {/* Handle bar */}
@@ -40,8 +40,8 @@ export const BinderBottomSheet = ({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-black/6">
-          <span className="text-[10px] font-black text-[#c9a227]/60 uppercase tracking-widest">Your Vault</span>
+        <div className="flex items-center justify-between px-6 py-3 border-b border-ink-primary/5">
+          <span className="text-[10px] font-black text-gold-500/60 uppercase tracking-widest">Your Vault</span>
           <button
             onClick={onClose}
             className="p-2 text-stone-400 active:scale-90 transition-transform"
@@ -62,7 +62,7 @@ export const BinderBottomSheet = ({
             }}
             className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all active:scale-[0.98] ${
               selectedBinderId === 'all'
-                ? 'bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20'
+                ? 'bg-gold-500/10 text-gold-500 border border-gold-500/20'
                 : 'hover:bg-black/5 text-stone-600 border border-transparent'
             }`}
           >
@@ -84,7 +84,7 @@ export const BinderBottomSheet = ({
               }}
               className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all active:scale-[0.98] ${
                 selectedBinderId === binder.id
-                  ? 'bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20'
+                  ? 'bg-gold-500/10 text-gold-500 border border-gold-500/20'
                   : 'hover:bg-black/5 text-stone-600 border border-transparent'
               }`}
             >

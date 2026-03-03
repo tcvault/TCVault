@@ -22,7 +22,7 @@ export const MobileNav = ({
   goldGradientStyle
 }: MobileNavProps) => {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#f5f2ec]/90 backdrop-blur-xl border-t border-black/6 flex items-center justify-around px-8 z-[50] shadow-xl">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-elevated border-t border-border-soft flex items-center justify-around px-8 z-[50] shadow-xl">
       <MobileNavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={20} />} label="Feed" />
       <MobileNavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={20} />} label="Explore" />
       {!isGuest ? (
@@ -30,7 +30,7 @@ export const MobileNav = ({
           <button 
             onClick={() => setView(ViewMode.ADD_CARD)} 
             style={goldGradientStyle}
-            className="w-14 h-14 rounded-xl flex items-center justify-center -translate-y-7 shadow-[0_-6px_20px_rgba(201,162,39,0.3),0_10px_30px_rgba(201,162,39,0.25)] border-[3px] border-[#faf8f4] active:scale-[0.97] transition-all"
+            className="w-14 h-14 rounded-xl flex items-center justify-center -translate-y-7 shadow-[0_-6px_20px_rgba(201,162,39,0.3),0_10px_30px_rgba(201,162,39,0.25)] border-[3px] border-surface-base active:scale-[0.97] transition-all"
           >
             <Plus size={32} />
           </button>
@@ -64,8 +64,9 @@ interface MobileNavButtonProps {
 }
 
 const MobileNavButton = ({ active, onClick, icon, label }: MobileNavButtonProps) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] ${active ? 'text-[#c9a227]' : 'text-stone-400'}`}>
+  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] relative ${active ? 'text-ink-primary' : 'text-ink-secondary/40'}`}>
     {React.cloneElement(icon, { size: 20 } as any)}
-    <span className="text-[10px] font-black uppercase tracking-widest leading-none">{label}</span>
+    <span className="text-[10px] font-bold uppercase tracking-widest leading-none">{label}</span>
+    {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold-500 rounded-full" />}
   </button>
 );

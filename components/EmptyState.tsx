@@ -10,18 +10,18 @@ interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message, actionLabel, onAction }) => (
-  <div className="glass rounded-[24px] p-16 flex flex-col items-center justify-center text-center border-dashed border-black/10 animate-in fade-in duration-500">
-    <div className="flex flex-col items-center space-y-6 mb-10">
-      <div className="w-16 h-16 rounded-full glass-subtle flex items-center justify-center text-stone-400">
+  <div className="card-vault p-major flex flex-col items-center justify-center text-center border-dashed border-border-soft animate-in fade-in duration-500">
+    <div className="flex flex-col items-center space-y-padding mb-section">
+      <div className="w-16 h-16 rounded-full bg-surface-base flex items-center justify-center text-ink-secondary/40">
         {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { size: 32 }) : icon}
       </div>
-      <div className="space-y-3">
-        <h3 className="text-xl font-black text-[#1a1408]">{title}</h3>
-        <p className="text-sm text-stone-400 max-w-xs font-semibold">{message}</p>
+      <div className="space-y-control">
+        <h3 className="text-xl font-bold text-ink-primary">{title}</h3>
+        <p className="text-sm text-ink-secondary/40 max-w-xs font-semibold">{message}</p>
       </div>
     </div>
     {actionLabel && (
-      <button onClick={onAction} className="btn-primary h-12 px-8 font-black text-sm uppercase tracking-widest">
+      <button onClick={onAction} className="btn-primary h-12 px-8 font-bold text-sm uppercase tracking-widest">
         {actionLabel}
       </button>
     )}

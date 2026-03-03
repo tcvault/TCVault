@@ -176,49 +176,49 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
     : posts.filter(p => p.tag === activeFilter);
 
   return (
-    <div className={`space-y-8 md:space-y-12 max-w-2xl mx-auto pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
+    <div className={`space-y-major max-w-2xl mx-auto pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="flex items-end justify-between px-1 md:px-0">
-        <div className="space-y-1 md:space-y-2">
-          <span className="text-[9px] md:text-[10px] font-black text-stone-400 uppercase tracking-widest">Community Pulse</span>
-          <h2 className="text-2xl md:text-[32px] font-black tracking-tighter text-[#1a1408] leading-tight">Global Feed</h2>
+        <div className="space-y-control">
+          <span className="text-[10px] font-semibold text-ink-secondary/60 uppercase tracking-widest">Community Pulse</span>
+          <h1>Global Feed</h1>
         </div>
         {!user ? (
-          <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="btn-primary uppercase text-[10px] tracking-widest">Join to Post</button>
+          <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="btn-primary text-[10px] tracking-widest">Join to Post</button>
         ) : (
-          <button onClick={fetchPosts} className={`p-2 text-stone-400 hover:text-[#c9a227] transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
+          <button onClick={fetchPosts} className={`p-2 text-ink-secondary/40 hover:text-gold-500 transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
             <Ghost size={20} />
           </button>
         )}
       </div>
 
       {user && (
-        <form onSubmit={handlePost} className="glass rounded-[24px] p-6 space-y-4 border-black/6 shadow-2xl relative overflow-hidden">
+        <form onSubmit={handlePost} className="card-vault space-y-padding shadow-xl relative overflow-hidden">
           <textarea 
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
             placeholder="Share your latest pickup or PC update..."
-            className="w-full bg-black/[0.03] border border-black/6 rounded-xl p-4 text-sm font-semibold text-[#1a1408] focus:border-[#c9a227]/30 outline-none transition-all resize-none min-h-[100px] placeholder:text-stone-400"
+            className="w-full bg-surface-base border border-border-soft rounded-xl p-padding text-sm font-semibold text-ink-primary focus:border-gold-500/30 outline-none transition-all resize-none min-h-[100px] placeholder:text-ink-secondary/40"
           />
           
           {postImage && (
-            <div className="relative w-24 h-32 rounded-xl overflow-hidden border border-black/10 group bg-stone-900/5 flex items-center justify-center p-1">
+            <div className="relative w-24 h-32 rounded-xl overflow-hidden border border-border-soft group bg-surface-base flex items-center justify-center p-1">
               <img src={postImage} className="max-w-full max-h-full object-contain z-10" />
-              <button type="button" onClick={() => setPostImage(null)} className="absolute top-1 right-1 bg-black/60 text-white p-1.5 rounded-full hover:bg-rose-500 transition-colors z-20">
+              <button type="button" onClick={() => setPostImage(null)} className="absolute top-1 right-1 bg-ink-primary/60 text-white p-1.5 rounded-full hover:bg-rose-500 transition-colors z-20">
                 <X size={12} />
               </button>
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-y-4">
-            <div className="flex items-center gap-1 md:gap-2">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-stone-400 hover:text-[#c9a227] transition-colors">
+          <div className="flex flex-wrap items-center justify-between gap-y-padding">
+            <div className="flex items-center gap-control">
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-ink-secondary/40 hover:text-gold-500 transition-colors">
                 <ImageIcon size={20} />
               </button>
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
-              <div className="h-6 w-px bg-black/5 mx-1" />
+              <div className="h-6 w-px bg-border-soft mx-1" />
               <TagPicker value={selectedTag} onChange={setSelectedTag} />
             </div>
-            <button type="submit" disabled={isPosting || !newPostContent.trim()} className="btn-primary h-10 px-6 uppercase text-[10px] tracking-widest gap-2 disabled:opacity-50 ml-auto sm:ml-0">
+            <button type="submit" disabled={isPosting || !newPostContent.trim()} className="btn-primary h-10 px-6 text-[10px] tracking-widest gap-2 disabled:opacity-50 ml-auto sm:ml-0 font-bold">
               {isPosting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} 
               Post
             </button>
@@ -226,38 +226,38 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
         </form>
       )}
 
-      <div className="flex items-center gap-1.5 md:gap-3 overflow-x-auto no-scrollbar pb-2">
+      <div className="flex items-center gap-control overflow-x-auto no-scrollbar pb-2">
         <FilterButton active={activeFilter === 'All'} onClick={() => setActiveFilter('All')}>All Activity</FilterButton>
         <FilterButton active={activeFilter === 'Pickup'} onClick={() => setActiveFilter('Pickup')}>Pickups</FilterButton>
         <FilterButton active={activeFilter === 'PC Update'} onClick={() => setActiveFilter('PC Update')}>PC Updates</FilterButton>
         <FilterButton active={activeFilter === 'Show Coverage'} onClick={() => setActiveFilter('Show Coverage')}>Events</FilterButton>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-section">
         {filteredPosts.length > 0 ? (
           filteredPosts.map(post => (
-            <div key={post.id} className="glass rounded-[24px] border-black/6 overflow-hidden group hover:border-black/10 transition-all shadow-lg">
-              <div className="p-6 space-y-4">
+            <div key={post.id} className="card-vault overflow-hidden group hover:border-gold-500/20 transition-all shadow-sm p-0">
+              <div className="p-padding space-y-padding">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#c9a227]/10 flex items-center justify-center text-[#c9a227] font-bold italic border border-[#c9a227]/20 overflow-hidden">
+                  <div className="flex items-center gap-control">
+                    <div className="w-10 h-10 rounded-full bg-surface-base flex items-center justify-center text-gold-500 font-bold italic border border-border-soft overflow-hidden">
                       {post.userAvatar ? <img src={post.userAvatar} className="w-full h-full object-cover" /> : post.username[0]}
                     </div>
                     <div>
-                      <h4 className="text-sm font-black text-[#1a1408] hover:text-[#c9a227] cursor-pointer transition-colors">@{post.username}</h4>
-                      <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">
+                      <h4 className="text-sm font-bold text-ink-primary hover:text-gold-500 cursor-pointer transition-colors">@{post.username}</h4>
+                      <span className="text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">
                         {getRelativeTime(post.createdAt)}
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${getTagColor(post.tag)}`}>
+                  <div className="flex items-center gap-control">
+                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${getTagColor(post.tag)}`}>
                       {post.tag}
                     </span>
                     {user && post.userId === user.id && (
                       <button 
                         onClick={() => handleDeletePost(post.id)}
-                        className="p-1.5 text-stone-300 hover:text-rose-500 transition-colors active:scale-90"
+                        className="p-1.5 text-ink-secondary/20 hover:text-rose-500 transition-colors active:scale-90"
                         title="Delete Post"
                       >
                         <Trash2 size={14} />
@@ -266,23 +266,22 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                   </div>
                 </div>
 
-                <p className="text-sm font-semibold text-stone-700 leading-relaxed whitespace-pre-wrap">
+                <p className="text-sm font-medium text-ink-secondary/80 leading-relaxed whitespace-pre-wrap">
                   {post.content}
                 </p>
 
                 {post.imageUrl && (
-                  <div className="rounded-[24px] overflow-hidden bg-stone-900/5 border border-black/6 shadow-inner relative group/image">
+                  <div className="rounded-xl overflow-hidden bg-surface-base border border-border-soft shadow-inner relative group/image">
                     <img 
                       src={post.imageUrl} 
                       loading="lazy"
-                      className="max-w-full h-auto max-h-[70vh] block mx-auto object-contain bg-stone-50/50" 
+                      className="max-w-full h-auto max-h-[70vh] block mx-auto object-contain" 
                       alt="Post attachment" 
                     />
-                    <div className="absolute inset-0 bg-stone-900/5 pointer-events-none opacity-0 group-hover/image:opacity-100 transition-opacity"></div>
                   </div>
                 )}
 
-                <div className="flex items-center gap-6 pt-2">
+                <div className="flex items-center gap-section pt-control">
                   <ActionButton 
                     icon={<Heart size={18} className={user && post.likes.includes(user.id) ? 'fill-rose-500 text-rose-500' : ''} />} 
                     label={post.likes.length.toString()} 
@@ -292,48 +291,48 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                   <ActionButton 
                     icon={<MessageSquare size={18} />} 
                     label={post.commentCount.toString()} 
-                    color="hover:text-[#c9a227]" 
+                    color="hover:text-gold-500" 
                     onClick={() => setExpandedComments(expandedComments === post.id ? null : post.id)}
                   />
                   <ActionButton icon={<Share2 size={18} />} label="" color="hover:text-emerald-500" onClick={() => handleShare(post)} />
                 </div>
 
                 {expandedComments === post.id && (
-                  <div className="pt-6 border-t border-black/5 space-y-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-4 max-h-64 overflow-y-auto no-scrollbar">
+                  <div className="pt-padding border-t border-border-soft space-y-padding animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-padding max-h-64 overflow-y-auto no-scrollbar">
                       {(post.comments || []).map(comment => (
-                        <div key={comment.id} className="flex gap-3">
-                          <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-[10px] font-bold italic shrink-0">
+                        <div key={comment.id} className="flex gap-control">
+                          <div className="w-8 h-8 rounded-full bg-surface-base border border-border-soft flex items-center justify-center text-[10px] font-bold italic shrink-0">
                             {comment.userAvatar ? <img src={comment.userAvatar} className="w-full h-full rounded-full object-cover" /> : comment.username[0]}
                           </div>
-                          <div className="flex-1 space-y-1">
+                          <div className="flex-1 space-y-0.5">
                             <div className="flex items-center justify-between">
-                              <h5 className="text-[11px] font-black text-[#1a1408]">@{comment.username}</h5>
-                              <span className="text-[9px] font-semibold text-stone-400 uppercase">{getRelativeTime(comment.createdAt)}</span>
+                              <h5 className="text-[11px] font-bold text-ink-primary">@{comment.username}</h5>
+                              <span className="text-[9px] font-semibold text-ink-secondary/40 uppercase">{getRelativeTime(comment.createdAt)}</span>
                             </div>
-                            <p className="text-xs text-stone-600 font-medium leading-relaxed">{comment.content}</p>
+                            <p className="text-xs text-ink-secondary/80 font-medium leading-relaxed">{comment.content}</p>
                           </div>
                         </div>
                       ))}
                       {(post.comments || []).length === 0 && (
-                        <p className="text-center text-[10px] font-black text-stone-300 uppercase tracking-widest py-4">No comments yet</p>
+                        <p className="text-center text-[10px] font-bold text-ink-secondary/20 uppercase tracking-widest py-padding">No comments yet</p>
                       )}
                     </div>
 
                     {user && (
-                      <div className="flex gap-3">
+                      <div className="flex gap-control">
                         <input 
                           type="text" 
                           placeholder="Add a comment..." 
                           value={commentText}
                           onChange={(e) => setCommentText(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleComment(post.id)}
-                          className="flex-1 bg-black/[0.03] border border-black/5 rounded-xl h-10 px-4 text-xs font-semibold focus:border-[#c9a227]/30 outline-none text-[#1a1408]"
+                          className="flex-1 bg-surface-base border border-border-soft rounded-xl h-10 px-padding text-xs font-semibold focus:border-gold-500/30 outline-none text-ink-primary"
                         />
                         <button 
                           onClick={() => handleComment(post.id)}
                           disabled={!commentText.trim()}
-                          className="p-2 text-[#c9a227] hover:text-[#c9a227]/80 disabled:opacity-30 active:scale-95 transition-all"
+                          className="p-2 text-gold-500 hover:text-gold-500/80 disabled:opacity-30 active:scale-95 transition-all"
                         >
                           <Send size={18} />
                         </button>
@@ -357,18 +356,18 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
 };
 
 const TagPicker = ({ value, onChange }: { value: PostTag; onChange: (val: PostTag) => void }) => (
-  <div className="flex items-center gap-2">
-    <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest">Tag:</span>
+  <div className="flex items-center gap-control">
+    <span className="text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Tag:</span>
     <select 
       value={value}
       onChange={(e) => onChange(e.target.value as PostTag)}
       style={{ colorScheme: 'light' }}
-      className="bg-transparent text-[10px] font-black uppercase text-[#c9a227] outline-none cursor-pointer hover:text-[#c9a227]/80 transition-colors"
+      className="bg-transparent text-[10px] font-bold uppercase text-gold-500 outline-none cursor-pointer hover:text-gold-500/80 transition-colors"
     >
-      <option value="General" className="bg-white text-stone-800 font-semibold">General</option>
-      <option value="Pickup" className="bg-white text-stone-800 font-semibold">Pickup</option>
-      <option value="PC Update" className="bg-white text-stone-800 font-semibold">PC Update</option>
-      <option value="Show Coverage" className="bg-white text-stone-800 font-semibold">Show Coverage</option>
+      <option value="General" className="bg-surface-base text-ink-primary font-semibold">General</option>
+      <option value="Pickup" className="bg-surface-base text-ink-primary font-semibold">Pickup</option>
+      <option value="PC Update" className="bg-surface-base text-ink-primary font-semibold">PC Update</option>
+      <option value="Show Coverage" className="bg-surface-base text-ink-primary font-semibold">Show Coverage</option>
     </select>
   </div>
 );
@@ -382,7 +381,7 @@ interface FilterButtonProps {
 const FilterButton = ({ active, onClick, children }: FilterButtonProps) => (
   <button 
     onClick={onClick}
-    className={`px-2 md:px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-black uppercase tracking-tighter md:tracking-widest border transition-all active:scale-95 ${active ? 'bg-[#1a1408] text-[#c9a227] border-[#1a1408]' : 'glass-subtle text-stone-400 border-black/10 hover:border-black/20'}`}
+    className={`px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${active ? 'bg-ink-primary text-gold-500 border-ink-primary' : 'bg-surface-elevated text-ink-secondary/40 border-border-soft hover:border-ink-secondary/20'}`}
   >
     {children}
   </button>
@@ -396,17 +395,17 @@ interface ActionButtonProps {
 }
 
 const ActionButton = ({ icon, label, color, onClick }: ActionButtonProps) => (
-  <button onClick={onClick} className={`flex items-center gap-2 text-stone-500 transition-colors active:scale-90 ${color}`}>
+  <button onClick={onClick} className={`flex items-center gap-control text-ink-secondary/60 transition-colors active:scale-90 ${color}`}>
     {icon}
-    <span className="text-xs font-black tabular">{label}</span>
+    <span className="text-xs font-bold tabular">{label}</span>
   </button>
 );
 
 const getTagColor = (tag: PostTag) => {
   switch (tag) {
-    case 'Pickup': return 'bg-[#c9a227]/10 text-[#c9a227]';
+    case 'Pickup': return 'bg-gold-500/10 text-gold-500';
     case 'PC Update': return 'bg-emerald-500/10 text-emerald-600';
-    case 'Show Coverage': return 'bg-[#c9a227]/10 text-[#c9a227]';
+    case 'Show Coverage': return 'bg-gold-500/10 text-gold-500';
     default: return 'bg-stone-500/10 text-stone-600';
   }
 }

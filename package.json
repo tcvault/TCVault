@@ -1,6 +1,7 @@
 {
   "name": "tc-vault",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "dev": "vite",
@@ -11,10 +12,12 @@
   "dependencies": {
     "@google/genai": "^1.40.0",
     "@supabase/supabase-js": "^2.97.0",
+    "@tailwindcss/vite": "^4.2.1",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.563.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

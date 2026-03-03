@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { identifyCard, getMarketIntel } from './services/gemini';
+import { getMarketIntel } from './services/gemini';
 import { buildMarketMeta } from './services/valuation';
 import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost } from './types';
 import Dashboard from './components/Dashboard';
@@ -335,7 +335,7 @@ const App: React.FC = () => {
 
   if (isInitializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#faf8f4]">
+      <div className="flex items-center justify-center min-h-screen bg-surface-base">
         <TCLogo className="w-16 h-16 animate-pulse shrink-0" />
       </div>
     );
@@ -345,8 +345,8 @@ const App: React.FC = () => {
   const showAuthTakeover = view === ViewMode.SETTINGS || (isGuest && [ViewMode.DASHBOARD, ViewMode.INVENTORY, ViewMode.ADD_CARD, ViewMode.PROFILE].includes(view));
 
   return (
-    <div className="flex h-screen bg-[#faf8f4] text-[#1a1408] overflow-hidden relative selection:bg-[#c9a227]/20">
-      <aside className="hidden md:flex flex-col w-64 border-r border-black/6 bg-[#f5f2ec] h-full shadow-inner">
+    <div className="flex h-screen bg-surface-base text-ink-primary overflow-hidden relative selection:bg-gold-500/20">
+      <aside className="hidden md:flex flex-col w-64 border-r border-ink-primary/5 bg-surface-elevated h-full shadow-inner">
         <Sidebar 
           view={view}
           setView={setView}
@@ -359,7 +359,7 @@ const App: React.FC = () => {
         />
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-[#faf8f4] relative pb-32 md:pb-0 scroll-smooth">
+      <main className="flex-1 overflow-y-auto bg-surface-base relative pb-32 md:pb-0 scroll-smooth">
         <div className="p-4 md:p-16 max-w-6xl mx-auto min-h-screen">
           {view === ViewMode.FEED && <Feed user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
           {view === ViewMode.EXPLORE && <Explore user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}

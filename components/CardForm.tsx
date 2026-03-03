@@ -270,64 +270,64 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   };
 
   return (
-    <div className={`max-w-4xl mx-auto space-y-12 pb-16 ${animationClass || 'animate-in fade-in duration-300'}`}>
-      <div className="flex items-center justify-between gap-8">
-        <h2 className="text-[32px] font-black tracking-tighter text-[#1a1408] leading-tight">
+    <div className={`max-w-4xl mx-auto space-y-major pb-16 ${animationClass || 'animate-in fade-in duration-300'}`}>
+      <div className="flex items-center justify-between gap-padding">
+        <h2 className="text-[32px] font-bold tracking-tighter text-ink-primary leading-tight">
           {isEditing ? 'Modify Record' : 'Add to Collection'}
         </h2>
-        <button onClick={onCancel} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-stone-400 hover:text-[#1a1408] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] rounded-xl active:scale-95"><X size={24} /></button>
+        <button onClick={onCancel} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-secondary/40 hover:text-ink-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded-xl active:scale-95"><X size={24} /></button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-5 space-y-8">
-          <div className="glass rounded-[24px] p-6 space-y-8 border-black/6 relative overflow-hidden shadow-lg">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-section">
+        <div className="lg:col-span-5 space-y-section">
+          <div className="card-vault p-padding space-y-padding relative overflow-hidden shadow-lg">
             {isScanning && (
-              <div className="absolute inset-0 bg-[#faf8f4]/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-8 space-y-8 text-center animate-in fade-in duration-300">
-                 <div className="relative w-full aspect-square border border-black/6 rounded-[16px] overflow-hidden bg-stone-100">
+              <div className="absolute inset-0 bg-surface-base/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-padding space-y-padding text-center animate-in fade-in duration-300">
+                 <div className="relative w-full aspect-square border border-border-soft rounded-xl overflow-hidden bg-surface-base">
                    <div className="scanner-line"></div>
-                   <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-[#c9a227] animate-pulse" /></div>
+                   <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-gold-500 animate-pulse" /></div>
                  </div>
-                 <div className="space-y-2">
-                   <span className="text-[10px] font-black text-white uppercase tracking-widest bg-[#c9a227] px-3 py-1 rounded-full shadow-lg shadow-[#c9a227]/20">Identifying...</span>
-                   <p className="text-sm font-semibold text-stone-400 animate-pulse">{scanStep}</p>
+                 <div className="space-y-control">
+                   <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-gold-500 px-3 py-1 rounded-full shadow-lg shadow-gold-500/20">Identifying...</span>
+                   <p className="text-sm font-semibold text-ink-secondary/40 animate-pulse">{scanStep}</p>
                  </div>
               </div>
             )}
             <div className="flex items-center justify-between px-2">
-              <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-2">
-                Photos <span className="text-[8px] px-1.5 py-0.5 rounded bg-[#c9a227]/10 text-[#c9a227] border border-[#c9a227]/20">Auto-Crop Enabled</span>
+              <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest flex items-center gap-control">
+                Photos <span className="text-[8px] px-1.5 py-0.5 rounded bg-gold-500/10 text-gold-500 border border-gold-500/20">Auto-Crop Enabled</span>
               </label>
-              <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-widest tabular">{images.length} / 4</span>
+              <span className="text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest tabular">{images.length} / 4</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-control">
               {images.map((img, idx) => (
-                <div key={idx} className="aspect-square bg-stone-100 rounded-xl overflow-hidden relative group border border-black/6 shadow-md flex items-center justify-center p-2 img-loading">
+                <div key={idx} className="aspect-square bg-surface-base rounded-xl overflow-hidden relative group border border-border-soft shadow-md flex items-center justify-center p-control img-loading">
                   <img src={img} onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} className="w-full h-full object-contain select-none z-10" alt="Preview" />
                   {isCropping === idx && (
-                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-2">
-                      <Loader2 size={24} className="text-[#c9a227] animate-spin" />
-                      <span className="text-[8px] font-black text-[#c9a227] uppercase tracking-widest">Recropping...</span>
+                    <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-control">
+                      <Loader2 size={24} className="text-gold-500 animate-spin" />
+                      <span className="text-[8px] font-bold text-gold-500 uppercase tracking-widest">Recropping...</span>
                     </div>
                   )}
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+                  <div className="absolute top-4 right-4 flex flex-col gap-control z-20">
                     <button onClick={() => removeImage(idx)} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-rose-600 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg"><Trash2 size={16} /></button>
                     {isEditing && (
-                      <button type="button" onClick={() => handleRecrop(idx)} disabled={isCropping !== null} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-[#c9a227] text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
+                      <button type="button" onClick={() => handleRecrop(idx)} disabled={isCropping !== null} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-gold-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
                     )}
                   </div>
                 </div>
               ))}
               {(images.length < 4 || (isCropping !== null && !images[isCropping])) && (
-                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-square rounded-xl border border-dashed border-black/10 flex flex-col items-center justify-center gap-4 hover:border-black/20 hover:bg-black/[0.02] transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c9a227] active:scale-[0.98] relative">
+                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-square rounded-xl border border-dashed border-border-soft flex flex-col items-center justify-center gap-padding hover:border-ink-primary/20 hover:bg-surface-elevated transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 active:scale-[0.98] relative">
                   {isSaving || (isCropping !== null && !images[isCropping]) ? (
-                    <div className="flex flex-col items-center gap-3">
-                       <Loader2 className="text-[#c9a227] animate-spin" size={24} />
-                       <span className="text-[8px] font-black text-[#c9a227] uppercase tracking-[0.2em] animate-pulse">Precision Cropping...</span>
+                    <div className="flex flex-col items-center gap-control">
+                       <Loader2 className="text-gold-500 animate-spin" size={24} />
+                       <span className="text-[8px] font-bold text-gold-500 uppercase tracking-[0.2em] animate-pulse">Precision Cropping...</span>
                     </div>
                   ) : (
                     <>
-                      <Plus className="text-stone-300 group-hover:text-stone-500 transition-colors" size={24} />
-                      <span className="text-[10px] font-black text-stone-300 group-hover:text-stone-500 uppercase tracking-widest transition-colors">Add Photo</span>
+                      <Plus className="text-ink-secondary/20 group-hover:text-ink-secondary/40 transition-colors" size={24} />
+                      <span className="text-[10px] font-bold text-ink-secondary/20 group-hover:text-ink-secondary/40 uppercase tracking-widest transition-colors">Add Photo</span>
                     </>
                   )}
                 </button>
@@ -335,43 +335,43 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
             {images.length > 0 && (
-              <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null} className={`w-full h-14 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.97] ${hasScanned ? 'btn-secondary text-stone-500' : 'btn-primary'}`}>
+              <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null} className={`w-full h-14 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-control active:scale-[0.97] ${hasScanned ? 'btn-secondary text-ink-secondary/40' : 'btn-primary'}`}>
                 {isScanning ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={16} />}
                 <span className="uppercase text-[10px] tracking-widest">{hasScanned ? 'Rescan Identification' : 'Identify with AI'}</span>
               </button>
             )}
           </div>
 
-          <div className="glass rounded-[24px] p-6 space-y-6 border-black/6">
-            <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-widest px-2">Visibility</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setFormData({...formData, isPublic: true})} className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all ${formData.isPublic ? 'bg-[#c9a227]/10 border-[#c9a227]/30 text-[#c9a227]' : 'bg-black/[0.02] border-black/6 text-stone-400 hover:border-black/10'}`}>
-                <Globe size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Public</span>
+          <div className="card-vault p-padding space-y-padding">
+            <h3 className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest px-2">Visibility</h3>
+            <div className="grid grid-cols-2 gap-control">
+              <button type="button" onClick={() => setFormData({...formData, isPublic: true})} className={`flex flex-col items-center justify-center gap-control p-6 rounded-xl border transition-all ${formData.isPublic ? 'bg-gold-500/10 border-gold-500/30 text-gold-500' : 'bg-surface-base border-border-soft text-ink-secondary/40 hover:border-ink-primary/10'}`}>
+                <Globe size={24} /><span className="text-[10px] font-bold uppercase tracking-widest">Public</span>
               </button>
-              <button type="button" onClick={() => setFormData({...formData, isPublic: false})} className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border transition-all ${!formData.isPublic ? 'bg-stone-100 border-black/10 text-stone-700' : 'bg-black/[0.02] border-black/6 text-stone-400 hover:border-black/10'}`}>
-                <Lock size={24} /><span className="text-[10px] font-black uppercase tracking-widest">Private</span>
+              <button type="button" onClick={() => setFormData({...formData, isPublic: false})} className={`flex flex-col items-center justify-center gap-control p-6 rounded-xl border transition-all ${!formData.isPublic ? 'bg-surface-elevated border-border-soft text-ink-primary' : 'bg-surface-base border-border-soft text-ink-secondary/40 hover:border-ink-primary/10'}`}>
+                <Lock size={24} /><span className="text-[10px] font-bold uppercase tracking-widest">Private</span>
               </button>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-8">
-          <div className="glass rounded-[24px] p-8 md:p-12 space-y-8 border-black/6 shadow-lg bg-white/[0.01]">
-            {error && <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-4 text-rose-500 text-sm font-black tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
+        <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-section">
+          <div className="card-vault p-padding md:p-12 space-y-padding shadow-lg bg-white/[0.01]">
+            {error && <div className="p-padding bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-padding text-rose-500 text-sm font-bold tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
               <Field label="Player" value={formData.playerName} onChange={(v: string) => setFormData({...formData, playerName: v})} icon={<User size={16} />} />
               <Field label="Team" value={formData.team} onChange={(v: string) => setFormData({...formData, team: v})} icon={<Users size={16} />} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
               <Field label="Set / Product" value={formData.set} onChange={(v: string) => setFormData({...formData, set: v})} icon={<Eye size={16} />} />
               <Field label="Set Number" value={formData.setNumber} onChange={(v: string) => setFormData({...formData, setNumber: v})} icon={<Hash size={16} />} />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
               <Field label="Parallel / Variant" value={formData.cardSpecifics} onChange={(v: string) => setFormData({...formData, cardSpecifics: v})} icon={<FileText size={16} />} />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-control">
                 <Field label="Serial #" value={formData.serialNumber} onChange={(v: string) => setFormData({...formData, serialNumber: v})} icon={<BookOpen size={16} />} />
                 {formData.condition?.startsWith('PSA') && (
                   <Field label="PSA Cert #" value={formData.certNumber} onChange={(v: string) => setFormData({...formData, certNumber: v})} icon={<ShieldCheck size={16} />} />
@@ -379,9 +379,9 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Grade / Condition</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
+              <div className="space-y-control">
+                <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">Grade / Condition</label>
                 <div className="relative group">
                    <select 
                     value={formData.condition || ''} 
@@ -395,32 +395,32 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                       });
                     }} 
                     style={{ colorScheme: 'light' }} 
-                    className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 px-4 outline-none font-black text-sm text-[#1a1408] focus:border-[#c9a227]/40 appearance-none transition-all cursor-pointer"
+                    className="w-full bg-surface-base border border-border-soft rounded-xl h-14 px-padding outline-none font-bold text-sm text-ink-primary focus:border-gold-500/40 appearance-none transition-all cursor-pointer"
                   >
                     {standardConditions.map(c => <option key={c} value={c} className="bg-white font-semibold">{c}</option>)}
                    </select>
-                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400" />
+                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-secondary/40" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Assign to Binder</label>
+              <div className="space-y-control">
+                <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">Assign to Binder</label>
                 <div className="relative group">
-                  <select value={formData.pageId || ''} onChange={e => setFormData({...formData, pageId: e.target.value})} style={{ colorScheme: 'light' }} className={`w-full bg-black/[0.03] border rounded-xl h-14 px-4 outline-none font-black text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-[#c9a227]/40 text-[#c9a227]' : 'border-black/6 text-stone-400'}`}>
+                  <select value={formData.pageId || ''} onChange={e => setFormData({...formData, pageId: e.target.value})} style={{ colorScheme: 'light' }} className={`w-full bg-surface-base border rounded-xl h-14 px-padding outline-none font-bold text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-gold-500/40 text-gold-500' : 'border-border-soft text-ink-secondary/40'}`}>
                     <option value="" className="bg-white font-semibold">All Cards</option>
                     {pages.map(p => <option key={p.id} value={p.id} className="bg-white font-semibold">{p.name}</option>)}
                   </select>
-                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-stone-400" />
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-secondary/40" />
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-8 border-t border-black/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-section pt-padding border-t border-border-soft">
               <Field label="Price Paid (£)" type="number" value={formData.pricePaid} onChange={(v: string) => setFormData({...formData, pricePaid: Number(v)})} icon={<PoundSterling size={16} />} />
               <Field label="Market Value (£)" type="number" value={formData.marketValue} onChange={(v: string) => setFormData({...formData, marketValue: Number(v)})} icon={<Zap size={16} />} />
             </div>
           </div>
           
-          <div className="flex gap-4">
+          <div className="flex gap-control">
             {isEditing && (
               <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-rose-500 border-rose-500/20 hover:bg-rose-500/10 h-14 px-6 uppercase text-[10px] tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Record</span></button>
             )}
@@ -445,11 +445,11 @@ interface FieldProps {
 }
 
 const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
-  <div className="space-y-2">
-    <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">{label}</label>
+  <div className="space-y-control">
+    <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">{label}</label>
     <div className="relative group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 group-focus-within:text-[#c9a227] transition-colors">{icon}</div>
-      <input type={type} step="0.01" value={value ?? ''} onChange={e => onChange(e.target.value)} className="w-full bg-black/[0.03] border border-black/6 rounded-xl h-14 pl-12 pr-4 focus:border-[#c9a227]/40 outline-none font-semibold text-sm text-[#1a1408] transition-all placeholder:text-stone-300" />
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-secondary/40 group-focus-within:text-gold-500 transition-colors">{icon}</div>
+      <input type={type} step="0.01" value={value ?? ''} onChange={e => onChange(e.target.value)} className="w-full bg-surface-base border border-border-soft rounded-xl h-14 pl-12 pr-4 focus:border-gold-500/40 outline-none font-semibold text-sm text-ink-primary transition-all placeholder:text-ink-secondary/20" />
     </div>
   </div>
 );
