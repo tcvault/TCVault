@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { SocialPost, PostTag, User, ViewMode, SocialComment } from '../types';
-import { MessageSquare, Heart, Share2, ImageIcon, Send, X, Loader2, Ghost, Trash2 } from 'lucide-react';
+import { MessageSquare, Heart, Share2, ImageIcon, Send, X, Loader2, RefreshCw, Trash2 } from 'lucide-react';
 import { vaultStorage } from '../services/storage';
 import EmptyState from './EmptyState';
 
@@ -35,6 +35,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
   const [expandedComments, setExpandedComments] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,11 +95,17 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
   };
 
   const handleDeletePost = async (postId: string) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
+    if (deletingPostId !== postId) {
+      setDeletingPostId(postId);
+      // Reset after 3 seconds if not confirmed
+      setTimeout(() => setDeletingPostId(null), 3000);
+      return;
+    }
     
     try {
       await vaultStorage.deletePost(postId);
       setPosts(prev => prev.filter(p => p.id !== postId));
+      setDeletingPostId(null);
       if (onToast) onToast("Post deleted.", "success");
     } catch {
       if (onToast) onToast("Failed to delete post.", "error");
@@ -179,14 +186,14 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
     <div className={`space-y-major max-w-2xl mx-auto pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="flex items-end justify-between px-1 md:px-0">
         <div className="space-y-control">
-          <span className="text-[10px] font-semibold text-ink-secondary/60 uppercase tracking-widest">Community Pulse</span>
+          <span className="text-micro font-semibold text-ink-secondary/60 uppercase tracking-widest">Community Pulse</span>
           <h1>Global Feed</h1>
         </div>
         {!user ? (
-          <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="btn-primary text-[10px] tracking-widest">Join to Post</button>
+          <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="btn-primary text-xs tracking-widest">Join to Post</button>
         ) : (
-          <button onClick={fetchPosts} className={`p-2 text-ink-secondary/40 hover:text-gold-500 transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
-            <Ghost size={20} />
+          <button onClick={fetchPosts} className={`p-2 text-ink-tertiary hover:text-gold-500 transition-all ${isRefreshing ? 'animate-spin' : ''}`}>
+            <RefreshCw size={20} />
           </button>
         )}
       </div>
@@ -218,7 +225,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
               <div className="h-6 w-px bg-border-soft mx-1" />
               <TagPicker value={selectedTag} onChange={setSelectedTag} />
             </div>
-            <button type="submit" disabled={isPosting || !newPostContent.trim()} className="btn-primary h-10 px-6 text-[10px] tracking-widest gap-2 disabled:opacity-50 ml-auto sm:ml-0 font-bold">
+            <button type="submit" disabled={isPosting || !newPostContent.trim()} className="btn-primary h-10 px-6 text-xs tracking-widest gap-2 disabled:opacity-50 ml-auto sm:ml-0 font-bold">
               {isPosting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} 
               Post
             </button>
@@ -245,21 +252,22 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-ink-primary hover:text-gold-500 cursor-pointer transition-colors">@{post.username}</h4>
-                      <span className="text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">
+                      <span className="text-xs font-semibold text-ink-tertiary uppercase tracking-widest">
                         {getRelativeTime(post.createdAt)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-control">
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest ${getTagColor(post.tag)}`}>
+                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-widest ${getTagColor(post.tag)}`}>
                       {post.tag}
                     </span>
                     {user && post.userId === user.id && (
                       <button 
                         onClick={() => handleDeletePost(post.id)}
-                        className="p-1.5 text-ink-secondary/20 hover:text-rose-500 transition-colors active:scale-90"
-                        title="Delete Post"
+                        className={`p-1.5 transition-all active:scale-90 flex items-center gap-2 ${deletingPostId === post.id ? 'text-error' : 'text-ink-tertiary hover:text-error'}`}
+                        title={deletingPostId === post.id ? "Confirm Delete" : "Delete Post"}
                       >
+                        {deletingPostId === post.id && <span className="text-xs font-bold uppercase tracking-widest">Tap to confirm</span>}
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -302,20 +310,20 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
                     <div className="space-y-padding max-h-64 overflow-y-auto no-scrollbar">
                       {(post.comments || []).map(comment => (
                         <div key={comment.id} className="flex gap-control">
-                          <div className="w-8 h-8 rounded-full bg-surface-base border border-border-soft flex items-center justify-center text-[10px] font-bold italic shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-surface-base border border-border-soft flex items-center justify-center text-xs font-bold italic shrink-0">
                             {comment.userAvatar ? <img src={comment.userAvatar} className="w-full h-full rounded-full object-cover" /> : comment.username[0]}
                           </div>
                           <div className="flex-1 space-y-0.5">
                             <div className="flex items-center justify-between">
                               <h5 className="text-[11px] font-bold text-ink-primary">@{comment.username}</h5>
-                              <span className="text-[9px] font-semibold text-ink-secondary/40 uppercase">{getRelativeTime(comment.createdAt)}</span>
+                              <span className="text-xs font-semibold text-ink-tertiary uppercase">{getRelativeTime(comment.createdAt)}</span>
                             </div>
                             <p className="text-xs text-ink-secondary/80 font-medium leading-relaxed">{comment.content}</p>
                           </div>
                         </div>
                       ))}
                       {(post.comments || []).length === 0 && (
-                        <p className="text-center text-[10px] font-bold text-ink-secondary/20 uppercase tracking-widest py-padding">No comments yet</p>
+                        <p className="text-center text-xs font-bold text-ink-tertiary uppercase tracking-widest py-padding">No comments yet</p>
                       )}
                     </div>
 
@@ -357,12 +365,12 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
 
 const TagPicker = ({ value, onChange }: { value: PostTag; onChange: (val: PostTag) => void }) => (
   <div className="flex items-center gap-control">
-    <span className="text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Tag:</span>
+    <span className="text-xs font-semibold text-ink-tertiary uppercase tracking-widest">Tag:</span>
     <select 
       value={value}
       onChange={(e) => onChange(e.target.value as PostTag)}
       style={{ colorScheme: 'light' }}
-      className="bg-transparent text-[10px] font-bold uppercase text-gold-500 outline-none cursor-pointer hover:text-gold-500/80 transition-colors"
+      className="bg-transparent text-xs font-bold uppercase text-gold-500 outline-none cursor-pointer hover:text-gold-500/80 transition-colors"
     >
       <option value="General" className="bg-surface-base text-ink-primary font-semibold">General</option>
       <option value="Pickup" className="bg-surface-base text-ink-primary font-semibold">Pickup</option>
@@ -381,7 +389,7 @@ interface FilterButtonProps {
 const FilterButton = ({ active, onClick, children }: FilterButtonProps) => (
   <button 
     onClick={onClick}
-    className={`px-4 h-9 rounded-full whitespace-nowrap text-[10px] font-bold uppercase tracking-widest border transition-all active:scale-95 ${active ? 'bg-ink-primary text-gold-500 border-ink-primary' : 'bg-surface-elevated text-ink-secondary/40 border-border-soft hover:border-ink-secondary/20'}`}
+    className={`px-4 h-9 rounded-full whitespace-nowrap text-xs font-bold uppercase tracking-widest border transition-all active:scale-95 ${active ? 'bg-ink-primary text-gold-500 border-ink-primary' : 'bg-surface-elevated text-ink-tertiary border-border-soft hover:border-ink-secondary/20'}`}
   >
     {children}
   </button>
@@ -404,9 +412,9 @@ const ActionButton = ({ icon, label, color, onClick }: ActionButtonProps) => (
 const getTagColor = (tag: PostTag) => {
   switch (tag) {
     case 'Pickup': return 'bg-gold-500/10 text-gold-500';
-    case 'PC Update': return 'bg-emerald-500/10 text-emerald-600';
+    case 'PC Update': return 'bg-success/10 text-success';
     case 'Show Coverage': return 'bg-gold-500/10 text-gold-500';
-    default: return 'bg-stone-500/10 text-stone-600';
+    default: return 'bg-surface-elevated text-ink-tertiary';
   }
 }
 

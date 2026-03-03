@@ -34,7 +34,7 @@ export const Sidebar = ({
             <span style={goldTextStyle}>TC</span>
             <span className="text-ink-primary ml-1">Vault</span>
           </p>
-          <p style={goldTextStyle} className="text-[9px] font-semibold tracking-widest leading-none mt-0.5">
+          <p style={goldTextStyle} className="text-xs font-semibold tracking-widest leading-none mt-0.5">
             Collectors Community
           </p>
         </div>
@@ -42,7 +42,7 @@ export const Sidebar = ({
 
       <nav className="space-y-major flex-1 overflow-y-auto no-scrollbar mt-12 pb-8">
         <div className="space-y-control">
-          <span className="px-4 text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Community</span>
+          <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Community</span>
           <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
           <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
         </div>
@@ -50,7 +50,7 @@ export const Sidebar = ({
         {!isGuest && (
           <>
             <div className="space-y-control">
-              <span className="px-4 text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Asset Management</span>
+              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Asset Management</span>
               <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Portfolio" />
               
               <div className="space-y-control">
@@ -90,7 +90,7 @@ export const Sidebar = ({
             </div>
 
             <div className="space-y-control">
-              <span className="px-4 text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">Identity</span>
+              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Identity</span>
               <NavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={16} />} label="My Profile" />
             </div>
           </>
@@ -113,7 +113,7 @@ export const Sidebar = ({
         ) : (
           <button 
             onClick={() => setView(ViewMode.SETTINGS)}
-            className="w-full btn-primary h-12 uppercase text-[10px] tracking-widest"
+            className="w-full btn-primary h-12 uppercase text-xs tracking-widest"
           >
             Join Vault
           </button>

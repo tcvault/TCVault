@@ -22,10 +22,10 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
     <div className={`space-y-major ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-section">
         <div className="space-y-control">
-          <span className="text-[10px] font-semibold text-ink-secondary/60 uppercase tracking-widest">Portfolio Performance</span>
+          <span className="text-micro font-semibold text-ink-secondary/60 uppercase tracking-widest">Portfolio Performance</span>
           <h1>Collection Overview</h1>
         </div>
-        <button onClick={() => onNavigate(ViewMode.ADD_CARD)} className="btn-primary self-start sm:self-auto text-[10px] tracking-widest">
+        <button onClick={() => onNavigate(ViewMode.ADD_CARD)} className="btn-primary self-start sm:self-auto text-xs tracking-widest">
           <Plus size={16} className="mr-2" />
           <span>Log pickup</span>
         </button>
@@ -38,22 +38,22 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
           <div className={`relative z-20 p-major flex flex-col justify-center max-w-lg h-full space-y-section transition-all duration-700 delay-300 ${isSpotlightLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}>
             <div className="flex items-center gap-control">
               <Star size={16} className="text-gold-500 fill-gold-500" />
-              <span className="text-[10px] font-semibold text-gold-500 uppercase tracking-widest">The grails</span>
+              <span className="text-xs font-semibold text-gold-500 uppercase tracking-widest">The grails</span>
             </div>
             <h2 className="text-white group-hover:text-gold-500 transition-colors">
               {spotlightCard.playerName}
             </h2>
-            <p className="text-sm font-semibold text-stone-300">
+            <p className="text-sm font-semibold text-ink-on-dark">
               {spotlightCard.cardSpecifics} — {spotlightCard.set} {spotlightCard.setNumber ? `#${spotlightCard.setNumber}` : ''}
-              {spotlightCard.serialNumber && <span className="ml-2 px-2 py-0.5 bg-gold-500/20 text-gold-500 rounded text-[10px] font-bold">{spotlightCard.serialNumber}</span>}
+              {spotlightCard.serialNumber && <span className="ml-2 px-2 py-0.5 bg-gold-500/20 text-gold-500 rounded text-xs font-bold">{spotlightCard.serialNumber}</span>}
             </p>
             <div className="flex items-center gap-major pt-control">
               <div className="space-y-control">
-                <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-widest">Market estimate</span>
+                <span className="text-xs font-semibold text-ink-on-dark/60 uppercase tracking-widest">Market estimate</span>
                 <p className="text-2xl font-bold text-gold-500 tabular">£{spotlightCard.marketValue.toLocaleString()}</p>
               </div>
               <div className="space-y-control">
-                <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-widest">Grade</span>
+                <span className="text-xs font-semibold text-ink-on-dark/60 uppercase tracking-widest">Grade</span>
                 <p className="text-2xl font-bold text-white tabular">{spotlightCard.condition}</p>
               </div>
             </div>
@@ -74,9 +74,9 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
                   />
                 </div>
               ) : (
-                <div className="w-56 aspect-[3/4] rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-4 text-stone-700 animate-in fade-in zoom-in-95 duration-700">
+                <div className="w-56 aspect-[3/4] rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-4 text-ink-secondary animate-in fade-in zoom-in-95 duration-700">
                    <Ghost size={48} className="opacity-20" />
-                   <span className="text-[10px] font-black uppercase tracking-widest opacity-30">Image missing</span>
+                   <span className="text-xs font-black uppercase tracking-widest opacity-30">Image missing</span>
                 </div>
               )}
             </div>
@@ -132,14 +132,14 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
               </div>
               <div className="space-y-0.5">
                 <h4 className="font-bold text-sm text-ink-primary truncate group-hover:text-gold-500 transition-colors">{card.playerName}</h4>
-                <p className="text-[10px] text-ink-secondary/60 font-semibold uppercase tracking-widest truncate">{card.set} {card.setNumber ? `#${card.setNumber}` : ''}</p>
+                <p className="text-xs text-ink-secondary/60 font-semibold uppercase tracking-widest truncate">{card.set} {card.setNumber ? `#${card.setNumber}` : ''}</p>
               </div>
             </div>
           ))}
           {recentCards.length === 0 && (
             <div className="col-span-full py-major text-center border-2 border-dashed border-border-soft rounded-xl flex flex-col items-center gap-control">
                <span className="text-ink-secondary/20"><Clock size={24} /></span>
-               <p className="text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest">No recent pickups logged</p>
+               <p className="text-xs font-semibold text-ink-tertiary uppercase tracking-widest">No recent pickups logged</p>
             </div>
           )}
         </div>
@@ -152,7 +152,7 @@ const StatCard = ({ label, value, icon }: any) => (
   <div className="card-vault hover:border-gold-500/20 transition-all space-y-control shadow-sm active:scale-[0.99] group">
     <div className="flex items-center gap-padding">
       <div className="p-2 rounded-lg bg-surface-base border border-border-soft">{icon}</div>
-      <span className="text-[10px] font-semibold text-ink-secondary/60 uppercase tracking-widest">{label}</span>
+      <span className="text-xs font-semibold text-ink-secondary/60 uppercase tracking-widest">{label}</span>
     </div>
     <span className="text-3xl font-bold text-ink-primary tracking-tighter tabular block">{value}</span>
   </div>

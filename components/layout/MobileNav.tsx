@@ -64,9 +64,9 @@ interface MobileNavButtonProps {
 }
 
 const MobileNavButton = ({ active, onClick, icon, label }: MobileNavButtonProps) => (
-  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] relative ${active ? 'text-ink-primary' : 'text-ink-secondary/40'}`}>
+  <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] relative ${active ? 'text-ink-primary' : 'text-ink-tertiary'}`}>
     {React.cloneElement(icon, { size: 20 } as any)}
-    <span className="text-[10px] font-bold uppercase tracking-widest leading-none">{label}</span>
+    <span className="text-xs font-bold uppercase tracking-widest leading-none">{label}</span>
     {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold-500 rounded-full" />}
   </button>
 );

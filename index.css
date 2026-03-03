@@ -12,13 +12,20 @@
   /* Ink Tokens */
   --color-ink-primary: var(--ink-primary);
   --color-ink-secondary: var(--ink-secondary);
+  --color-ink-tertiary: #8A7A68;
+  --color-ink-on-dark: #E5D5B5;
   --color-border-soft: var(--border-soft);
   
   /* Gold Tokens */
   --color-gold-900: var(--gold-900);
+  --color-gold-800: #5C4209;
   --color-gold-700: var(--gold-700);
   --color-gold-500: var(--gold-500);
   --color-gold-300: var(--gold-300);
+
+  /* Status Tokens */
+  --color-error: #B91C1C;
+  --color-success: #15803D;
 
   /* Focus Token */
   --color-focus-ring: var(--focus-ring);
@@ -33,6 +40,8 @@
   --spacing-padding: 16px;
   --spacing-section: 24px;
   --spacing-major: 40px;
+
+  --font-size-micro: 11px;
 }
 
 @layer base {

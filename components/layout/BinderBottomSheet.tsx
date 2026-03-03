@@ -41,7 +41,7 @@ export const BinderBottomSheet = ({
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3 border-b border-ink-primary/5">
-          <span className="text-[10px] font-black text-gold-500/60 uppercase tracking-widest">Your Vault</span>
+          <span className="text-xs font-black text-gold-500/60 uppercase tracking-widest">Your Vault</span>
           <button
             onClick={onClose}
             className="p-2 text-stone-400 active:scale-90 transition-transform"

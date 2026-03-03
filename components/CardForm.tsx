@@ -275,7 +275,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         <h2 className="text-[32px] font-bold tracking-tighter text-ink-primary leading-tight">
           {isEditing ? 'Modify Record' : 'Add to Collection'}
         </h2>
-        <button onClick={onCancel} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-secondary/40 hover:text-ink-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded-xl active:scale-95"><X size={24} /></button>
+        <button onClick={onCancel} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-tertiary hover:text-ink-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded-xl active:scale-95"><X size={24} /></button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-section">
@@ -288,16 +288,16 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                    <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-gold-500 animate-pulse" /></div>
                  </div>
                  <div className="space-y-control">
-                   <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-gold-500 px-3 py-1 rounded-full shadow-lg shadow-gold-500/20">Identifying...</span>
-                   <p className="text-sm font-semibold text-ink-secondary/40 animate-pulse">{scanStep}</p>
+                   <span className="text-xs font-bold text-white uppercase tracking-widest bg-gold-500 px-3 py-1 rounded-full shadow-lg shadow-gold-500/20">Identifying...</span>
+                   <p className="text-sm font-semibold text-ink-tertiary animate-pulse">{scanStep}</p>
                  </div>
               </div>
             )}
             <div className="flex items-center justify-between px-2">
-              <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest flex items-center gap-control">
-                Photos <span className="text-[8px] px-1.5 py-0.5 rounded bg-gold-500/10 text-gold-500 border border-gold-500/20">Auto-Crop Enabled</span>
+              <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest flex items-center gap-control">
+                Photos <span className="text-xs px-1.5 py-0.5 rounded bg-gold-500/10 text-gold-500 border border-gold-500/20">Auto-Crop Enabled</span>
               </label>
-              <span className="text-[10px] font-semibold text-ink-secondary/40 uppercase tracking-widest tabular">{images.length} / 4</span>
+              <span className="text-xs font-semibold text-ink-tertiary uppercase tracking-widest tabular">{images.length} / 4</span>
             </div>
             <div className="grid grid-cols-2 gap-control">
               {images.map((img, idx) => (
@@ -306,11 +306,11 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                   {isCropping === idx && (
                     <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-control">
                       <Loader2 size={24} className="text-gold-500 animate-spin" />
-                      <span className="text-[8px] font-bold text-gold-500 uppercase tracking-widest">Recropping...</span>
+                      <span className="text-xs font-bold text-gold-500 uppercase tracking-widest">Recropping...</span>
                     </div>
                   )}
                   <div className="absolute top-4 right-4 flex flex-col gap-control z-20">
-                    <button onClick={() => removeImage(idx)} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-rose-600 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg"><Trash2 size={16} /></button>
+                    <button onClick={() => removeImage(idx)} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-error text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg"><Trash2 size={16} /></button>
                     {isEditing && (
                       <button type="button" onClick={() => handleRecrop(idx)} disabled={isCropping !== null} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-gold-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
                     )}
@@ -322,12 +322,12 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                   {isSaving || (isCropping !== null && !images[isCropping]) ? (
                     <div className="flex flex-col items-center gap-control">
                        <Loader2 className="text-gold-500 animate-spin" size={24} />
-                       <span className="text-[8px] font-bold text-gold-500 uppercase tracking-[0.2em] animate-pulse">Precision Cropping...</span>
+                       <span className="text-xs font-bold text-gold-500 uppercase tracking-[0.2em] animate-pulse">Precision Cropping...</span>
                     </div>
                   ) : (
                     <>
-                      <Plus className="text-ink-secondary/20 group-hover:text-ink-secondary/40 transition-colors" size={24} />
-                      <span className="text-[10px] font-bold text-ink-secondary/20 group-hover:text-ink-secondary/40 uppercase tracking-widest transition-colors">Add Photo</span>
+                      <Plus className="text-ink-tertiary group-hover:text-ink-secondary transition-colors" size={24} />
+                      <span className="text-xs font-bold text-ink-tertiary group-hover:text-ink-secondary uppercase tracking-widest transition-colors">Add Photo</span>
                     </>
                   )}
                 </button>
@@ -335,21 +335,21 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
             {images.length > 0 && (
-              <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null} className={`w-full h-14 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-control active:scale-[0.97] ${hasScanned ? 'btn-secondary text-ink-secondary/40' : 'btn-primary'}`}>
+              <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null} className={`w-full h-14 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-control active:scale-[0.97] ${hasScanned ? 'btn-secondary text-ink-tertiary' : 'btn-primary'}`}>
                 {isScanning ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={16} />}
-                <span className="uppercase text-[10px] tracking-widest">{hasScanned ? 'Rescan Identification' : 'Identify with AI'}</span>
+                <span className="uppercase text-xs tracking-widest">{hasScanned ? 'Rescan Identification' : 'Identify with AI'}</span>
               </button>
             )}
           </div>
 
           <div className="card-vault p-padding space-y-padding">
-            <h3 className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest px-2">Visibility</h3>
+            <h3 className="text-xs font-bold text-ink-tertiary uppercase tracking-widest px-2">Visibility</h3>
             <div className="grid grid-cols-2 gap-control">
-              <button type="button" onClick={() => setFormData({...formData, isPublic: true})} className={`flex flex-col items-center justify-center gap-control p-6 rounded-xl border transition-all ${formData.isPublic ? 'bg-gold-500/10 border-gold-500/30 text-gold-500' : 'bg-surface-base border-border-soft text-ink-secondary/40 hover:border-ink-primary/10'}`}>
-                <Globe size={24} /><span className="text-[10px] font-bold uppercase tracking-widest">Public</span>
+              <button type="button" onClick={() => setFormData({...formData, isPublic: true})} className={`flex flex-col items-center justify-center gap-control p-6 rounded-xl border transition-all ${formData.isPublic ? 'bg-gold-500/10 border-gold-500/30 text-gold-500' : 'bg-surface-base border-border-soft text-ink-tertiary hover:border-ink-primary/10'}`}>
+                <Globe size={24} /><span className="text-xs font-bold uppercase tracking-widest">Public</span>
               </button>
-              <button type="button" onClick={() => setFormData({...formData, isPublic: false})} className={`flex flex-col items-center justify-center gap-control p-6 rounded-xl border transition-all ${!formData.isPublic ? 'bg-surface-elevated border-border-soft text-ink-primary' : 'bg-surface-base border-border-soft text-ink-secondary/40 hover:border-ink-primary/10'}`}>
-                <Lock size={24} /><span className="text-[10px] font-bold uppercase tracking-widest">Private</span>
+              <button type="button" onClick={() => setFormData({...formData, isPublic: false})} className={`flex flex-col items-center justify-center gap-control p-6 rounded-xl border transition-all ${!formData.isPublic ? 'bg-surface-elevated border-border-soft text-ink-primary' : 'bg-surface-base border-border-soft text-ink-tertiary hover:border-ink-primary/10'}`}>
+                <Lock size={24} /><span className="text-xs font-bold uppercase tracking-widest">Private</span>
               </button>
             </div>
           </div>
@@ -357,7 +357,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
         <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-section">
           <div className="card-vault p-padding md:p-12 space-y-padding shadow-lg bg-white/[0.01]">
-            {error && <div className="p-padding bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-padding text-rose-500 text-sm font-bold tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
+            {error && <div className="p-padding bg-error/10 border border-error/20 rounded-xl flex items-center gap-padding text-error text-sm font-bold tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
               <Field label="Player" value={formData.playerName} onChange={(v: string) => setFormData({...formData, playerName: v})} icon={<User size={16} />} />
@@ -381,7 +381,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
               <div className="space-y-control">
-                <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">Grade / Condition</label>
+                <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">Grade / Condition</label>
                 <div className="relative group">
                    <select 
                     value={formData.condition || ''} 
@@ -399,17 +399,17 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                   >
                     {standardConditions.map(c => <option key={c} value={c} className="bg-white font-semibold">{c}</option>)}
                    </select>
-                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-secondary/40" />
+                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
                 </div>
               </div>
               <div className="space-y-control">
-                <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">Assign to Binder</label>
+                <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">Assign to Binder</label>
                 <div className="relative group">
-                  <select value={formData.pageId || ''} onChange={e => setFormData({...formData, pageId: e.target.value})} style={{ colorScheme: 'light' }} className={`w-full bg-surface-base border rounded-xl h-14 px-padding outline-none font-bold text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-gold-500/40 text-gold-500' : 'border-border-soft text-ink-secondary/40'}`}>
+                  <select value={formData.pageId || ''} onChange={e => setFormData({...formData, pageId: e.target.value})} style={{ colorScheme: 'light' }} className={`w-full bg-surface-base border rounded-xl h-14 px-padding outline-none font-bold text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-gold-500/40 text-gold-500' : 'border-border-soft text-ink-tertiary'}`}>
                     <option value="" className="bg-white font-semibold">All Cards</option>
                     {pages.map(p => <option key={p.id} value={p.id} className="bg-white font-semibold">{p.name}</option>)}
                   </select>
-                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-secondary/40" />
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
                 </div>
               </div>
             </div>
@@ -422,10 +422,10 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           
           <div className="flex gap-control">
             {isEditing && (
-              <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-rose-500 border-rose-500/20 hover:bg-rose-500/10 h-14 px-6 uppercase text-[10px] tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Record</span></button>
+              <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-error border-error/20 hover:bg-error/10 h-14 px-6 uppercase text-xs tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Record</span></button>
             )}
-            <button type="button" onClick={onCancel} className="btn-secondary flex-1 h-14 uppercase text-[10px] tracking-widest">Discard</button>
-            <button type="submit" disabled={isSaving || isCropping !== null} className={`btn-primary flex-[2] h-14 uppercase text-[10px] tracking-widest ${isSaving || isCropping !== null ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <button type="button" onClick={onCancel} className="btn-secondary flex-1 h-14 uppercase text-xs tracking-widest">Discard</button>
+            <button type="submit" disabled={isSaving || isCropping !== null} className={`btn-primary flex-[2] h-14 uppercase text-xs tracking-widest ${isSaving || isCropping !== null ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2" size={20} />}
               <span>{isEditing ? 'Update Card' : 'Add to Collection'}</span>
             </button>
@@ -446,10 +446,10 @@ interface FieldProps {
 
 const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
   <div className="space-y-control">
-    <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">{label}</label>
+    <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">{label}</label>
     <div className="relative group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-secondary/40 group-focus-within:text-gold-500 transition-colors">{icon}</div>
-      <input type={type} step="0.01" value={value ?? ''} onChange={e => onChange(e.target.value)} className="w-full bg-surface-base border border-border-soft rounded-xl h-14 pl-12 pr-4 focus:border-gold-500/40 outline-none font-semibold text-sm text-ink-primary transition-all placeholder:text-ink-secondary/20" />
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-tertiary group-focus-within:text-gold-500 transition-colors">{icon}</div>
+      <input type={type} step="0.01" value={value ?? ''} onChange={e => onChange(e.target.value)} className="w-full bg-surface-base border border-border-soft rounded-xl h-14 pl-12 pr-4 focus:border-gold-500/40 outline-none font-semibold text-sm text-ink-primary transition-all placeholder:text-ink-tertiary" />
     </div>
   </div>
 );
