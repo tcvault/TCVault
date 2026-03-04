@@ -1,13 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 
+// Resolve Supabase credentials from any of the naming conventions in use:
+//  - SUPABASE_URL / SUPABASE_ANON_KEY          → Vercel Supabase integration
+//  - VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY → manual .env.local / Vite
+//  - NEXT_PUBLIC_SUPABASE_URL / ...             → legacy Next.js convention
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL;
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "";
 const SUPABASE_ANON_KEY =
   process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "";
 
 // ---------------------------------------------------------------------------
 // In-memory rate limiting (per authenticated user, single instance only).
