@@ -283,7 +283,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           <div className="card-vault p-padding space-y-padding relative overflow-hidden shadow-lg">
             {isScanning && (
               <div className="absolute inset-0 bg-surface-base/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-padding space-y-padding text-center animate-in fade-in duration-300">
-                 <div className="relative w-full aspect-square border border-border-soft rounded-xl overflow-hidden bg-surface-base">
+                 <div className="relative w-full aspect-[3/4] border border-border-soft rounded-xl overflow-hidden bg-surface-base">
                    <div className="scanner-line"></div>
                    <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-gold-500 animate-pulse" /></div>
                  </div>
@@ -301,7 +301,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             </div>
             <div className="grid grid-cols-2 gap-control">
               {images.map((img, idx) => (
-                <div key={idx} className="aspect-square bg-surface-base rounded-xl overflow-hidden relative group border border-border-soft shadow-md flex items-center justify-center p-control img-loading">
+                <div key={idx} className="aspect-[3/4] bg-surface-base rounded-xl overflow-hidden relative group border border-border-soft shadow-md flex items-center justify-center p-control img-loading">
                   <img src={img} onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} className="w-full h-full object-contain select-none z-10" alt="Preview" />
                   {isCropping === idx && (
                     <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center gap-control">
@@ -311,14 +311,12 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                   )}
                   <div className="absolute top-4 right-4 flex flex-col gap-control z-20">
                     <button onClick={() => removeImage(idx)} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-error text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg"><Trash2 size={16} /></button>
-                    {isEditing && (
-                      <button type="button" onClick={() => handleRecrop(idx)} disabled={isCropping !== null} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-gold-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
-                    )}
+                    <button type="button" onClick={() => handleRecrop(idx)} disabled={isCropping !== null} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-gold-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
                   </div>
                 </div>
               ))}
               {(images.length < 4 || (isCropping !== null && !images[isCropping])) && (
-                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-square rounded-xl border border-dashed border-border-soft flex flex-col items-center justify-center gap-padding hover:border-ink-primary/20 hover:bg-surface-elevated transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 active:scale-[0.98] relative">
+                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-[3/4] rounded-xl border border-dashed border-border-soft flex flex-col items-center justify-center gap-padding hover:border-ink-primary/20 hover:bg-surface-elevated transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 active:scale-[0.98] relative">
                   {isSaving || (isCropping !== null && !images[isCropping]) ? (
                     <div className="flex flex-col items-center gap-control">
                        <Loader2 className="text-gold-500 animate-spin" size={24} />

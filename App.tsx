@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getMarketIntel } from './services/gemini';
 import { buildMarketMeta } from './services/valuation';
-import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost } from './types';
+import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost, Notification } from './types';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import CardForm from './components/CardForm';
@@ -9,10 +9,12 @@ import Auth from './components/Auth';
 import Feed from './components/Feed';
 import Explore from './components/Explore';
 import ProfileView from './components/ProfileView';
+import NotificationsView from './components/NotificationsView';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
 import { BinderBottomSheet } from './components/layout/BinderBottomSheet';
 import { ToastContainer } from './components/layout/ToastContainer';
+import { ConfirmModal } from './components/layout/ConfirmModal';
 import { vaultStorage, supabase } from './services/storage';
 import { goldGradientStyle } from './styles';
 import { TCLogo } from './components/Branding';
@@ -30,7 +32,7 @@ function usePrevious<T>(value: T): T | undefined {
   useEffect(() => {
     ref.current = value;
   }, [value]);
-  // eslint-disable-next-line react-hooks/refs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return ref.current;
 }
 
@@ -46,6 +48,20 @@ const App: React.FC = () => {
   const [globalSearch, setGlobalSearch] = useState('');
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showBinderSheet, setShowBinderSheet] = useState(false);
+  const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   
   const isTerminating = useRef(false);
 
@@ -85,12 +101,14 @@ const App: React.FC = () => {
       const profile = await vaultStorage.getUserProfile(userId);
       if (profile) setCurrentUser(profile);
       
-      const [storedCards, storedBinders] = await Promise.all([
+      const [storedCards, storedBinders, storedNotifications] = await Promise.all([
         vaultStorage.getCards(userId),
-        vaultStorage.getPages(userId)
+        vaultStorage.getPages(userId),
+        vaultStorage.getNotifications(userId)
       ]);
       setCards(storedCards || []);
       setBinders(storedBinders || []);
+      setNotifications(storedNotifications || []);
     } catch (e) {
       console.error("Vault load error:", e);
     }
@@ -100,6 +118,7 @@ const App: React.FC = () => {
     setCurrentUser(null);
     setCards([]);
     setBinders([]);
+    setNotifications([]);
     setEditingCard(null);
     setSelectedBinderId('all');
     setGlobalSearch('');
@@ -150,6 +169,45 @@ const App: React.FC = () => {
 
     startup();
     
+    // Realtime Notifications Subscription
+    let notificationChannel: any = null;
+    if (supabase && currentUser) {
+      notificationChannel = supabase
+        .channel('public:notifications')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${currentUser.id}`
+        }, (payload: any) => {
+          const newNotif: Notification = {
+            id: payload.new.id,
+            userId: payload.new.user_id,
+            type: payload.new.type,
+            postId: payload.new.post_id,
+            fromUserId: payload.new.from_user_id,
+            fromUsername: payload.new.from_username,
+            content: payload.new.content,
+            isRead: payload.new.is_read,
+            createdAt: new Date(payload.new.created_at).getTime()
+          };
+          setNotifications(prev => [newNotif, ...prev]);
+          addToast(`New ${newNotif.type} from ${newNotif.fromUsername}`, 'info');
+        })
+        .subscribe();
+    }
+    
+    // Check for shared post URL
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get('post');
+    if (postId) {
+      setHighlightedPostId(postId);
+      setView(ViewMode.FEED);
+      // Clean up URL without reload
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (isTerminating.current || !isMounted) return;
       
@@ -167,8 +225,9 @@ const App: React.FC = () => {
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      if (notificationChannel) supabase.removeChannel(notificationChannel);
     };
-  }, [loadData, resetLocalUiState]);
+  }, [loadData, resetLocalUiState, currentUser, addToast]);
 
   const stats = useMemo<CollectionStats>(() => {
     const totalSpent = cards.reduce((sum, c) => sum + (Number(c.pricePaid) || 0), 0);
@@ -181,25 +240,31 @@ const App: React.FC = () => {
   }, [cards]);
 
   const handleLogout = async () => {
-    if (!window.confirm("Seal your vault and sign out?")) return;
-    
-    try {
-      if (supabase) {
-        await supabase.auth.signOut();
-      }
-    } catch (e) {
-      console.error("Sign out error:", e);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: 'Seal Vault?',
+      message: 'Are you sure you want to sign out of your collector profile?',
+      onConfirm: async () => {
+        try {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+        } catch (e) {
+          console.error("Sign out error:", e);
+        }
 
-    // Clear app-specific keys
-    const keys = Object.keys(localStorage);
-    keys.forEach(key => {
-      if (key.startsWith('tcvault_')) localStorage.removeItem(key);
+        // Clear app-specific keys
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.startsWith('tcvault_')) localStorage.removeItem(key);
+        });
+        
+        sessionStorage.clear();
+        resetLocalUiState();
+        window.location.replace(window.location.origin);
+      },
+      variant: 'warning'
     });
-    
-    sessionStorage.clear();
-    resetLocalUiState();
-    window.location.replace(window.location.origin);
   };
 
   const handleSaveCard = async (cardData: Card) => {
@@ -222,19 +287,26 @@ const App: React.FC = () => {
   };
 
   const handleDeleteCard = async (id: string) => {
-    if (window.confirm("Remove this card from your collection?")) {
-      try {
-        await vaultStorage.deleteCard(id);
-        setCards(prev => prev.filter(c => c.id !== id));
-        addToast("Card removed", "info");
-        if (editingCard?.id === id) {
-          setEditingCard(null);
-          setView(ViewMode.INVENTORY);
+    setConfirmState({
+      isOpen: true,
+      title: 'Remove Card?',
+      message: 'This action will permanently remove this card from your collection. This cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await vaultStorage.deleteCard(id);
+          setCards(prev => prev.filter(c => c.id !== id));
+          addToast("Card removed", "info");
+          if (editingCard?.id === id) {
+            setEditingCard(null);
+            setView(ViewMode.INVENTORY);
+          }
+        } catch {
+          addToast("Delete failed", "error");
         }
-      } catch {
-        addToast("Delete failed", "error");
-      }
-    }
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
+      },
+      variant: 'danger'
+    });
   };
 
   const handleUpdateProfile = async (updatedUser: User) => {
@@ -260,16 +332,23 @@ const App: React.FC = () => {
   };
 
   const handleDeleteBinder = async (id: string) => {
-    if (window.confirm("Delete this binder? Cards will stay in your main collection.")) {
-      try {
-        await vaultStorage.deletePage(id);
-        if (currentUser) await loadData(currentUser.id);
-        if (selectedBinderId === id) setSelectedBinderId('all');
-        addToast("Binder deleted", "info");
-      } catch {
-        addToast("Failed to delete binder", "error");
-      }
-    }
+    setConfirmState({
+      isOpen: true,
+      title: 'Delete Binder?',
+      message: 'Are you sure you want to delete this binder? The cards inside will remain in your collection.',
+      onConfirm: async () => {
+        try {
+          await vaultStorage.deletePage(id);
+          if (currentUser) await loadData(currentUser.id);
+          if (selectedBinderId === id) setSelectedBinderId('all');
+          addToast("Binder deleted", "info");
+        } catch {
+          addToast("Failed to delete binder", "error");
+        }
+        setConfirmState(prev => ({ ...prev, isOpen: false }));
+      },
+      variant: 'danger'
+    });
   };
 
   const handleRefreshPrice = async (card: Card) => {
@@ -333,6 +412,33 @@ const App: React.FC = () => {
     }
   };
 
+  const unreadNotificationsCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+
+  const handleMarkNotificationAsRead = async (id: string) => {
+    try {
+      await vaultStorage.markNotificationAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (e) {
+      console.error("Error marking notification as read:", e);
+    }
+  };
+
+  const handleMarkAllNotificationsAsRead = async () => {
+    if (!currentUser) return;
+    try {
+      await vaultStorage.markAllNotificationsAsRead(currentUser.id);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      addToast("All notifications marked as read");
+    } catch (e) {
+      console.error("Error marking all notifications as read:", e);
+    }
+  };
+
+  const handleNavigateToPost = (postId: string) => {
+    setHighlightedPostId(postId);
+    setView(ViewMode.FEED);
+  };
+
   if (isInitializing) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-surface-base">
@@ -361,7 +467,16 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto bg-surface-base relative pb-32 md:pb-0 scroll-smooth">
         <div className="p-4 md:p-16 max-w-6xl mx-auto min-h-screen">
-          {view === ViewMode.FEED && <Feed user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
+          {view === ViewMode.FEED && (
+            <Feed 
+              user={currentUser} 
+              onNavigate={setView} 
+              onToast={addToast} 
+              animationClass={animationClass} 
+              highlightedPostId={highlightedPostId} 
+              onClearHighlight={() => setHighlightedPostId(null)}
+            />
+          )}
           {view === ViewMode.EXPLORE && <Explore user={currentUser} onNavigate={setView} onToast={addToast} animationClass={animationClass} />}
           {view === ViewMode.DASHBOARD && !isGuest && (
             <Dashboard 
@@ -409,6 +524,15 @@ const App: React.FC = () => {
               animationClass={animationClass}
             />
           )}
+          {view === ViewMode.NOTIFICATIONS && !isGuest && (
+            <NotificationsView 
+              notifications={notifications}
+              onMarkAsRead={handleMarkNotificationAsRead}
+              onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+              onNavigateToPost={handleNavigateToPost}
+              animationClass={animationClass}
+            />
+          )}
         </div>
       </main>
 
@@ -420,6 +544,7 @@ const App: React.FC = () => {
         setSelectedBinderId={setSelectedBinderId}
         setShowBinderSheet={setShowBinderSheet}
         goldGradientStyle={goldGradientStyle}
+        unreadNotificationsCount={unreadNotificationsCount}
       />
 
       <BinderBottomSheet 
@@ -444,6 +569,15 @@ const App: React.FC = () => {
       )}
 
       <ToastContainer toasts={toasts} onRemove={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
+      
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        variant={confirmState.variant}
+      />
     </div>
   );
 };

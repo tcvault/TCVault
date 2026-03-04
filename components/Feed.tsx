@@ -9,6 +9,8 @@ interface FeedProps {
   onNavigate: (view: ViewMode) => void;
   onToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   animationClass?: string;
+  highlightedPostId?: string | null;
+  onClearHighlight?: () => void;
 }
 
 const getRelativeTime = (timestamp: number) => {
@@ -25,7 +27,7 @@ const getRelativeTime = (timestamp: number) => {
   return new Date(timestamp).toLocaleDateString();
 };
 
-const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }) => {
+const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass, highlightedPostId, onClearHighlight }) => {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedTag, setSelectedTag] = useState<PostTag>('General');
@@ -38,6 +40,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const postRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const fetchPosts = useCallback(async () => {
     setIsRefreshing(true);
@@ -55,6 +58,23 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
+
+  useEffect(() => {
+    if (highlightedPostId && posts.length > 0) {
+      const timer = setTimeout(() => {
+        const element = postRefs.current[highlightedPostId];
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-gold-500', 'ring-offset-4', 'ring-offset-surface-base');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-gold-500', 'ring-offset-4', 'ring-offset-surface-base');
+            if (onClearHighlight) onClearHighlight();
+          }, 3000);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedPostId, posts.length, onClearHighlight]);
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,15 +146,20 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       onNavigate(ViewMode.SETTINGS);
       return;
     }
-    await vaultStorage.toggleLike(postId, user.id);
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        const isLiked = p.likes.includes(user.id);
-        const newLikes = isLiked ? p.likes.filter(id => id !== user.id) : [...p.likes, user.id];
-        return { ...p, likes: newLikes };
-      }
-      return p;
-    }));
+    try {
+      await vaultStorage.toggleLike(postId, user.id);
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          const isLiked = p.likes.includes(user.id);
+          const newLikes = isLiked ? p.likes.filter(id => id !== user.id) : [...p.likes, user.id];
+          return { ...p, likes: newLikes };
+        }
+        return p;
+      }));
+    } catch (error) {
+      console.error("Like failed:", error);
+      if (onToast) onToast("Failed to update like. Please try again.", "error");
+    }
   };
 
   const handleComment = async (postId: string) => {
@@ -148,22 +173,27 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       createdAt: Date.now()
     };
 
-    await vaultStorage.addComment(postId, newComment);
-    setPosts(prev => prev.map(p => {
-      if (p.id === postId) {
-        const updatedComments = [...(p.comments || []), newComment];
-        return { ...p, comments: updatedComments, commentCount: updatedComments.length };
-      }
-      return p;
-    }));
-    setCommentText('');
+    try {
+      await vaultStorage.addComment(postId, newComment);
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          const updatedComments = [...(p.comments || []), newComment];
+          return { ...p, comments: updatedComments, commentCount: updatedComments.length };
+        }
+        return p;
+      }));
+      setCommentText('');
+    } catch (error) {
+      console.error("Comment failed:", error);
+      if (onToast) onToast("Failed to add comment. Please try again.", "error");
+    }
   };
 
   const handleShare = async (post: SocialPost) => {
     const shareData = {
       title: 'TC Vault Collector Post',
       text: post.content,
-      url: `${window.location.origin}/post/${post.id}`
+      url: `${window.location.origin}?post=${post.id}`
     };
 
     try {
@@ -204,7 +234,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
             placeholder="Share your latest pickup or PC update..."
-            className="w-full bg-surface-base border border-border-soft rounded-xl p-padding text-sm font-semibold text-ink-primary focus:border-gold-500/30 outline-none transition-all resize-none min-h-[100px] placeholder:text-ink-secondary/40"
+            className="w-full bg-surface-base border border-border-soft rounded-xl p-padding text-sm font-semibold text-ink-primary focus:border-gold-500/30 outline-none transition-all resize-none min-h-[100px] placeholder:text-ink-tertiary"
           />
           
           {postImage && (
@@ -218,7 +248,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
 
           <div className="flex flex-wrap items-center justify-between gap-y-padding">
             <div className="flex items-center gap-control">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-ink-secondary/40 hover:text-gold-500 transition-colors">
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 text-ink-tertiary hover:text-gold-500 transition-colors">
                 <ImageIcon size={20} />
               </button>
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleImageChange} />
@@ -243,7 +273,11 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
       <div className="space-y-section">
         {filteredPosts.length > 0 ? (
           filteredPosts.map(post => (
-            <div key={post.id} className="card-vault overflow-hidden group hover:border-gold-500/20 transition-all shadow-sm p-0">
+            <div 
+              key={post.id} 
+              ref={el => { postRefs.current[post.id] = el; }}
+              className={`card-vault overflow-hidden group hover:border-gold-500/20 transition-all shadow-sm p-0 ${highlightedPostId === post.id ? 'border-gold-500 shadow-gold-500/10' : ''}`}
+            >
               <div className="p-padding space-y-padding">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-control">
@@ -353,7 +387,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass }
           ))
         ) : (
           <EmptyState 
-            icon={<Ghost />} 
+            icon={<RefreshCw />} 
             title="The Feed is Quiet" 
             message={activeFilter === 'All' ? "Be the first to share a pickup or update with the community!" : `No posts found in the ${activeFilter} category.`}
           />

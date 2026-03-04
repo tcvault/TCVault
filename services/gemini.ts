@@ -17,7 +17,7 @@ const getAi = () => {
   return aiInstance;
 };
 
-const DEFAULT_MODEL = "gemini-3-flash-preview";
+const DEFAULT_MODEL = "gemini-2.0-flash";
 
 async function generateWithRetry(params: any, retries = 2, delay = 1000) {
   const ai = getAi();

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Card, BinderPage } from '../types';
-import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw, Share2, ExternalLink, Instagram } from 'lucide-react';
+import { Card, BinderPage, SortField, SortOrder } from '../types';
+import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw, Share2, ExternalLink, Instagram, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import EmptyState from './EmptyState';
 
@@ -37,6 +37,8 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
   const [newPageName, setNewPageName] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showBinderSelector, setShowBinderSelector] = useState(false);
+  const [sortBy, setSortBy] = useState<SortField>('purchaseDate');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [isExporting, setIsExporting] = useState(false);
   const shareRef = React.useRef<HTMLDivElement>(null);
 
@@ -55,8 +57,8 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
 
   useEffect(() => { setCurrentImageIndex(0); }, [selectedCard]);
 
-  const filteredCards = useMemo(() => {
-    return cards.filter(card => {
+  const processedCards = useMemo(() => {
+    const filtered = cards.filter(card => {
       if (activePageId !== 'all' && card.pageId !== activePageId) return false;
       if (globalSearch) {
         const term = globalSearch.toLowerCase();
@@ -70,7 +72,21 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
       if (filters.rarity !== 'all' && card.rarityTier !== filters.rarity) return false;
       return true;
     });
-  }, [cards, filters, activePageId, globalSearch]);
+
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'playerName') {
+        comparison = a.playerName.localeCompare(b.playerName);
+      } else if (sortBy === 'purchaseDate') {
+        comparison = (a.purchaseDate || '').localeCompare(b.purchaseDate || '');
+      } else if (sortBy === 'marketValue') {
+        comparison = a.marketValue - b.marketValue;
+      } else if (sortBy === 'pricePaid') {
+        comparison = a.pricePaid - b.pricePaid;
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [cards, filters, activePageId, globalSearch, sortBy, sortOrder]);
 
   const hasActiveFilters = useMemo(() => filters.player !== '' || filters.team !== 'all' || filters.set !== 'all' || filters.condition !== 'all' || filters.rarity !== 'all' || globalSearch !== '', [filters, globalSearch]);
 
@@ -192,9 +208,32 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-tertiary group-focus-within:text-gold-500 transition-colors" size={16} />
              <input type="text" placeholder="Search current view..." value={filters.player} onChange={(e) => setFilters({...filters, player: e.target.value})} className="w-full bg-surface-elevated border border-border-soft rounded-xl h-12 pl-11 pr-4 text-sm font-semibold text-ink-primary focus:border-gold-500/40 outline-none transition-all placeholder:text-ink-tertiary" />
           </div>
-          <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary h-12 px-6 flex items-center gap-control active:scale-[0.97] ${showFilters ? 'bg-gold-500/10 text-gold-500 border-gold-500/20' : ''}`}>
-            <FilterIcon size={16} /><span className="hidden md:inline text-xs tracking-widest font-bold">Refine</span>
-          </button>
+          <div className="flex items-center gap-control">
+            <div className="relative group">
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value as SortField)}
+                className="appearance-none bg-surface-elevated border border-border-soft rounded-xl h-12 pl-10 pr-10 text-xs font-bold uppercase tracking-widest text-ink-tertiary hover:text-ink-secondary focus:border-gold-500/40 outline-none transition-all cursor-pointer"
+              >
+                <option value="purchaseDate">Date</option>
+                <option value="marketValue">Value</option>
+                <option value="pricePaid">Cost</option>
+                <option value="playerName">Name</option>
+              </select>
+              <ArrowUpDown size={14} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
+              <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
+            </div>
+            <button 
+              onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+              className="btn-secondary h-12 w-12 flex items-center justify-center active:scale-[0.97]"
+              title={sortOrder === 'asc' ? 'Sort Ascending' : 'Sort Descending'}
+            >
+              {sortOrder === 'asc' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+            </button>
+            <button onClick={() => setShowFilters(!showFilters)} className={`btn-secondary h-12 px-6 flex items-center gap-control active:scale-[0.97] ${showFilters ? 'bg-gold-500/10 text-gold-500 border-gold-500/20' : ''}`}>
+              <FilterIcon size={16} /><span className="hidden md:inline text-xs tracking-widest font-bold">Refine</span>
+            </button>
+          </div>
         </div>
 
         {showFilters && (
@@ -208,11 +247,11 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         )}
       </div>
 
-      {filteredCards.length > 0 ? (
+      {processedCards.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-section">
-          {filteredCards.map(card => (
+          {processedCards.map(card => (
             <div key={card.id} className="group cursor-pointer space-y-control" onClick={() => setSelectedCard(card)}>
-              <div className="aspect-square rounded-xl overflow-hidden border border-border-soft shadow-sm bg-surface-elevated relative flex items-center justify-center p-padding img-loading">
+              <div className="aspect-[3/4] rounded-xl overflow-hidden border border-border-soft shadow-sm bg-surface-elevated relative flex items-center justify-center p-padding img-loading">
                 <img 
                   src={card.images[0]} 
                   loading="lazy"

@@ -94,7 +94,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
         {onCancel && (
           <button 
             onClick={onCancel}
-            className="absolute -top-4 -right-4 md:-top-6 md:-right-6 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-surface-base rounded-full text-ink-secondary/40 hover:text-ink-primary transition-all active:scale-95 z-[100] shadow-xl border border-border-soft"
+            className="absolute -top-4 -right-4 md:-top-6 md:-right-6 p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-surface-base rounded-full text-ink-tertiary hover:text-ink-primary transition-all active:scale-95 z-[100] shadow-xl border border-border-soft"
           >
             <X size={20} />
           </button>
@@ -122,14 +122,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-          }} className="text-[10px] font-semibold uppercase tracking-[0.35em] mt-1">
+          }} className="text-xs font-semibold uppercase tracking-[0.35em] mt-1">
             Collectors Community
           </p>
         </div>
 
         <div className="card-vault p-padding md:p-10 border-border-soft shadow-2xl space-y-padding relative animate-in zoom-in-95 duration-[300ms]">
           <div className="flex items-center gap-padding">
-            <span className="text-[10px] font-bold text-ink-secondary/40 tracking-widest uppercase">
+            <span className="text-xs font-bold text-ink-tertiary tracking-widest uppercase">
               {getLabel()}
             </span>
             <div className="flex-1 h-px bg-border-soft"></div>
@@ -139,7 +139,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
             <div className="text-center space-y-padding py-4 animate-in zoom-in-95 duration-300">
               <CheckCircle2 size={32} className="text-gold-500 mx-auto" />
               <p className="text-sm font-bold text-ink-primary">{successMessage}</p>
-              <button onClick={() => { setAuthMode('login'); setSuccessMessage(''); }} className="btn-tertiary text-[10px] font-bold uppercase flex items-center gap-control mx-auto active:scale-95"><ArrowLeft size={16} /> Back to Sign In</button>
+              <button onClick={() => { setAuthMode('login'); setSuccessMessage(''); }} className="btn-tertiary text-xs font-bold uppercase flex items-center gap-control mx-auto active:scale-95"><ArrowLeft size={16} /> Back to Sign In</button>
             </div>
           ) : (
             <form onSubmit={handleAuth} className="space-y-padding">
@@ -159,7 +159,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
                       <button 
                         type="button" 
                         onClick={() => setAuthMode('forgot-password')} 
-                        className="text-[10px] font-bold text-ink-secondary/40 hover:text-gold-500 uppercase transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gold-500 outline-none"
+                        className="text-xs font-bold text-ink-tertiary hover:text-gold-500 uppercase transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-gold-500 outline-none"
                       >
                         Forgot?
                       </button>
@@ -169,19 +169,19 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
               </div>
 
               {error && (
-                <div className="p-padding bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-control text-rose-500 animate-in slide-in-from-top-2 duration-200">
+                <div className="p-padding bg-error/10 border border-error/20 rounded-xl flex items-center gap-control text-error animate-in slide-in-from-top-2 duration-200">
                   <AlertTriangle size={16} className="shrink-0" /><span className="text-sm font-bold uppercase leading-tight">{error}</span>
                 </div>
               )}
 
-              <button type="submit" disabled={isLoading} className={`btn-primary w-full h-14 uppercase text-[10px] tracking-widest ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <button type="submit" disabled={isLoading} className={`btn-primary w-full h-14 uppercase text-xs tracking-widest ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {isLoading ? <Loader2 size={20} className="animate-spin text-white/50" /> : (
                   authMode === 'register' ? 'Register Account' : authMode === 'login' ? 'Login' : 'Reset Vault Key'
                 )}
               </button>
 
               <div className="text-center pt-2">
-                <button type="button" onClick={() => { setAuthMode(authMode === 'register' ? 'login' : 'register'); setError(''); }} className="btn-tertiary uppercase text-[10px] tracking-widest p-2 active:scale-95 focus-visible:ring-2 focus-visible:ring-gold-500">
+                <button type="button" onClick={() => { setAuthMode(authMode === 'register' ? 'login' : 'register'); setError(''); }} className="btn-tertiary uppercase text-xs tracking-widest p-2 active:scale-95 focus-visible:ring-2 focus-visible:ring-gold-500">
                   {authMode === 'register' ? 'Back to Login' : 'No Account? Create a Vault'}
                 </button>
               </div>
@@ -190,17 +190,17 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
         </div>
 
         <div className="flex justify-center gap-section">
-           <div className="flex flex-col items-center gap-control text-ink-secondary/20">
+           <div className="flex flex-col items-center gap-control text-ink-tertiary/40">
              <ShieldCheck size={20} />
-             <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Encrypted</span>
+             <span className="text-xs font-bold uppercase tracking-[0.2em]">Encrypted</span>
            </div>
-           <div className="flex flex-col items-center gap-control text-ink-secondary/20">
+           <div className="flex flex-col items-center gap-control text-ink-tertiary/40">
              <RefreshCcw size={20} />
-             <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Synced</span>
+             <span className="text-xs font-bold uppercase tracking-[0.2em]">Synced</span>
            </div>
-           <div className="flex flex-col items-center gap-control text-ink-secondary/20">
+           <div className="flex flex-col items-center gap-control text-ink-tertiary/40">
              <KeyRound size={20} />
-             <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Audited</span>
+             <span className="text-xs font-bold uppercase tracking-[0.2em]">Audited</span>
            </div>
         </div>
       </div>
@@ -211,12 +211,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 const AuthField = ({ label, value, onChange, icon, type = 'text', placeholder, extra }: any) => (
   <div className="space-y-control">
     <div className="flex items-center justify-between px-1">
-      <label className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest">{label}</label>
+      <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">{label}</label>
       {extra}
     </div>
     <div className="relative group">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-secondary/40 group-focus-within:text-gold-500 transition-colors">{icon}</div>
-      <input type={type} required value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-surface-base border border-border-soft rounded-xl h-14 pl-12 pr-4 focus:border-gold-500/40 outline-none font-semibold text-sm text-ink-primary transition-all placeholder:text-ink-secondary/20 focus-visible:ring-2 focus-visible:ring-gold-500/20" />
+      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-tertiary group-focus-within:text-gold-500 transition-colors">{icon}</div>
+      <input type={type} required value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className="w-full bg-surface-base border border-border-soft rounded-xl h-14 pl-12 pr-4 focus:border-gold-500/40 outline-none font-semibold text-sm text-ink-primary transition-all placeholder:text-ink-tertiary focus-visible:ring-2 focus-visible:ring-gold-500/20" />
     </div>
   </div>
 );

@@ -101,7 +101,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
           {isEditing && (
             <button 
               onClick={() => bannerInputRef.current?.click()}
-              className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/banner:opacity-100 transition-opacity flex items-center justify-center gap-control text-white font-bold uppercase text-[10px] tracking-widest z-30"
+              className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover/banner:opacity-100 transition-opacity flex items-center justify-center gap-control text-white font-bold uppercase text-xs tracking-widest z-30"
             >
               {isUploading ? <Loader2 className="animate-spin" /> : <Camera size={20} />}
               Change Banner
@@ -145,7 +145,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                   className="bg-surface-base border border-border-soft rounded-xl h-10 px-padding text-sm font-bold italic focus:border-gold-500/40 outline-none transition-all text-ink-primary w-full max-w-sm" 
                   placeholder="Username"
                 />
-                <p className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest px-1">Master Collector • London, UK</p>
+                <p className="text-xs font-bold text-ink-tertiary uppercase tracking-widest px-1">Master Collector • London, UK</p>
               </div>
             ) : (
               <>
@@ -155,7 +155,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                     <ShieldCheck size={20} className="text-gold-500" />
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-ink-secondary/40">Master Collector • London, UK</p>
+                <p className="text-sm font-semibold text-ink-tertiary">Master Collector • London, UK</p>
               </>
             )}
           </div>
@@ -170,13 +170,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                     setAvatarDraft(null);
                     setBannerDraft(null);
                   }}
-                  className="btn-secondary h-10 px-4 text-[10px] tracking-widest"
+                  className="btn-secondary h-10 px-4 text-xs tracking-widest"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={handleSaveProfile}
-                  className="btn-primary h-10 px-6 text-[10px] tracking-widest gap-2 font-bold"
+                  className="btn-primary h-10 px-6 text-xs tracking-widest gap-2 font-bold"
                 >
                   <Save size={14} /> Save
                 </button>
@@ -184,7 +184,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
             ) : (
               <button 
                 onClick={() => setIsEditing(true)}
-                className="btn-secondary h-10 px-4 text-[10px] tracking-widest gap-2 shrink-0 active:scale-95"
+                className="btn-secondary h-10 px-4 text-xs tracking-widest gap-2 shrink-0 active:scale-95"
               >
                 <Settings size={14} /> Edit Profile
               </button>
@@ -197,7 +197,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
         <div className="md:col-span-4 space-y-section">
           <div className="card-vault p-padding space-y-padding">
             <div className="space-y-padding">
-              <h3 className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest">Collector Stats</h3>
+              <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Collector Stats</h3>
               <div className="grid grid-cols-2 gap-control">
                 <Stat icon={<Grid />} label="Total" value={cards.length.toString()} />
                 <Stat icon={<Heart />} label="Likes" value="1.2k" />
@@ -207,14 +207,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
             </div>
 
             <div className="space-y-padding pt-padding border-t border-border-soft">
-              <h3 className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest">Personal Details</h3>
+              <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Personal Details</h3>
               <div className="space-y-section">
                 {isEditing ? (
                   <div className="space-y-padding animate-in fade-in duration-300">
                     <EditField label="Favourite Club" value={editDraft.favClub || ''} onChange={v => setEditDraft({...editDraft, favClub: v})} />
                     <EditField label="Favourite Player" value={editDraft.favPlayer || ''} onChange={v => setEditDraft({...editDraft, favPlayer: v})} />
                     <div className="space-y-control">
-                      <label className="text-[8px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">Bio</label>
+                      <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">Bio</label>
                       <textarea 
                         value={editDraft.bio || ''} 
                         onChange={e => setEditDraft({...editDraft, bio: e.target.value})}
@@ -259,7 +259,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                 </div>
                 <div className="space-y-0.5">
                   <h4 className="font-bold text-xs text-ink-primary truncate">{card.playerName}</h4>
-                  <p className="text-[10px] text-ink-secondary/40 font-semibold uppercase truncate">{card.set}</p>
+                  <p className="text-xs text-ink-tertiary font-semibold uppercase truncate">{card.set}</p>
                 </div>
               </div>
             ))}
@@ -289,7 +289,7 @@ const Stat = ({ icon, label, value }: any) => (
       {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { size: 16 }) : icon}
     </div>
     <div className="space-y-0.5">
-      <span className="text-[8px] font-bold text-ink-secondary/40 uppercase tracking-widest leading-none block">{label}</span>
+      <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest leading-none block">{label}</span>
       <p className="text-xl font-bold text-ink-primary tracking-tighter tabular leading-none">{value}</p>
     </div>
   </div>
@@ -297,14 +297,14 @@ const Stat = ({ icon, label, value }: any) => (
 
 const Detail = ({ label, value }: any) => (
   <div className="space-y-control">
-    <span className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest">{label}</span>
-    <p className="text-sm font-semibold text-ink-secondary/60 leading-relaxed">{value}</p>
+    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">{label}</span>
+    <p className="text-sm font-semibold text-ink-tertiary leading-relaxed">{value}</p>
   </div>
 );
 
 const EditField = ({ label, value, onChange }: { label: string, value: string, onChange: (v: string) => void }) => (
   <div className="space-y-control">
-    <label className="text-[8px] font-bold text-ink-secondary/40 uppercase tracking-widest ml-1">{label}</label>
+    <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">{label}</label>
     <input 
       type="text" 
       value={value ?? ''} 
@@ -320,12 +320,12 @@ const TabButton = ({ active, onClick, icon, label, count }: any) => (
     className={`flex items-center gap-control px-4 h-10 rounded-full transition-all active:scale-95 whitespace-nowrap relative ${
       active 
         ? 'bg-surface-elevated text-ink-primary font-bold border border-border-soft' 
-        : 'text-ink-secondary/40 hover:text-ink-primary border border-transparent font-medium'
+        : 'text-ink-tertiary hover:text-ink-primary border border-transparent font-medium'
     }`}
   >
     {icon}
-    <span className="text-[10px] uppercase tracking-widest">{label}</span>
-    <span className={`text-[10px] ${active ? 'opacity-50' : 'text-ink-secondary/20'}`}>{count}</span>
+    <span className="text-xs uppercase tracking-widest">{label}</span>
+    <span className={`text-xs ${active ? 'opacity-50' : 'text-ink-tertiary/40'}`}>{count}</span>
     {active && <div className="absolute -bottom-control left-1/2 -translate-x-1/2 w-1 h-1 bg-gold-500 rounded-full"></div>}
   </button>
 );

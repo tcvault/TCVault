@@ -140,16 +140,16 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
              {mode !== 'Discovery' && (
                <button 
                 onClick={resetMode}
-                className="p-1.5 -ml-2 text-ink-secondary/40 hover:text-gold-500 transition-colors active:scale-90"
+                className="p-1.5 -ml-2 text-ink-tertiary hover:text-gold-500 transition-colors active:scale-90"
                >
                  <ArrowLeft size={20} />
                </button>
              )}
-             <span className="text-[10px] font-semibold text-ink-secondary/60 uppercase tracking-widest">Global Archive</span>
+             <span className="text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Global Archive</span>
              {mode === 'CollectorVault' && (
                <>
-                 <span className="text-ink-secondary/20">/</span>
-                 <span className="text-[10px] font-bold text-gold-500 uppercase tracking-widest">@{selectedCollector?.username}</span>
+                 <span className="text-ink-tertiary/40">/</span>
+                 <span className="text-micro font-bold text-gold-500 uppercase tracking-widest">@{selectedCollector?.username}</span>
                </>
              )}
           </div>
@@ -159,7 +159,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
         </div>
         
         {mode !== 'Discovery' && (
-          <button onClick={resetMode} className="btn-secondary px-4 text-[10px] font-bold uppercase tracking-widest">
+          <button onClick={resetMode} className="btn-secondary px-4 text-xs font-bold uppercase tracking-widest">
             Reset Archive
           </button>
         )}
@@ -167,19 +167,19 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
 
       {/* Global Search Interface */}
       <div className="relative group max-w-2xl">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-ink-secondary/40 group-focus-within:text-gold-500 transition-colors" size={24} />
+        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-ink-tertiary group-focus-within:text-gold-500 transition-colors" size={24} />
         <input 
           type="text" 
           placeholder={mode === 'CollectorVault' ? `Search within @${selectedCollector?.username}'s vault...` : "Search collectors, players, or clubs..."} 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleSearchKeyPress}
-          className="w-full h-16 bg-surface-base border border-border-soft rounded-2xl pl-16 pr-12 text-lg font-semibold focus:border-gold-500/30 outline-none transition-all placeholder:text-ink-secondary/40 text-ink-primary shadow-xl"
+          className="w-full h-16 bg-surface-base border border-border-soft rounded-2xl pl-16 pr-12 text-lg font-semibold focus:border-gold-500/30 outline-none transition-all placeholder:text-ink-tertiary text-ink-primary shadow-xl"
         />
         {searchTerm && (
           <button 
             onClick={() => setSearchTerm('')}
-            className="absolute right-6 top-1/2 -translate-y-1/2 text-ink-secondary/40 hover:text-ink-primary transition-colors p-2"
+            className="absolute right-6 top-1/2 -translate-y-1/2 text-ink-tertiary hover:text-ink-primary transition-colors p-2"
           >
             <X size={20} />
           </button>
@@ -196,12 +196,12 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-control">
                     <Users size={20} className="text-gold-500" />
-                    <h3 className="text-[10px] font-bold text-ink-secondary/60 uppercase tracking-widest">Verified Collectors</h3>
+                    <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Verified Collectors</h3>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-control">
                   {isLoading ? (
-                    <div className="col-span-full py-8 flex justify-center"><Loader2 className="animate-spin text-ink-secondary/20" /></div>
+                    <div className="col-span-full py-8 flex justify-center"><Loader2 className="animate-spin text-ink-tertiary/20" /></div>
                   ) : (
                     activeCollectors.map((collector) => (
                       <div 
@@ -209,19 +209,19 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                         onClick={() => handleCollectorClick(collector)}
                         className="card-vault p-padding flex items-center gap-padding hover:border-gold-500/20 transition-all cursor-pointer group active:scale-[0.98] shadow-sm"
                       >
-                        <div className="w-12 h-12 rounded-full bg-surface-base border border-border-soft flex items-center justify-center text-ink-secondary/40 overflow-hidden">
+                        <div className="w-12 h-12 rounded-full bg-surface-base border border-border-soft flex items-center justify-center text-ink-tertiary overflow-hidden">
                           {collector.avatar ? <img src={collector.avatar} className="w-full h-full object-cover" /> : <UserIcon size={20} />}
                         </div>
                         <div className="flex-1">
                           <h4 className="text-sm font-bold text-ink-primary group-hover:text-gold-500 transition-colors">@{collector.username}</h4>
-                          <p className="text-[10px] text-ink-secondary/40 font-semibold uppercase tracking-widest">Archive Contributor</p>
+                          <p className="text-xs text-ink-tertiary font-semibold uppercase tracking-widest">Archive Contributor</p>
                         </div>
-                        <ChevronRight size={16} className="text-ink-secondary/20 group-hover:text-ink-primary transition-colors" />
+                        <ChevronRight size={16} className="text-ink-tertiary/40 group-hover:text-ink-primary transition-colors" />
                       </div>
                     ))
                   )}
                   {activeCollectors.length === 0 && !isLoading && (
-                    <p className="text-[10px] font-bold text-ink-secondary/20 uppercase py-8 text-center col-span-full">No contributors discovered yet</p>
+                    <p className="text-xs font-bold text-ink-tertiary uppercase py-8 text-center col-span-full">No contributors discovered yet</p>
                   )}
                 </div>
               </div>
@@ -233,14 +233,14 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-control">
                 <Globe size={20} className="text-emerald-600" />
-                <h3 className="text-[10px] font-bold text-ink-secondary/60 uppercase tracking-widest">
+                <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">
                   {mode === 'SearchResults' ? `${filteredCards.length} Search Results` : mode === 'CollectorVault' ? 'Collector Assets' : 'Public Grails'}
                 </h3>
               </div>
               {mode !== 'Discovery' && (
                 <div className="flex items-center gap-control">
                    <Grid size={16} className="text-gold-500" />
-                   <span className="text-[10px] font-bold uppercase text-gold-500">{filteredCards.length} Cards</span>
+                   <span className="text-xs font-bold uppercase text-gold-500">{filteredCards.length} Cards</span>
                 </div>
               )}
             </div>
@@ -267,22 +267,22 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                         onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} 
                       />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink-primary/90 via-ink-primary/40 to-transparent p-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
-                        <p className="text-[10px] font-bold text-gold-500 uppercase tracking-widest leading-none mb-1">{card.playerName}</p>
-                        <p className="text-[8px] font-semibold text-ink-secondary/60 uppercase tracking-widest truncate">@{card.ownerUsername}</p>
+                        <p className="text-xs font-bold text-gold-500 uppercase tracking-widest leading-none mb-1">{card.playerName}</p>
+                        <p className="text-xs font-semibold text-ink-on-dark/60 uppercase tracking-widest truncate">@{card.ownerUsername}</p>
                       </div>
                     </div>
                   </div>
                 ))}
                 {filteredCards.length === 0 && (
                   <div className="col-span-full py-20 bg-surface-elevated rounded-3xl border-dashed border-border-soft flex flex-col items-center justify-center gap-padding text-center">
-                    <div className="p-6 bg-surface-base rounded-full text-ink-secondary/20">
+                    <div className="p-6 bg-surface-base rounded-full text-ink-tertiary/20">
                        <Search size={32} />
                     </div>
                     <div className="space-y-control">
                        <p className="text-sm font-bold text-ink-primary uppercase tracking-tighter">Archive connection failed</p>
-                       <p className="text-xs font-semibold text-ink-secondary/40 max-w-xs">No assets matching your query were found in this sector of the vault.</p>
+                       <p className="text-xs font-semibold text-ink-tertiary max-w-xs">No assets matching your query were found in this sector of the vault.</p>
                     </div>
-                    <button onClick={resetMode} className="btn-secondary h-10 px-6 uppercase text-[10px] font-bold tracking-widest">Clear Archive View</button>
+                    <button onClick={resetMode} className="btn-secondary h-10 px-6 uppercase text-xs font-bold tracking-widest">Clear Archive View</button>
                   </div>
                 )}
               </div>
@@ -296,14 +296,14 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
             <div className="space-y-padding">
               <div className="flex items-center gap-control">
                 <TrendingUp size={20} className="text-gold-500" />
-                <h3 className="text-[10px] font-bold text-ink-secondary/60 uppercase tracking-widest">Trending Topics</h3>
+                <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Trending Topics</h3>
               </div>
               <div className="flex flex-wrap gap-control">
                 {trendingTags.map(tag => (
                   <button 
                     key={tag} 
                     onClick={() => handleTagClick(tag)}
-                    className={`px-4 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-widest transition-all active:scale-95 ${searchTerm === tag ? 'bg-gold-500 text-white border-gold-500' : 'bg-surface-base border-border-soft text-ink-primary hover:border-gold-500/30 hover:text-gold-500'}`}
+                    className={`px-4 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all active:scale-95 ${searchTerm === tag ? 'bg-gold-500 text-white border-gold-500' : 'bg-surface-base border-border-soft text-ink-primary hover:border-gold-500/30 hover:text-gold-500'}`}
                   >
                     {tag}
                   </button>
@@ -313,16 +313,16 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
 
             <div className="space-y-padding pt-padding border-t border-border-soft">
               <div className="flex items-center gap-control">
-                <Filter size={18} className="text-ink-secondary/40" />
-                <h3 className="text-[10px] font-bold text-ink-secondary/60 uppercase tracking-widest">Vault Analytics</h3>
+                <Filter size={18} className="text-ink-tertiary" />
+                <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Vault Analytics</h3>
               </div>
               <div className="grid grid-cols-2 gap-padding">
                  <div className="space-y-control">
-                    <span className="text-[8px] font-bold text-ink-secondary/40 uppercase tracking-widest">Global Assets</span>
+                    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Global Assets</span>
                     <p className="text-xl font-bold text-ink-primary tabular leading-none">{publicCards.length}</p>
                  </div>
                  <div className="space-y-control">
-                    <span className="text-[8px] font-bold text-ink-secondary/40 uppercase tracking-widest">Unique Sets</span>
+                    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Unique Sets</span>
                     <p className="text-xl font-bold text-ink-primary tabular leading-none">{new Set(publicCards.map(c => c.set)).size}</p>
                  </div>
               </div>
@@ -330,11 +330,11 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
 
             {!user && (
               <div className="pt-padding border-t border-border-soft space-y-padding">
-                 <h4 className="text-[10px] font-bold text-gold-500 uppercase tracking-widest italic">Join the network</h4>
-                 <p className="text-[11px] font-medium text-ink-secondary/60 leading-relaxed">
+                 <h4 className="text-xs font-bold text-gold-500 uppercase tracking-widest italic">Join the network</h4>
+                 <p className="text-[11px] font-medium text-ink-tertiary leading-relaxed">
                    Secure your vault and start contributing to the global archive of high-end assets.
                  </p>
-                 <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="w-full btn-primary h-12 text-[10px] tracking-widest">Create Profile</button>
+                 <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="w-full btn-primary h-12 text-xs tracking-widest">Create Profile</button>
               </div>
             )}
           </div>
@@ -345,7 +345,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
       {selectedCard && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-ink-primary/70 backdrop-blur-2xl p-4 md:p-8 animate-in fade-in duration-300" onClick={() => setSelectedCard(null)}>
           <div className="w-full max-w-5xl bg-surface-elevated rounded-xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative border border-border-soft" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedCard(null)} className="absolute top-8 right-8 z-[210] p-4 bg-surface-base border border-border-soft rounded-full text-ink-secondary/40 hover:text-ink-primary hover:bg-gold-500/10 transition-all active:scale-90 shadow-xl">
+            <button onClick={() => setSelectedCard(null)} className="absolute top-8 right-8 z-[210] p-4 bg-surface-base border border-border-soft rounded-full text-ink-tertiary hover:text-ink-primary hover:bg-gold-500/10 transition-all active:scale-90 shadow-xl">
               <X size={24} />
             </button>
 
@@ -361,7 +361,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                   <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(p => (p === 0 ? selectedCard.images.length - 1 : p - 1)); }} className="p-4 bg-ink-primary/60 rounded-full text-white hover:bg-gold-500 transition-all active:scale-90 shadow-xl border border-white/10">
                     <ChevronLeft size={24} />
                   </button>
-                  <span className="text-[10px] font-bold text-white uppercase tracking-widest bg-ink-primary/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">{currentImageIndex + 1} / {selectedCard.images.length}</span>
+                  <span className="text-xs font-bold text-white uppercase tracking-widest bg-ink-primary/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">{currentImageIndex + 1} / {selectedCard.images.length}</span>
                   <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(p => (p === selectedCard.images.length - 1 ? 0 : p + 1)); }} className="p-4 bg-ink-primary/60 rounded-full text-white hover:bg-gold-500 transition-all active:scale-90 shadow-xl border border-white/10">
                     <ChevronRightIcon size={24} />
                   </button>
@@ -373,7 +373,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
               <div className="space-y-padding">
                 <div className="flex items-center gap-control">
                    <div className="w-10 h-10 rounded-full bg-surface-base flex items-center justify-center border border-border-soft overflow-hidden">
-                      {selectedCard.ownerAvatar ? <img src={selectedCard.ownerAvatar} className="w-full h-full object-cover" /> : <UserIcon size={18} className="text-ink-secondary/40" />}
+                      {selectedCard.ownerAvatar ? <img src={selectedCard.ownerAvatar} className="w-full h-full object-cover" /> : <UserIcon size={18} className="text-ink-tertiary" />}
                    </div>
                    <div 
                     onClick={() => {
@@ -384,7 +384,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                     }}
                     className="cursor-pointer group"
                    >
-                     <p className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest leading-none mb-1">Owner</p>
+                     <p className="text-xs font-bold text-ink-tertiary uppercase tracking-widest leading-none mb-1">Owner</p>
                      <h4 className="text-sm font-bold text-ink-primary group-hover:text-gold-500 transition-colors leading-none">@{selectedCard.ownerUsername}</h4>
                    </div>
                 </div>
@@ -392,9 +392,9 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
               </div>
 
               <div className="space-y-control">
-                <span className="text-[10px] font-bold text-gold-500 uppercase tracking-widest bg-gold-500/10 px-3 py-1 rounded-full border border-gold-500/20">{selectedCard.rarityTier || 'Vault Asset'}</span>
+                <span className="text-xs font-bold text-gold-500 uppercase tracking-widest bg-gold-500/10 px-3 py-1 rounded-full border border-gold-500/20">{selectedCard.rarityTier || 'Vault Asset'}</span>
                 <h2 className="text-4xl font-bold text-ink-primary tracking-tighter leading-none italic">{selectedCard.playerName}</h2>
-                <p className="text-sm font-bold text-ink-secondary/40">Archive Ref: {selectedCard.set}</p>
+                <p className="text-sm font-bold text-ink-tertiary">Archive Ref: {selectedCard.set}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-section pt-4">
@@ -404,10 +404,10 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                 <Detail label="Spec Value" value={`£${selectedCard.marketValue.toLocaleString()}`} />
               </div>
 
-              <div className="pt-padding border-t border-border-soft space-y-padding">
+               <div className="pt-padding border-t border-border-soft space-y-padding">
                 <div className="space-y-control">
-                   <span className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest block">Collector Intelligence</span>
-                   <p className="text-xs font-medium text-ink-secondary/60 leading-relaxed italic">
+                   <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest block">Collector Intelligence</span>
+                   <p className="text-xs font-medium text-ink-tertiary leading-relaxed italic">
                      {selectedCard.notes || "No additional intelligence provided for this specific asset."}
                    </p>
                 </div>
@@ -419,11 +419,11 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                         setSelectedCard(null);
                       }
                     }}
-                    className="w-full btn-primary h-14 text-[10px] tracking-widest shadow-xl"
+                    className="w-full btn-primary h-14 text-xs tracking-widest shadow-xl"
                   >
                     Enter @{selectedCard.ownerUsername}'s Vault
                   </button>
-                  <button onClick={() => setSelectedCard(null)} className="w-full btn-secondary h-14 text-[10px] tracking-widest">Return to Archive</button>
+                  <button onClick={() => setSelectedCard(null)} className="w-full btn-secondary h-14 text-xs tracking-widest">Return to Archive</button>
                 </div>
               </div>
             </div>
@@ -436,7 +436,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
 
 const Detail = ({ label, value }: { label: string, value: React.ReactNode }) => (
   <div className="space-y-control">
-    <span className="text-[10px] font-bold text-ink-secondary/40 uppercase tracking-widest block">{label}</span>
+    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest block">{label}</span>
     <div className="text-base font-bold text-ink-primary truncate tracking-tight">{value}</div>
   </div>
 );
