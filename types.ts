@@ -25,20 +25,6 @@ export interface SocialComment {
   createdAt: number;
 }
 
-export type NotificationType = 'like' | 'comment';
-
-export interface Notification {
-  id: string;
-  userId: string;
-  type: NotificationType;
-  postId: string;
-  fromUserId: string;
-  fromUsername: string;
-  content?: string;
-  isRead: boolean;
-  createdAt: number;
-}
-
 export interface SocialPost {
   id: string;
   userId: string;
@@ -124,8 +110,7 @@ export enum ViewMode {
   INVENTORY = 'INVENTORY',
   ADD_CARD = 'ADD_CARD',
   PROFILE = 'PROFILE',
-  SETTINGS = 'SETTINGS',
-  NOTIFICATIONS = 'NOTIFICATIONS'
+  SETTINGS = 'SETTINGS'
 }
 
 export type SortField = 'playerName' | 'purchaseDate' | 'marketValue' | 'pricePaid';

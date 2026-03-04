@@ -13,7 +13,6 @@ interface SidebarProps {
   selectedBinderId: string;
   setSelectedBinderId: (id: string) => void;
   handleLogout: () => void;
-  unreadNotificationsCount?: number;
 }
 
 export const Sidebar = ({
@@ -24,8 +23,7 @@ export const Sidebar = ({
   binders,
   selectedBinderId,
   setSelectedBinderId,
-  handleLogout,
-  unreadNotificationsCount = 0
+  handleLogout
 }: SidebarProps) => {
   return (
     <div className="p-8 flex flex-col h-full overflow-hidden">
@@ -47,15 +45,6 @@ export const Sidebar = ({
           <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Community</span>
           <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
           <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
-          {!isGuest && (
-            <NavButton 
-              active={view === ViewMode.NOTIFICATIONS} 
-              onClick={() => setView(ViewMode.NOTIFICATIONS)} 
-              icon={<UserIcon size={16} />} 
-              label="Notifications" 
-              badge={unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined}
-            />
-          )}
         </div>
 
         {!isGuest && (
@@ -140,20 +129,12 @@ interface NavButtonProps {
   icon: React.ReactElement;
   label: string;
   trailing?: React.ReactNode;
-  badge?: number;
 }
 
-const NavButton = ({ active, onClick, icon, label, trailing, badge }: NavButtonProps) => (
+const NavButton = ({ active, onClick, icon, label, trailing }: NavButtonProps) => (
   <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] relative group ${active ? 'bg-surface-elevated text-ink-primary' : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated/50'}`}>
     <div className="flex items-center gap-4">
-      <div className="relative">
-        {React.cloneElement(icon, { size: 16, className: active ? 'text-ink-primary' : '' } as any)}
-        {badge !== undefined && (
-          <div className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center bg-gold-500 text-white text-[8px] font-bold rounded-full px-0.5 shadow-sm">
-            {badge > 9 ? '9+' : badge}
-          </div>
-        )}
-      </div>
+      {React.cloneElement(icon, { size: 16, className: active ? 'text-ink-primary' : '' } as any)}
       <span className={`text-sm ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
     </div>
     {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-gold-500 rounded-full" />}

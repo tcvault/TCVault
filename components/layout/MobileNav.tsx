@@ -10,7 +10,6 @@ interface MobileNavProps {
   setSelectedBinderId: (id: string) => void;
   setShowBinderSheet: (show: boolean) => void;
   goldGradientStyle: React.CSSProperties;
-  unreadNotificationsCount?: number;
 }
 
 export const MobileNav = ({
@@ -20,18 +19,11 @@ export const MobileNav = ({
   binders,
   setSelectedBinderId,
   setShowBinderSheet,
-  goldGradientStyle,
-  unreadNotificationsCount = 0
+  goldGradientStyle
 }: MobileNavProps) => {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-elevated border-t border-border-soft flex items-center justify-around px-8 z-[50] shadow-xl">
-      <MobileNavButton 
-        active={view === ViewMode.FEED} 
-        onClick={() => setView(ViewMode.FEED)} 
-        icon={<Rss size={20} />} 
-        label="Feed" 
-        badge={unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined}
-      />
+      <MobileNavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={20} />} label="Feed" />
       <MobileNavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={20} />} label="Explore" />
       {!isGuest ? (
         <>
@@ -69,19 +61,11 @@ interface MobileNavButtonProps {
   onClick: () => void;
   icon: React.ReactElement;
   label: string;
-  badge?: number;
 }
 
-const MobileNavButton = ({ active, onClick, icon, label, badge }: MobileNavButtonProps) => (
+const MobileNavButton = ({ active, onClick, icon, label }: MobileNavButtonProps) => (
   <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] relative ${active ? 'text-ink-primary' : 'text-ink-tertiary'}`}>
-    <div className="relative">
-      {React.cloneElement(icon, { size: 20 } as any)}
-      {badge !== undefined && (
-        <div className="absolute -top-1 -right-1 min-w-[12px] h-[12px] flex items-center justify-center bg-gold-500 text-white text-[7px] font-bold rounded-full px-0.5 shadow-sm">
-          {badge > 9 ? '9+' : badge}
-        </div>
-      )}
-    </div>
+    {React.cloneElement(icon, { size: 20 } as any)}
     <span className="text-xs font-bold uppercase tracking-widest leading-none">{label}</span>
     {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold-500 rounded-full" />}
   </button>

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Card, BinderPage, SocialPost, SocialComment, User, Notification, NotificationType } from '../types';
+import { Card, BinderPage, SocialPost, SocialComment, User } from '../types';
 
 const envUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -124,7 +124,6 @@ class CloudStorageService {
     let success = false;
     let attempts = 0;
     const maxAttempts = 5;
-    let finalLikes: string[] = [];
 
     while (!success && attempts < maxAttempts) {
       attempts++;
@@ -142,8 +141,6 @@ class CloudStorageService {
       if (likeIdx > -1) likes.splice(likeIdx, 1);
       else likes.push(userId);
 
-      finalLikes = likes;
-
       const { data: updateData, error: updateError } = await supabase
         .from('social_posts')
         .update({ likes })
@@ -159,25 +156,6 @@ class CloudStorageService {
     }
     
     if (!success) throw new Error("Concurrent update detected. Please try again.");
-
-    // Create notification if it's a new like (not an unlike)
-    const isLiked = finalLikes.includes(userId);
-    if (isLiked && supabase) {
-      // Get post owner
-      const { data: postData } = await supabase.from('social_posts').select('user_id').eq('id', postId).single();
-      if (postData && postData.user_id !== userId) {
-        // Get liker username
-        const profile = await this.getUserProfile(userId);
-        await supabase.from('notifications').insert({
-          user_id: postData.user_id,
-          type: 'like',
-          post_id: postId,
-          from_user_id: userId,
-          from_username: profile?.username || 'Someone',
-          is_read: false
-        });
-      }
-    }
   }
 
   async addComment(postId: string, comment: SocialComment): Promise<void> {
@@ -215,59 +193,6 @@ class CloudStorageService {
     }
     
     if (!success) throw new Error("Concurrent update detected. Please try again.");
-
-    // Create notification
-    if (supabase) {
-      const { data: postData } = await supabase.from('social_posts').select('user_id').eq('id', postId).single();
-      if (postData && postData.user_id !== comment.userId) {
-        await supabase.from('notifications').insert({
-          user_id: postData.user_id,
-          type: 'comment',
-          post_id: postId,
-          from_user_id: comment.userId,
-          from_username: comment.username,
-          content: comment.content.substring(0, 50),
-          is_read: false
-        });
-      }
-    }
-  }
-
-  async getNotifications(userId: string): Promise<Notification[]> {
-    if (!supabase) return [];
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    
-    if (error) {
-      console.error("Error fetching notifications:", error);
-      return [];
-    }
-
-    return (data || []).map((n: any) => ({
-      id: n.id,
-      userId: n.user_id,
-      type: n.type as NotificationType,
-      postId: n.post_id,
-      fromUserId: n.from_user_id,
-      fromUsername: n.from_username,
-      content: n.content,
-      isRead: n.is_read,
-      createdAt: new Date(n.created_at).getTime()
-    }));
-  }
-
-  async markNotificationAsRead(notificationId: string): Promise<void> {
-    if (!supabase) return;
-    await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
-  }
-
-  async markAllNotificationsAsRead(userId: string): Promise<void> {
-    if (!supabase) return;
-    await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
   }
 
   async deletePost(postId: string): Promise<void> {
