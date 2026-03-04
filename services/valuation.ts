@@ -10,9 +10,11 @@ function percentile(values: number[], p: number) {
   const sorted = [...values].sort((a,b) => a-b);
   const idx = (sorted.length - 1) * p;
   const lo = Math.floor(idx), hi = Math.ceil(idx);
-  if (lo === hi) return sorted[lo];
+  const loVal = sorted[lo] ?? 0;
+  const hiVal = sorted[hi] ?? 0;
+  if (lo === hi) return loVal;
   const w = idx - lo;
-  return sorted[lo] * (1 - w) + sorted[hi] * w;
+  return loVal * (1 - w) + hiVal * w;
 }
 
 function iqrFilter(values: number[]) {
@@ -60,7 +62,7 @@ export function buildMarketMeta(intel: MarketIntel): MarketMeta | null {
   const weights = filtered.map(c => recencyWeight(c.soldDate) * (0.5 + 0.5 * c.matchConfidence));
   const wSum = weights.reduce((a,b) => a+b, 0) || 1;
 
-  const weightedMean = filtered.reduce((acc, c, i) => acc + c.priceGbp * weights[i], 0) / wSum;
+  const weightedMean = filtered.reduce((acc, c, i) => acc + c.priceGbp * (weights[i] ?? 0), 0) / wSum;
 
   const p25 = percentile(filtered.map(c => c.priceGbp), 0.25);
   const p50 = percentile(filtered.map(c => c.priceGbp), 0.50);

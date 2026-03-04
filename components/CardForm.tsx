@@ -6,12 +6,12 @@ import { vaultStorage, supabase } from '../services/storage';
 
 interface CardFormProps {
   onSubmit: (card: Card) => void;
-  onDelete?: (id: string) => void;
+  onDelete?: ((id: string) => void) | undefined;
   onCancel: () => void;
-  initialData?: Card;
+  initialData?: Card | undefined;
   pages: BinderPage[];
-  onToast?: (message: string, type: 'success' | 'error' | 'info') => void;
-  animationClass?: string;
+  onToast?: ((message: string, type: 'success' | 'error' | 'info') => void) | undefined;
+  animationClass?: string | undefined;
 }
 
 const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
@@ -96,7 +96,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   const [formData, setFormData] = useState<Partial<Card>>({
     playerName: '', team: '', cardSpecifics: '', set: '', setNumber: '',
     condition: 'Ungraded', pricePaid: 0, marketValue: 0,
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: new Date().toISOString().split('T')[0] ?? '',
     serialNumber: '', certNumber: '', notes: '', pageId: '', rarityTier: 'Base',
     isPublic: true
   });
@@ -136,6 +136,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       for (let i = 0; i < files.length; i++) {
         if (i > 0) await new Promise(res => setTimeout(res, 500));
         const file = files[i];
+        if (!file) continue;
         const base64 = await new Promise<string>((res) => {
           const reader = new FileReader();
           reader.onloadend = () => res(reader.result as string);
@@ -164,8 +165,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           setIsCropping(null);
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Upload failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsSaving(false);
     }
@@ -262,8 +263,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         isPublic: formData.isPublic || false
       };
       await onSubmit(completeCard);
-    } catch (err: any) {
-      setError(err.message || "Save error.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Save error.");
     } finally {
       setIsSaving(false);
     }

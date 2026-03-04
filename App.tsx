@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { getMarketIntel } from './services/gemini';
 import { buildMarketMeta } from './services/valuation';
 import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost } from './types';
+import { UserSchema, safeParseJson } from './services/schemas';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import CardForm from './components/CardForm';
@@ -27,12 +29,13 @@ interface Toast {
 }
 
 function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>(undefined);
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  return ref.current;
+  const [prev, setPrev] = useState<T | undefined>(undefined);
+  const [current, setCurrent] = useState<T>(value);
+  if (current !== value) {
+    setPrev(current);
+    setCurrent(value);
+  }
+  return prev;
 }
 
 const App: React.FC = () => {
@@ -147,9 +150,13 @@ const App: React.FC = () => {
           const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
           if (savedSession) {
             try {
-              const userObj = JSON.parse(savedSession);
-              setCurrentUser(userObj);
-              await loadData(userObj.id);
+              const userObj = safeParseJson(savedSession, UserSchema);
+              if (userObj) {
+                setCurrentUser(userObj);
+                await loadData(userObj.id);
+              } else {
+                localStorage.removeItem(STORAGE_SESSION_KEY);
+              }
             } catch {
               localStorage.removeItem(STORAGE_SESSION_KEY);
             }
@@ -175,7 +182,7 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (isTerminating.current || !isMounted) return;
       
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {

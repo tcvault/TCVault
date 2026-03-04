@@ -6,11 +6,11 @@ interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
   message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
+  confirmLabel?: string | undefined;
+  cancelLabel?: string | undefined;
   onConfirm: () => void;
   onCancel: () => void;
-  variant?: 'danger' | 'warning' | 'info';
+  variant?: 'danger' | 'warning' | 'info' | undefined;
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({

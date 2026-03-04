@@ -74,6 +74,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass, 
       }, 500);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [highlightedPostId, posts.length, onClearHighlight]);
 
   const handlePost = async (e: React.FormEvent) => {

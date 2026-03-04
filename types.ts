@@ -1,17 +1,17 @@
 export interface User {
   id: string;
   username: string;
-  avatar?: string;
-  bio?: string;
-  favClub?: string;
-  favPlayer?: string;
-  bannerUrl?: string; // New: Custom profile banner
+  avatar?: string | undefined;
+  bio?: string | undefined;
+  favClub?: string | undefined;
+  favPlayer?: string | undefined;
+  bannerUrl?: string | undefined;
 }
 
 export interface BinderPage {
   id: string;
   name: string;
-  description?: string;
+  description?: string | undefined;
 }
 
 export type PostTag = 'Pickup' | 'PC Update' | 'Show Coverage' | 'General';
@@ -20,7 +20,7 @@ export interface SocialComment {
   id: string;
   userId: string;
   username: string;
-  userAvatar?: string;
+  userAvatar?: string | undefined;
   content: string;
   createdAt: number;
 }
@@ -29,11 +29,11 @@ export interface SocialPost {
   id: string;
   userId: string;
   username: string;
-  userAvatar?: string;
+  userAvatar?: string | undefined;
   content: string;
   tag: PostTag;
-  imageUrl?: string;
-  likes: string[]; // array of user IDs
+  imageUrl?: string | undefined;
+  likes: string[];
   createdAt: number;
   commentCount: number;
   comments: SocialComment[];
@@ -42,56 +42,56 @@ export interface SocialPost {
 export interface MarketComp {
   title: string;
   uri: string;
-  soldDate?: string;         // ISO
-  priceGbp: number;          // normalized GBP
-  shippingGbp?: number;
+  soldDate?: string | undefined;
+  priceGbp: number;
+  shippingGbp?: number | undefined;
   source: 'eBay' | 'PWCC' | 'Goldin' | 'MySlabs' | 'COMC' | 'Other';
-  matchConfidence: number;   // 0..1
-  grade?: string;            // "PSA 10", "BGS 9.5", "RAW NM"
-  flags?: string[];          // ["lot", "damaged", "unknownParallel"]
+  matchConfidence: number;
+  grade?: string | undefined;
+  flags?: string[] | undefined;
 }
 
 export interface MarketMeta {
-  valuationVersion: string;  // "v1"
-  updatedAt: number;         // epoch ms
+  valuationVersion: string;
+  updatedAt: number;
   compsUsed: number;
-  liquidity30d?: number;     // sold count in last 30d
+  liquidity30d?: number | undefined;
   confidence: 'low' | 'medium' | 'high';
-  low: number;               // quick-sale
-  mid: number;               // fair
-  high: number;              // premium
-  spreadPct?: number;        // active-vs-sold signal
-  summary?: string;
-  sources?: { title: string; uri: string }[];
-  comps?: MarketComp[];      // keep last N (e.g. 12)
-  fxNote?: string;
+  low: number;
+  mid: number;
+  high: number;
+  spreadPct?: number | undefined;
+  summary?: string | undefined;
+  sources?: { title: string; uri: string }[] | undefined;
+  comps?: MarketComp[] | undefined;
+  fxNote?: string | undefined;
 }
 
 export interface Card {
   id: string;
   playerName: string;
-  team?: string;
+  team?: string | undefined;
   cardSpecifics: string;
   set: string;
-  setNumber?: string;
+  setNumber?: string | undefined;
   condition: string;
   pricePaid: number;
   marketValue: number;
   purchaseDate: string;
-  serialNumber?: string;
-  certNumber?: string;
+  serialNumber?: string | undefined;
+  certNumber?: string | undefined;
   images: string[];
-  notes?: string;
+  notes?: string | undefined;
   createdAt: number;
-  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
-  isWishlist?: boolean;
-  pageId?: string;
-  isPublic: boolean; // New: Social visibility
-  ownerUsername?: string; // New: Display name of the collector
-  ownerAvatar?: string; // New: Avatar of the collector
-  ownerId?: string; // New: ID to filter by collector
-  marketMeta?: MarketMeta;
-  marketValueLocked?: boolean; // manual override protection
+  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1' | undefined;
+  isWishlist?: boolean | undefined;
+  pageId?: string | undefined;
+  isPublic: boolean;
+  ownerUsername?: string | undefined;
+  ownerAvatar?: string | undefined;
+  ownerId?: string | undefined;
+  marketMeta?: MarketMeta | undefined;
+  marketValueLocked?: boolean | undefined;
 }
 
 export interface CollectionStats {
@@ -100,7 +100,7 @@ export interface CollectionStats {
   totalMarketValue: number;
   valueGrowth: number;
   topSet: string;
-  dailyChange?: number;
+  dailyChange?: number | undefined;
 }
 
 export enum ViewMode {

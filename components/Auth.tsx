@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, User as UserIcon, Lock, KeyRound, RefreshCcw, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { User } from '../types';
+import type { AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../services/storage';
 
 interface AuthProps {
@@ -20,7 +21,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 
   useEffect(() => {
     if (!supabase) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (event === 'PASSWORD_RECOVERY') setAuthMode('update-password');
     });
     return () => subscription.unsubscribe();
@@ -68,8 +69,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
         setSuccessMessage('Vault re-secured. Please log in.');
         setTimeout(() => setAuthMode('login'), 2000);
       }
-    } catch (err: any) {
-      setError(err.message || "Access denied.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Access denied.");
     } finally {
       setIsLoading(false);
     }

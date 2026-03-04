@@ -88,7 +88,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
     const collectorsMap = new Map<string, { id: string; username: string; avatar?: string }>();
     publicCards.forEach(c => {
       if (c.ownerId && c.ownerUsername) {
-        collectorsMap.set(c.ownerId, { id: c.ownerId, username: c.ownerUsername, avatar: c.ownerAvatar });
+        collectorsMap.set(c.ownerId, { id: c.ownerId, username: c.ownerUsername, ...(c.ownerAvatar !== undefined ? { avatar: c.ownerAvatar } : {}) });
       }
     });
     return Array.from(collectorsMap.values()).slice(0, 8);
@@ -375,10 +375,10 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                    <div className="w-10 h-10 rounded-full bg-surface-base flex items-center justify-center border border-border-soft overflow-hidden">
                       {selectedCard.ownerAvatar ? <img src={selectedCard.ownerAvatar} className="w-full h-full object-cover" /> : <UserIcon size={18} className="text-ink-tertiary" />}
                    </div>
-                   <div 
+                   <div
                     onClick={() => {
                       if (selectedCard.ownerId && selectedCard.ownerUsername) {
-                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, avatar: selectedCard.ownerAvatar });
+                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, ...(selectedCard.ownerAvatar !== undefined ? { avatar: selectedCard.ownerAvatar } : {}) });
                         setSelectedCard(null);
                       }
                     }}
@@ -412,10 +412,10 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                    </p>
                 </div>
                 <div className="flex flex-col gap-control">
-                  <button 
+                  <button
                     onClick={() => {
                       if (selectedCard.ownerId && selectedCard.ownerUsername) {
-                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, avatar: selectedCard.ownerAvatar });
+                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, ...(selectedCard.ownerAvatar !== undefined ? { avatar: selectedCard.ownerAvatar } : {}) });
                         setSelectedCard(null);
                       }
                     }}

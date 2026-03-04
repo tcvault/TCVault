@@ -14,8 +14,8 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, onEditCard, animationClass }) => {
   const [isSpotlightLoaded, setIsSpotlightLoaded] = useState(false);
   
-  const spotlightCard = recentCards.length > 0 
-    ? recentCards.reduce((prev, current) => (prev.marketValue > current.marketValue) ? prev : current, recentCards[0])
+  const spotlightCard = recentCards.length > 0
+    ? recentCards.reduce((prev, current) => (prev.marketValue > current.marketValue) ? prev : current, recentCards[0]!)
     : null;
 
   return (

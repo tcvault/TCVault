@@ -5,8 +5,8 @@ interface EmptyStateProps {
   icon: React.ReactNode;
   title: string;
   message: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  actionLabel?: string | undefined;
+  onAction?: (() => void) | undefined;
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ icon, title, message, actionLabel, onAction }) => (
