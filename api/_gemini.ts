@@ -13,10 +13,12 @@ export function getAi(): GoogleGenAI {
 
 export async function generateWithRetry(params: any, retries = 2, delay = 1000) {
   const client = getAi();
+  let lastError: unknown;
   for (let i = 0; i <= retries; i++) {
     try {
       return await client.models.generateContent(params);
     } catch (error: any) {
+      lastError = error;
       const is503 =
         error?.message?.includes("503") ||
         error?.status === 503 ||
@@ -28,6 +30,8 @@ export async function generateWithRetry(params: any, retries = 2, delay = 1000) 
       throw error;
     }
   }
+  // All retries exhausted (only reachable after repeated 503s)
+  throw lastError;
 }
 
 export const DEFAULT_MODEL = "gemini-2.0-flash";
