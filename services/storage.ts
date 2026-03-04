@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User } from '../types';
+import { UserSchema, CardSchema, BinderPageSchema, safeParseJson } from './schemas';
 
 const envUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -21,9 +22,9 @@ class CloudStorageService {
   async uploadImage(userId: string, base64Data: string): Promise<string> {
     if (userId === 'local-guest' || !supabase || !base64Data.startsWith('data:')) return base64Data;
     try {
-      const mimeType = base64Data.split(';')[0].split(':')[1] || 'image/jpeg';
-      const extension = mimeType.split('/')[1] || 'jpg';
-      const base64Content = base64Data.split(',')[1];
+      const mimeType = base64Data.split(';')[0]?.split(':')[1] ?? 'image/jpeg';
+      const extension = mimeType.split('/')[1] ?? 'jpg';
+      const base64Content = base64Data.split(',')[1] ?? '';
       const byteCharacters = atob(base64Content);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -73,7 +74,7 @@ class CloudStorageService {
       }
     }
     const local = localStorage.getItem(`${LOCAL_PROFILE_PREFIX}${userId}`);
-    return local ? JSON.parse(local) : null;
+    return local ? safeParseJson(local, UserSchema) : null;
   }
 
   async getPosts(): Promise<SocialPost[]> {
@@ -120,84 +121,28 @@ class CloudStorageService {
 
   async toggleLike(postId: string, userId: string): Promise<void> {
     if (!supabase) return;
-    
-    let success = false;
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    while (!success && attempts < maxAttempts) {
-      attempts++;
-      const { data, error: fetchError } = await supabase
-        .from('social_posts')
-        .select('likes')
-        .eq('id', postId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      const oldLikes = data?.likes || [];
-      const likes = [...oldLikes];
-      const likeIdx = likes.indexOf(userId);
-      if (likeIdx > -1) likes.splice(likeIdx, 1);
-      else likes.push(userId);
-
-      const { data: updateData, error: updateError } = await supabase
-        .from('social_posts')
-        .update({ likes })
-        .eq('id', postId)
-        .eq('likes', oldLikes)
-        .select();
-
-      if (!updateError && updateData && updateData.length > 0) {
-        success = true;
-      } else if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 50 + Math.random() * 50));
-      }
-    }
-    
-    if (!success) throw new Error("Concurrent update detected. Please try again.");
+    const { error } = await supabase.rpc('toggle_post_like', {
+      p_post_id: postId,
+      p_user_id: userId,
+    });
+    if (error) throw error;
   }
 
   async addComment(postId: string, comment: SocialComment): Promise<void> {
     if (!supabase) return;
-
-    let success = false;
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    while (!success && attempts < maxAttempts) {
-      attempts++;
-      const { data, error: fetchError } = await supabase
-        .from('social_posts')
-        .select('comments')
-        .eq('id', postId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-
-      const oldComments = data?.comments || [];
-      const comments = [...oldComments, comment];
-
-      const { data: updateData, error: updateError } = await supabase
-        .from('social_posts')
-        .update({ comments })
-        .eq('id', postId)
-        .eq('comments', oldComments)
-        .select();
-
-      if (!updateError && updateData && updateData.length > 0) {
-        success = true;
-      } else if (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 50 + Math.random() * 50));
-      }
-    }
-    
-    if (!success) throw new Error("Concurrent update detected. Please try again.");
+    const { error } = await supabase.rpc('add_post_comment', {
+      p_post_id: postId,
+      p_comment: comment,
+    });
+    if (error) throw error;
   }
 
   async deletePost(postId: string): Promise<void> {
     if (supabase) {
-      const { error } = await supabase.from('social_posts').delete().eq('id', postId);
+      const userId = await this.getUserId();
+      if (!userId) throw new Error("Not authenticated");
+      // .eq('user_id', userId) prevents deleting another user's post
+      const { error } = await supabase.from('social_posts').delete().eq('id', postId).eq('user_id', userId);
       if (error) {
         console.error("Error deleting post:", error);
         throw error;
@@ -235,7 +180,7 @@ class CloudStorageService {
       }
     }
     const local = localStorage.getItem(LOCAL_CARDS_KEY);
-    return local ? JSON.parse(local) : [];
+    return local ? (safeParseJson(local, CardSchema.array()) ?? []) : [];
   }
 
   async getPublicCards(): Promise<Card[]> {
@@ -277,7 +222,7 @@ class CloudStorageService {
       }
     }
     const local = localStorage.getItem(LOCAL_CARDS_KEY);
-    return local ? JSON.parse(local).filter((c: Card) => c.isPublic) : [];
+    return local ? (safeParseJson(local, CardSchema.array()) ?? []).filter((c: Card) => c.isPublic) : [];
   }
 
   async saveCard(card: Partial<Card>): Promise<Card> {
@@ -379,7 +324,8 @@ class CloudStorageService {
   async deleteCard(id: string): Promise<void> {
     const userId = await this.getUserId();
     if (userId && supabase) {
-      const { error } = await supabase.from('cards').delete().eq('id', id);
+      // .eq('user_id', userId) prevents deleting another user's card
+      const { error } = await supabase.from('cards').delete().eq('id', id).eq('user_id', userId);
       if (error) {
         console.error("Error deleting card:", error);
         throw error;
@@ -400,7 +346,7 @@ class CloudStorageService {
       if (data) return data;
     }
     const local = localStorage.getItem(LOCAL_PAGES_KEY);
-    return local ? JSON.parse(local) : [];
+    return local ? (safeParseJson(local, BinderPageSchema.array()) ?? []) : [];
   }
 
   async createPage(name: string): Promise<BinderPage> {
@@ -430,7 +376,8 @@ class CloudStorageService {
   async deletePage(id: string): Promise<void> {
     const userId = await this.getUserId();
     if (userId && supabase) {
-      const { error } = await supabase.from('pages').delete().eq('id', id);
+      // .eq('user_id', userId) prevents deleting another user's page
+      const { error } = await supabase.from('pages').delete().eq('id', id).eq('user_id', userId);
       if (error) {
         console.error("Error deleting page:", error);
         throw error;
