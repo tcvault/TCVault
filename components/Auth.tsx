@@ -35,7 +35,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 
     try {
       if (!supabase) {
-        throw new Error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY in your environment variables.");
+        throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (or SUPABASE_/NEXT_PUBLIC_ equivalents) in your Vercel environment variables and redeploy.");
       }
       const formattedEmail = email.includes('@') ? email : `${email}@tcvault.app`;
 
