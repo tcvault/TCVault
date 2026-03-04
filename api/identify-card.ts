@@ -1,7 +1,7 @@
 import { Type } from "@google/genai";
-import { generateWithRetry, DEFAULT_MODEL, UNIVERSAL_SOCCER_CARD_REGISTRY } from "./_gemini";
-import { IdentifiedCardSchema, parseGeminiJson } from "./_schemas";
-import { requireAuth, checkRateLimit } from "./_auth";
+import { generateWithRetry, DEFAULT_MODEL, UNIVERSAL_SOCCER_CARD_REGISTRY } from "../lib/_gemini";
+import { IdentifiedCardSchema, parseGeminiJson } from "../lib/_schemas";
+import { requireAuth, checkRateLimit } from "../lib/_auth";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB raw ≈ 13.3 MB as base64
 const MAX_IMAGES = 3;

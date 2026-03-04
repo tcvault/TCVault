@@ -1,7 +1,7 @@
 import { Type } from "@google/genai";
-import { generateWithRetry, DEFAULT_MODEL } from "./_gemini";
-import { BoundingBoxSchema, parseGeminiJson } from "./_schemas";
-import { requireAuth, checkRateLimit } from "./_auth";
+import { generateWithRetry, DEFAULT_MODEL } from "../lib/_gemini";
+import { BoundingBoxSchema, parseGeminiJson } from "../lib/_schemas";
+import { requireAuth, checkRateLimit } from "../lib/_auth";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB raw ≈ 13.3 MB as base64
 

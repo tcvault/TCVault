@@ -1,6 +1,6 @@
-import { generateWithRetry, DEFAULT_MODEL } from "./_gemini";
-import { MarketIntelSchema, parseGeminiJson } from "./_schemas";
-import { requireAuth, checkRateLimit } from "./_auth";
+import { generateWithRetry, DEFAULT_MODEL } from "../lib/_gemini";
+import { MarketIntelSchema, parseGeminiJson } from "../lib/_schemas";
+import { requireAuth, checkRateLimit } from "../lib/_auth";
 
 /** Strip control characters and common prompt-injection patterns. */
 function sanitizeInput(value: string, maxLen: number): string {
