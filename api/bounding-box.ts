@@ -2,8 +2,9 @@ import { Type } from "@google/genai";
 import { generateWithRetry, DEFAULT_MODEL } from "../lib/_gemini";
 import { BoundingBoxSchema, parseGeminiJson } from "../lib/_schemas";
 import { requireAuth, checkRateLimit } from "../lib/_auth";
+import { validateImageUrl, ALLOWED_IMAGE_MIMES } from "../lib/_validate";
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB raw ≈ 13.3 MB as base64
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -29,23 +30,43 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: "Image too large. Maximum 10 MB." });
   }
 
+  // SSRF: validate URL before fetching anything
+  if (imageData.startsWith("http")) {
+    const urlError = validateImageUrl(imageData);
+    if (urlError) return res.status(400).json({ error: urlError });
+  }
+
   try {
     let base64Data = imageData;
+    let imageMimeType = "image/jpeg";
+
     if (imageData.startsWith("http")) {
-      try {
-        const fetchRes = await fetch(imageData);
-        const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
-        const detectedMime = contentType.split(";")[0].trim();
-        const buffer = await fetchRes.arrayBuffer();
-        base64Data = `data:${detectedMime};base64,${Buffer.from(buffer).toString("base64")}`;
-      } catch {
-        // keep original if fetch fails
+      const fetchRes = await fetch(imageData, { signal: AbortSignal.timeout(15_000) });
+      const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
+      const detectedMime = contentType.split(";")[0].trim();
+
+      // Enforce size limit for remote images before reading into memory
+      const contentLength = fetchRes.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_BYTES) {
+        return res.status(400).json({ error: "Remote image exceeds 10 MB size limit" });
       }
+      const buffer = await fetchRes.arrayBuffer();
+      if (buffer.byteLength > MAX_IMAGE_BYTES) {
+        return res.status(400).json({ error: "Remote image exceeds 10 MB size limit" });
+      }
+
+      imageMimeType = detectedMime;
+      base64Data = `data:${detectedMime};base64,${Buffer.from(buffer).toString("base64")}`;
+    } else {
+      // Extract MIME type from data URI
+      const mimeMatch = base64Data.match(/^data:([^;]+);base64,/);
+      imageMimeType = mimeMatch?.[1] ?? "image/jpeg";
     }
 
-    // Extract actual MIME type from data URI (supports jpeg, png, webp, gif, heic)
-    const mimeMatch = base64Data.match(/^data:([^;]+);base64,/);
-    const imageMimeType = (mimeMatch?.[1] ?? "image/jpeg") as string;
+    // Enforce MIME type allowlist before sending to Gemini
+    if (!ALLOWED_IMAGE_MIMES.has(imageMimeType)) {
+      return res.status(400).json({ error: "Unsupported image format. Allowed: JPEG, PNG, WebP, GIF, HEIC." });
+    }
 
     const response = await generateWithRetry({
       model: DEFAULT_MODEL,
@@ -77,10 +98,10 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    if (!response) return res.status(500).json({ error: "No response from Gemini" });
+    if (!response) return res.status(500).json({ error: "Bounding box detection failed" });
     res.json(parseGeminiJson(response.text || "{}", BoundingBoxSchema));
   } catch (error: any) {
     console.error("Bounding box error:", error);
-    res.status(500).json({ error: error.message || "Bounding box detection failed" });
+    res.status(500).json({ error: "Bounding box detection failed" });
   }
 }

@@ -2,8 +2,9 @@ import { Type } from "@google/genai";
 import { generateWithRetry, DEFAULT_MODEL, UNIVERSAL_SOCCER_CARD_REGISTRY } from "../lib/_gemini";
 import { IdentifiedCardSchema, parseGeminiJson } from "../lib/_schemas";
 import { requireAuth, checkRateLimit } from "../lib/_auth";
+import { validateImageUrl, ALLOWED_IMAGE_MIMES } from "../lib/_validate";
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB raw ≈ 13.3 MB as base64
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES = 3;
 
 export default async function handler(req: any, res: any) {
@@ -27,7 +28,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: `Maximum ${MAX_IMAGES} images allowed` });
   }
 
-  // Validate each image entry
+  // Validate each image entry — all validation before fetching anything
   for (const img of images) {
     if (typeof img !== "string") {
       return res.status(400).json({ error: "Each image must be a string" });
@@ -35,9 +36,13 @@ export default async function handler(req: any, res: any) {
     if (!img.startsWith("http") && !img.startsWith("data:")) {
       return res.status(400).json({ error: "Images must be URLs or data URIs" });
     }
-    // Approximate raw byte size: base64 chars × 3/4
     if (img.startsWith("data:") && img.length > MAX_IMAGE_BYTES * (4 / 3)) {
       return res.status(400).json({ error: "Image too large. Maximum 10 MB per image." });
+    }
+    // SSRF: validate URL before fetching
+    if (img.startsWith("http")) {
+      const urlError = validateImageUrl(img);
+      if (urlError) return res.status(400).json({ error: urlError });
     }
   }
 
@@ -45,20 +50,39 @@ export default async function handler(req: any, res: any) {
     const imageParts = await Promise.all(
       (images as string[]).map(async (img: string) => {
         let base64Data = img;
+        let imageMimeType = "image/jpeg";
+
         if (img.startsWith("http")) {
-          try {
-            const fetchRes = await fetch(img);
-            const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
-            const detectedMime = contentType.split(";")[0].trim();
-            const buffer = await fetchRes.arrayBuffer();
-            base64Data = `data:${detectedMime};base64,${Buffer.from(buffer).toString("base64")}`;
-          } catch {
-            // keep original if fetch fails
+          const fetchRes = await fetch(img, { signal: AbortSignal.timeout(15_000) });
+          const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
+          const detectedMime = contentType.split(";")[0].trim();
+
+          // Enforce size limit for remote images before reading into memory
+          const contentLength = fetchRes.headers.get("content-length");
+          if (contentLength && parseInt(contentLength, 10) > MAX_IMAGE_BYTES) {
+            throw Object.assign(new Error("Remote image exceeds 10 MB size limit"), { status: 400 });
           }
+          const buffer = await fetchRes.arrayBuffer();
+          if (buffer.byteLength > MAX_IMAGE_BYTES) {
+            throw Object.assign(new Error("Remote image exceeds 10 MB size limit"), { status: 400 });
+          }
+
+          imageMimeType = detectedMime;
+          base64Data = `data:${detectedMime};base64,${Buffer.from(buffer).toString("base64")}`;
+        } else {
+          // Extract MIME type from data URI
+          const mimeMatch = base64Data.match(/^data:([^;]+);base64,/);
+          imageMimeType = mimeMatch?.[1] ?? "image/jpeg";
         }
-        // Extract actual MIME type from data URI
-        const mimeMatch = base64Data.match(/^data:([^;]+);base64,/);
-        const imageMimeType = (mimeMatch?.[1] ?? "image/jpeg") as string;
+
+        // Enforce MIME type allowlist before sending to Gemini
+        if (!ALLOWED_IMAGE_MIMES.has(imageMimeType)) {
+          throw Object.assign(
+            new Error("Unsupported image format. Allowed: JPEG, PNG, WebP, GIF, HEIC."),
+            { status: 400 }
+          );
+        }
+
         return {
           inlineData: {
             mimeType: imageMimeType,
@@ -118,10 +142,13 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    if (!response) return res.status(500).json({ error: "No response from Gemini" });
+    if (!response) return res.status(500).json({ error: "Identification failed" });
     res.json(parseGeminiJson(response.text || "{}", IdentifiedCardSchema));
   } catch (error: any) {
     console.error("Identify card error:", error);
-    res.status(500).json({ error: error.message || "Identification failed" });
+    if (error?.status === 400) {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: "Identification failed" });
   }
 }

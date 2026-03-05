@@ -90,7 +90,7 @@ Output schema: { sold: [...], active: [...], notes, fxRateUsed }.
       },
     });
 
-    if (!response) return res.status(500).json({ error: "No response from Gemini" });
+    if (!response) return res.status(500).json({ error: "Market intel request failed" });
 
     const result = parseGeminiJson(response.text || "{}", MarketIntelSchema);
     res.json({
@@ -103,6 +103,6 @@ Output schema: { sold: [...], active: [...], notes, fxRateUsed }.
     });
   } catch (error: any) {
     console.error("Market intel error:", error);
-    res.status(500).json({ error: error.message || "Market intel failed" });
+    res.status(500).json({ error: "Market intel request failed" });
   }
 }
