@@ -47,16 +47,21 @@ export default async function handler(req: any, res: any) {
         let base64Data = img;
         if (img.startsWith("http")) {
           try {
-            const response = await fetch(img);
-            const buffer = await response.arrayBuffer();
-            base64Data = `data:image/jpeg;base64,${Buffer.from(buffer).toString("base64")}`;
+            const fetchRes = await fetch(img);
+            const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
+            const detectedMime = contentType.split(";")[0].trim();
+            const buffer = await fetchRes.arrayBuffer();
+            base64Data = `data:${detectedMime};base64,${Buffer.from(buffer).toString("base64")}`;
           } catch {
             // keep original if fetch fails
           }
         }
+        // Extract actual MIME type from data URI
+        const mimeMatch = base64Data.match(/^data:([^;]+);base64,/);
+        const imageMimeType = (mimeMatch?.[1] ?? "image/jpeg") as string;
         return {
           inlineData: {
-            mimeType: "image/jpeg",
+            mimeType: imageMimeType,
             data: base64Data.split(",")[1] || base64Data,
           },
         };

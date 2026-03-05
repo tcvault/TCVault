@@ -19,11 +19,15 @@ export async function generateWithRetry(params: any, retries = 2, delay = 1000) 
       return await client.models.generateContent(params);
     } catch (error: any) {
       lastError = error;
-      const is503 =
-        error?.message?.includes("503") ||
-        error?.status === 503 ||
-        error?.error?.code === 503;
-      if (is503 && i < retries) {
+      // Retry on 429 (rate-limit), 500 (Gemini server error), and 503 (overloaded)
+      const statusCode: number =
+        error?.status ?? error?.error?.code ?? 0;
+      const msgIncludes = (n: number) =>
+        typeof error?.message === "string" && error.message.includes(String(n));
+      const isRetryable =
+        statusCode === 429 || statusCode === 500 || statusCode === 503 ||
+        msgIncludes(429) || msgIncludes(500) || msgIncludes(503);
+      if (isRetryable && i < retries) {
         await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
         continue;
       }
