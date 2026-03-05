@@ -16,7 +16,16 @@ const SUPABASE_ANON_KEY =
   "";
 
 // ---------------------------------------------------------------------------
-// In-memory rate limiting (per authenticated user, single instance only).
+// Supabase client singleton — one instance per function cold start.
+// ---------------------------------------------------------------------------
+const supabase =
+  SUPABASE_URL && SUPABASE_ANON_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+// ---------------------------------------------------------------------------
+// In-memory rate limiting (per authenticated user + endpoint, single instance).
+// Key format: "<userId>:<endpoint>" — prevents cross-endpoint counter bleed.
 // For multi-instance production deployments replace this with Redis / Upstash.
 // ---------------------------------------------------------------------------
 const rateLimitStore = new Map<string, { count: number; reset: number }>();
@@ -39,13 +48,12 @@ export async function requireAuth(
     return null;
   }
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  if (!supabase) {
     console.error("[auth] Missing Supabase env vars in API route");
     res.status(500).json({ error: "Server misconfiguration" });
     return null;
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const {
     data: { user },
     error,
@@ -60,19 +68,29 @@ export async function requireAuth(
 }
 
 /**
- * Checks whether the given user has exceeded the per-minute request cap.
+ * Checks whether the given user has exceeded the per-minute request cap for
+ * the named endpoint. Each endpoint has its own independent counter.
  * Writes a 429 response and returns false when the limit is exceeded.
+ * Evicts expired entries on each call to prevent unbounded Map growth.
  */
 export function checkRateLimit(
   userId: string,
+  endpoint: string,
   res: any,
   maxPerMinute = 20
 ): boolean {
   const now = Date.now();
-  const entry = rateLimitStore.get(userId);
+
+  // Evict all expired entries to prevent memory leak.
+  for (const [key, val] of rateLimitStore) {
+    if (now > val.reset) rateLimitStore.delete(key);
+  }
+
+  const key = `${userId}:${endpoint}`;
+  const entry = rateLimitStore.get(key);
 
   if (!entry || now > entry.reset) {
-    rateLimitStore.set(userId, { count: 1, reset: now + 60_000 });
+    rateLimitStore.set(key, { count: 1, reset: now + 60_000 });
     return true;
   }
 

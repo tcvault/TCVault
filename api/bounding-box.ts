@@ -15,7 +15,7 @@ export default async function handler(req: any, res: any) {
   if (!userId) return;
 
   // Per-user rate limit: 30 bounding-box calls / minute
-  if (!checkRateLimit(userId, res, 30)) return;
+  if (!checkRateLimit(userId, "bounding-box", res, 30)) return;
 
   const { imageData } = req.body as { imageData: unknown };
 

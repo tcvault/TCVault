@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
   if (!userId) return;
 
   // Per-user rate limit: 20 identify calls / minute
-  if (!checkRateLimit(userId, res, 20)) return;
+  if (!checkRateLimit(userId, "identify-card", res, 20)) return;
 
   const { images } = req.body as { images: unknown };
 

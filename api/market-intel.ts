@@ -22,7 +22,7 @@ export default async function handler(req: any, res: any) {
   if (!userId) return;
 
   // Per-user rate limit: 10 market-intel calls / minute (more expensive)
-  if (!checkRateLimit(userId, res, 10)) return;
+  if (!checkRateLimit(userId, "market-intel", res, 10)) return;
 
   const raw = req.body as {
     playerName: unknown;
