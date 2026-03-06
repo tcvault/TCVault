@@ -76,7 +76,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
               ) : (
                 <div className="w-56 aspect-[3/4] rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-4 text-ink-secondary animate-in fade-in zoom-in-95 duration-700">
                    <Ghost size={48} className="opacity-20" />
-                   <span className="text-xs font-black uppercase tracking-widest opacity-30">Image missing</span>
+                   <span className="text-xs font-black uppercase tracking-widest opacity-30">No image</span>
                 </div>
               )}
             </div>

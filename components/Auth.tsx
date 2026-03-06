@@ -66,7 +66,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
       } else if (authMode === 'update-password') {
         const { error: updateError } = await supabase.auth.updateUser({ password });
         if (updateError) throw updateError;
-        setSuccessMessage('Vault re-secured. Please log in.');
+        setSuccessMessage('Password updated. Please sign in.');
         setTimeout(() => setAuthMode('login'), 2000);
       }
     } catch (err: unknown) {
@@ -81,7 +81,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
       case 'register': return 'Create Account';
       case 'login': return 'Sign In';
       case 'forgot-password': return 'Reset Password';
-      case 'update-password': return 'Update Key';
+      case 'update-password': return 'Update Password';
       default: return 'Authentication';
     }
   };
@@ -177,7 +177,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 
               <button type="submit" disabled={isLoading} className={`btn-primary w-full h-14 uppercase text-xs tracking-widest ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {isLoading ? <Loader2 size={20} className="animate-spin text-white/50" /> : (
-                  authMode === 'register' ? 'Register Account' : authMode === 'login' ? 'Login' : 'Reset Vault Key'
+                  authMode === 'register' ? 'Register Account' : authMode === 'login' ? 'Login' : 'Reset Password'
                 )}
               </button>
 

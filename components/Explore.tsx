@@ -160,7 +160,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
         
         {mode !== 'Discovery' && (
           <button onClick={resetMode} className="btn-secondary px-4 text-xs font-bold uppercase tracking-widest">
-            Reset Archive
+            Clear Search
           </button>
         )}
       </div>
@@ -196,7 +196,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-control">
                     <Users size={20} className="text-gold-500" />
-                    <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Verified Collectors</h3>
+                    <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Active Collectors</h3>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-control">
@@ -214,7 +214,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                         </div>
                         <div className="flex-1">
                           <h4 className="text-sm font-bold text-ink-primary group-hover:text-gold-500 transition-colors">@{collector.username}</h4>
-                          <p className="text-xs text-ink-tertiary font-semibold uppercase tracking-widest">Archive Contributor</p>
+                          <p className="text-xs text-ink-tertiary font-semibold uppercase tracking-widest">Collector</p>
                         </div>
                         <ChevronRight size={16} className="text-ink-tertiary/40 group-hover:text-ink-primary transition-colors" />
                       </div>
@@ -279,10 +279,10 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                        <Search size={32} />
                     </div>
                     <div className="space-y-control">
-                       <p className="text-sm font-bold text-ink-primary uppercase tracking-tighter">Archive connection failed</p>
-                       <p className="text-xs font-semibold text-ink-tertiary max-w-xs">No assets matching your query were found in this sector of the vault.</p>
+                       <p className="text-sm font-bold text-ink-primary uppercase tracking-tighter">No cards found</p>
+                       <p className="text-xs font-semibold text-ink-tertiary max-w-xs">No cards matching your search.</p>
                     </div>
-                    <button onClick={resetMode} className="btn-secondary h-10 px-6 uppercase text-xs font-bold tracking-widest">Clear Archive View</button>
+                    <button onClick={resetMode} className="btn-secondary h-10 px-6 uppercase text-xs font-bold tracking-widest">Clear Search</button>
                   </div>
                 )}
               </div>
@@ -314,11 +314,11 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
             <div className="space-y-padding pt-padding border-t border-border-soft">
               <div className="flex items-center gap-control">
                 <Filter size={18} className="text-ink-tertiary" />
-                <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Vault Analytics</h3>
+                <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Community Stats</h3>
               </div>
               <div className="grid grid-cols-2 gap-padding">
                  <div className="space-y-control">
-                    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Global Assets</span>
+                    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Public Cards</span>
                     <p className="text-xl font-bold text-ink-primary tabular leading-none">{publicCards.length}</p>
                  </div>
                  <div className="space-y-control">
@@ -332,7 +332,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
               <div className="pt-padding border-t border-border-soft space-y-padding">
                  <h4 className="text-xs font-bold text-gold-500 uppercase tracking-widest italic">Join the network</h4>
                  <p className="text-[11px] font-medium text-ink-tertiary leading-relaxed">
-                   Secure your vault and start contributing to the global archive of high-end assets.
+                   Create your profile and start sharing your collection with the community.
                  </p>
                  <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="w-full btn-primary h-12 text-xs tracking-widest">Create Profile</button>
               </div>
@@ -394,21 +394,21 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
               <div className="space-y-control">
                 <span className="text-xs font-bold text-gold-500 uppercase tracking-widest bg-gold-500/10 px-3 py-1 rounded-full border border-gold-500/20">{selectedCard.rarityTier || 'Vault Asset'}</span>
                 <h2 className="text-4xl font-bold text-ink-primary tracking-tighter leading-none italic">{selectedCard.playerName}</h2>
-                <p className="text-sm font-bold text-ink-tertiary">Archive Ref: {selectedCard.set}</p>
+                <p className="text-sm font-bold text-ink-tertiary">Set: {selectedCard.set}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-section pt-4">
                 <Detail label="League/Team" value={selectedCard.team || 'N/A'} />
                 <Detail label="Serial Number" value={selectedCard.serialNumber || 'N/A'} />
-                <Detail label="Archive Grade" value={selectedCard.condition} />
-                <Detail label="Spec Value" value={`£${selectedCard.marketValue.toLocaleString()}`} />
+                <Detail label="Condition" value={selectedCard.condition} />
+                <Detail label="Market Value" value={`£${selectedCard.marketValue.toLocaleString()}`} />
               </div>
 
                <div className="pt-padding border-t border-border-soft space-y-padding">
                 <div className="space-y-control">
-                   <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest block">Collector Intelligence</span>
+                   <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest block">Collector Notes</span>
                    <p className="text-xs font-medium text-ink-tertiary leading-relaxed italic">
-                     {selectedCard.notes || "No additional intelligence provided for this specific asset."}
+                     {selectedCard.notes || "No notes added for this card."}
                    </p>
                 </div>
                 <div className="flex flex-col gap-control">
@@ -421,9 +421,9 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                     }}
                     className="w-full btn-primary h-14 text-xs tracking-widest shadow-xl"
                   >
-                    Enter @{selectedCard.ownerUsername}'s Vault
+                    Browse @{selectedCard.ownerUsername}'s Collection
                   </button>
-                  <button onClick={() => setSelectedCard(null)} className="w-full btn-secondary h-14 text-xs tracking-widest">Return to Archive</button>
+                  <button onClick={() => setSelectedCard(null)} className="w-full btn-secondary h-14 text-xs tracking-widest">Back to Explore</button>
                 </div>
               </div>
             </div>

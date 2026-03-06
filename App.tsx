@@ -215,8 +215,8 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     setConfirmState({
       isOpen: true,
-      title: 'Seal Vault?',
-      message: 'Are you sure you want to sign out of your collector profile?',
+      title: 'Sign Out?',
+      message: 'Are you sure you want to sign out?',
       onConfirm: async () => {
         try {
           if (supabase) {
@@ -252,7 +252,7 @@ const App: React.FC = () => {
       });
       setEditingCard(null);
       setView(ViewMode.INVENTORY);
-      addToast(isUpdate ? "Record updated" : "Card stashed");
+      addToast(isUpdate ? "Card updated" : "Card saved");
       if (currentUser) loadData(currentUser.id);
     } catch {
       addToast("Save failed", "error");
@@ -286,7 +286,7 @@ const App: React.FC = () => {
     try {
       await vaultStorage.saveUserProfile(updatedUser);
       setCurrentUser(updatedUser);
-      addToast("Collector identity updated", "success");
+      addToast("Profile updated", "success");
     } catch {
       addToast("Profile update failed", "error");
     }
@@ -377,7 +377,7 @@ const App: React.FC = () => {
       };
 
       await vaultStorage.savePost(newPost);
-      addToast("Card shared to global feed!", "success");
+      addToast("Card shared to Collector's Corner!", "success");
       setView(ViewMode.FEED);
     } catch (error) {
       console.error("Share error:", error);

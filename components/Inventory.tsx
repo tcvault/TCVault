@@ -265,7 +265,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <button 
                   onClick={(e) => { e.stopPropagation(); onUpdate(card); }} 
                   className="absolute top-control left-control p-2 bg-ink-primary text-gold-500 rounded-lg shadow-xl z-30 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:scale-95"
-                  title="Modify Record"
+                  title="Edit Card"
                 >
                   <Edit3 size={14} />
                 </button>
@@ -384,7 +384,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
              <div className={`${isExporting ? 'h-[630px] w-full p-16' : 'flex-1 md:w-[380px] p-padding md:p-section'} space-y-major ${isExporting ? '' : 'overflow-y-auto'} bg-surface-elevated flex flex-col border-t ${isExporting ? 'border-t' : 'md:border-t-0 md:border-l'} border-border-soft h-auto ${isExporting ? '' : 'md:h-full'}`}>
                 <div className={`${isExporting ? 'space-y-10' : 'space-y-section'}`}>
                   <div className="space-y-control">
-                    <span className={`${isExporting ? 'text-lg' : 'text-xs'} font-bold text-ink-tertiary uppercase tracking-widest`}>{selectedCard.rarityTier || 'Collection Item'}</span>
+                    <span className={`${isExporting ? 'text-lg' : 'text-xs'} font-bold text-ink-tertiary uppercase tracking-widest`}>{selectedCard.rarityTier || 'Card Details'}</span>
                     <h3 className={`${isExporting ? 'text-7xl' : 'text-2xl'} font-bold text-ink-primary tracking-tighter leading-tight`}>{selectedCard.playerName}</h3>
                   </div>
                   <div className={`grid grid-cols-2 ${isExporting ? 'gap-x-20 gap-y-12' : 'gap-x-padding gap-y-section'}`}>
@@ -445,7 +445,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                    )}
                     {!isExporting && (
                       <div className="flex gap-control">
-                        <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 text-xs tracking-widest font-bold">Edit Record</button>
+                        <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 text-xs tracking-widest font-bold">Edit Card</button>
                         {onShareCard && (
                           <button 
                             onClick={() => { onShareCard(selectedCard); setSelectedCard(null); }} 
@@ -462,7 +462,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                         >
                           <Instagram size={20} />
                         </button>
-                        <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-error/20 text-error hover:bg-error/10 transition-all active:scale-95 shadow-sm" title="Delete Asset"><Trash2 size={20} /></button>
+                        <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-error/20 text-error hover:bg-error/10 transition-all active:scale-95 shadow-sm" title="Delete Card"><Trash2 size={20} /></button>
                       </div>
                     )}
                 </div>

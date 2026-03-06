@@ -274,7 +274,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     <div className={`max-w-4xl mx-auto space-y-major pb-16 ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="flex items-center justify-between gap-padding">
         <h2 className="text-[32px] font-bold tracking-tighter text-ink-primary leading-tight">
-          {isEditing ? 'Modify Record' : 'Add to Collection'}
+          {isEditing ? 'Edit Card' : 'Add to Collection'}
         </h2>
         <button onClick={onCancel} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-ink-tertiary hover:text-ink-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded-xl active:scale-95"><X size={24} /></button>
       </div>
@@ -336,7 +336,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             {images.length > 0 && (
               <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null} className={`w-full h-14 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-control active:scale-[0.97] ${hasScanned ? 'btn-secondary text-ink-tertiary' : 'btn-primary'}`}>
                 {isScanning ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={16} />}
-                <span className="uppercase text-xs tracking-widest">{hasScanned ? 'Rescan Identification' : 'Identify with AI'}</span>
+                <span className="uppercase text-xs tracking-widest">{hasScanned ? 'Re-identify Card' : 'Identify with AI'}</span>
               </button>
             )}
           </div>
@@ -421,7 +421,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           
           <div className="flex gap-control">
             {isEditing && (
-              <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-error border-error/20 hover:bg-error/10 h-14 px-6 uppercase text-xs tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Record</span></button>
+              <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-error border-error/20 hover:bg-error/10 h-14 px-6 uppercase text-xs tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Card</span></button>
             )}
             <button type="button" onClick={onCancel} className="btn-secondary flex-1 h-14 uppercase text-xs tracking-widest">Discard</button>
             <button type="submit" disabled={isSaving || isCropping !== null} className={`btn-primary flex-[2] h-14 uppercase text-xs tracking-widest ${isSaving || isCropping !== null ? 'opacity-50 cursor-not-allowed' : ''}`}>

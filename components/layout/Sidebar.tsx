@@ -50,7 +50,7 @@ export const Sidebar = ({
         {!isGuest && (
           <>
             <div className="space-y-control">
-              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Asset Management</span>
+              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">My Collection</span>
               <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Portfolio" />
               
               <div className="space-y-control">
@@ -90,7 +90,7 @@ export const Sidebar = ({
             </div>
 
             <div className="space-y-control">
-              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Identity</span>
+              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Account</span>
               <NavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={16} />} label="My Profile" />
             </div>
           </>
