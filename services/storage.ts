@@ -79,7 +79,10 @@ class CloudStorageService {
 
   async getPosts(): Promise<SocialPost[]> {
     if (supabase) {
-      const { data, error } = await supabase.from('social_posts').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('social_posts')
+        .select('*, profiles(username, avatar_url)')
+        .order('created_at', { ascending: false });
       if (error) {
         console.error("Error fetching posts:", error);
         throw error;
@@ -88,7 +91,8 @@ class CloudStorageService {
         return data.map((p: any) => ({
           ...p,
           userId: p.user_id,
-          userAvatar: p.user_avatar,
+          username: p.profiles?.username || 'Collector',
+          userAvatar: p.profiles?.avatar_url || undefined,
           imageUrl: p.image_url,
           createdAt: new Date(p.created_at).getTime(),
           likes: p.likes || [],
@@ -105,8 +109,6 @@ class CloudStorageService {
       const payload = {
         id: post.id,
         user_id: post.userId,
-        username: post.username,
-        user_avatar: post.userAvatar,
         content: post.content,
         tag: post.tag,
         image_url: post.imageUrl,
