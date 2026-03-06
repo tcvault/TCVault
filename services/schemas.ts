@@ -46,6 +46,8 @@ export const CardSchema = z.object({
   setYearEnd: z.number().optional(),
   manufacturer: z.string().optional(),
   productLine: z.string().optional(),
+  sport: z.string().optional(),
+  category: z.enum(["Sports", "TCG", "Non-Sports"]).optional(),
 });
 
 /** Safely parse JSON and validate with a Zod schema. Returns null on any failure. */

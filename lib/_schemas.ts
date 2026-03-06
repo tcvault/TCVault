@@ -21,6 +21,7 @@ export const IdentifiedCardSchema = z.object({
   setConfidence:  z.number().min(0).max(1).optional(),
   yearConfidence: z.number().min(0).max(1).optional(),
   sport:          z.string().optional(),
+  category:       z.enum(["Sports", "TCG", "Non-Sports"]).optional(),
 });
 
 export const BoundingBoxSchema = z.object({

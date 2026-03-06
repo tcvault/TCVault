@@ -2,9 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
 import {
   Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye,
-  BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, ChevronUp,
-  Loader2, Globe, Lock, Crop, Scissors, ShieldCheck, CheckCircle, XCircle,
-  AlertTriangle,
+  BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown,
+  Loader2, Globe, Lock, Crop, Scissors, ShieldCheck, AlertTriangle,
 } from 'lucide-react';
 import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
 import ManualCropModal from './ManualCropModal';
@@ -99,69 +98,10 @@ interface AiSuggestion {
   manufacturer: string | null;
   productLine: string | null;
   sport: string | null;
+  category: 'Sports' | 'TCG' | 'Non-Sports';
   // Phase 3
   correctedByMemory?: boolean;
 }
-
-interface AiFieldDef {
-  key: string;
-  label: string;
-  getValue: (s: AiSuggestion) => string | number | undefined;
-  apply: (s: AiSuggestion, prev: Partial<Card>) => Partial<Card>;
-  isLowConfidence?: (s: AiSuggestion) => boolean;
-}
-
-const AI_FIELD_DEFS: AiFieldDef[] = [
-  {
-    key: 'playerName', label: 'Player',
-    getValue: (s) => s.playerName,
-    apply: (s, p) => ({ ...p, playerName: s.playerName }),
-  },
-  {
-    key: 'team', label: 'Team',
-    getValue: (s) => s.team,
-    apply: (s, p) => ({ ...p, team: s.team }),
-  },
-  {
-    key: 'cardSpecifics', label: 'Parallel / Variant',
-    getValue: (s) => s.cardSpecifics,
-    apply: (s, p) => ({ ...p, cardSpecifics: s.cardSpecifics }),
-  },
-  {
-    key: 'setDisplay', label: 'Set',
-    getValue: (s) => s.setDisplay,
-    apply: (s, p) => ({
-      ...p,
-      set: s.setDisplay,
-      setCanonicalKey: s.setCanonicalKey,
-      setYearStart: s.setYearStart ?? undefined,
-      setYearEnd: s.setYearEnd ?? undefined,
-      manufacturer: s.manufacturer ?? undefined,
-      productLine: s.productLine ?? undefined,
-    }),
-    isLowConfidence: (s) => (s.setConfidence ?? 1) < 0.6 || (s.yearConfidence ?? 1) < 0.6,
-  },
-  {
-    key: 'condition', label: 'Grade',
-    getValue: (s) => s.condition,
-    apply: (s, p) => s.condition !== undefined ? { ...p, condition: s.condition } : p,
-  },
-  {
-    key: 'estimatedValue', label: 'Market Value',
-    getValue: (s) => `£${s.estimatedValue}`,
-    apply: (s, p) => ({ ...p, marketValue: s.estimatedValue }),
-  },
-  {
-    key: 'serialNumber', label: 'Serial #',
-    getValue: (s) => s.serialNumber,
-    apply: (s, p) => ({ ...p, serialNumber: s.serialNumber }),
-  },
-  {
-    key: 'rarityTier', label: 'Rarity',
-    getValue: (s) => s.rarityTier,
-    apply: (s, p) => ({ ...p, rarityTier: s.rarityTier }),
-  },
-];
 
 const MFR_OPTIONS = ['Panini', 'Topps', 'Upper Deck', 'Futera', 'Score', 'Leaf', 'Fleer', 'Other'];
 
@@ -205,9 +145,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
   // ── AI suggestion state (Phase 2) ─────────────────────────────────────────
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
-  const [aiAccepted, setAiAccepted] = useState<Set<string>>(new Set());
-  const [aiDismissed, setAiDismissed] = useState<Set<string>>(new Set());
-  const [showAiPanel, setShowAiPanel] = useState(false);
 
   // ── Structured set editor state (Phase 2) ────────────────────────────────
   const [setEditorMode, setSetEditorMode] = useState<'simple' | 'structured'>('simple');
@@ -329,7 +266,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
-  // ── AI scanner (Phase 1+3 — stores in aiSuggestion, does NOT auto-apply) ─
+  // ── AI scanner (auto-applies suggestions) ────────────────────────────────
   const runScanner = async () => {
     if (images.length === 0) return;
     setIsScanning(true);
@@ -344,6 +281,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           manufacturer: result.manufacturer ?? null,
           productLine: result.productLine ?? null,
           sport: result.sport ?? null,
+          category: result.category ?? null,
         });
         let suggestion: AiSuggestion = { ...result, ...normalized };
 
@@ -365,9 +303,30 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         }
 
         setAiSuggestion(suggestion);
-        setAiAccepted(new Set());
-        setAiDismissed(new Set());
-        setShowAiPanel(true);
+        setFormData(prev => {
+          const isPSA = (suggestion.condition || prev.condition || '').startsWith('PSA');
+          return {
+            ...prev,
+            playerName: suggestion.playerName,
+            team: suggestion.team || prev.team || '',
+            cardSpecifics: suggestion.cardSpecifics,
+            set: suggestion.setDisplay,
+            setCanonicalKey: suggestion.setCanonicalKey,
+            setYearStart: suggestion.setYearStart ?? undefined,
+            setYearEnd: suggestion.setYearEnd ?? undefined,
+            manufacturer: suggestion.manufacturer ?? undefined,
+            productLine: suggestion.productLine ?? undefined,
+            sport: suggestion.sport ?? undefined,
+            category: suggestion.category,
+            setNumber: suggestion.setNumber || prev.setNumber || '',
+            condition: suggestion.condition || prev.condition || 'Ungraded',
+            marketValue: suggestion.estimatedValue,
+            serialNumber: suggestion.serialNumber || prev.serialNumber || '',
+            certNumber: isPSA ? (suggestion.certNumber || prev.certNumber || '') : '',
+            notes: suggestion.description,
+            rarityTier: suggestion.rarityTier,
+          };
+        });
         setSFields({
           season: suggestion.setYearStart
             ? buildSeasonStr(suggestion.setYearStart, suggestion.setYearEnd)
@@ -376,9 +335,10 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           productLine: suggestion.productLine ?? '',
           sport: suggestion.sport ?? '',
         });
+        setSetEditorMode('structured');
         setHasScanned(true);
         if (onToast && !suggestion.correctedByMemory) {
-          onToast('AI scan complete — review suggestions below', 'info');
+          onToast('AI Identification complete', 'success');
         }
       }
     } catch {
@@ -387,47 +347,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       setIsScanning(false);
       setScanStep('');
     }
-  };
-
-  // ── AI panel actions ──────────────────────────────────────────────────────
-  const acceptField = (def: AiFieldDef) => {
-    if (!aiSuggestion) return;
-    setFormData(prev => def.apply(aiSuggestion, prev));
-    setAiAccepted(prev => new Set([...prev, def.key]));
-    // When accepting the set field, switch to structured mode and sync sFields
-    if (def.key === 'setDisplay') {
-      setSFields({
-        season: aiSuggestion.setYearStart
-          ? buildSeasonStr(aiSuggestion.setYearStart, aiSuggestion.setYearEnd)
-          : '',
-        manufacturer: aiSuggestion.manufacturer ?? '',
-        productLine: aiSuggestion.productLine ?? '',
-        sport: aiSuggestion.sport ?? '',
-      });
-      setSetEditorMode('structured');
-    }
-  };
-
-  const acceptAll = () => {
-    if (!aiSuggestion) return;
-    setFormData(prev => {
-      let next = { ...prev };
-      for (const def of AI_FIELD_DEFS) {
-        if (!aiDismissed.has(def.key)) next = def.apply(aiSuggestion, next);
-      }
-      return next;
-    });
-    setSFields({
-      season: aiSuggestion.setYearStart
-        ? buildSeasonStr(aiSuggestion.setYearStart, aiSuggestion.setYearEnd)
-        : '',
-      manufacturer: aiSuggestion.manufacturer ?? '',
-      productLine: aiSuggestion.productLine ?? '',
-      sport: aiSuggestion.sport ?? '',
-    });
-    setSetEditorMode('structured');
-    setAiAccepted(new Set(AI_FIELD_DEFS.map(d => d.key)));
-    setShowAiPanel(false);
   };
 
   // ── Structured set editor helpers ─────────────────────────────────────────
@@ -440,6 +359,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       manufacturer: updated.manufacturer || null,
       productLine: updated.productLine || null,
       sport: updated.sport || null,
+      category: formData.category ?? null,
     });
     setFormData(prev => ({
       ...prev,
@@ -449,6 +369,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       setYearEnd: normalized.setYearEnd ?? undefined,
       manufacturer: normalized.manufacturer ?? undefined,
       productLine: normalized.productLine ?? undefined,
+      sport: normalized.sport ?? undefined,
+      category: normalized.category,
     }));
   };
 
@@ -484,6 +406,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         setYearEnd: normalized.setYearEnd ?? undefined,
         manufacturer: normalized.manufacturer ?? undefined,
         productLine: normalized.productLine ?? undefined,
+        sport: normalized.sport ?? undefined,
+        category: normalized.category,
       };
     }
 
@@ -601,86 +525,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
               </button>
             )}
           </div>
-
-          {/* AI Suggestion Review Panel */}
-          {aiSuggestion && (
-            <div className="card-vault p-padding space-y-control animate-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-control">
-                  <Sparkles size={14} className="text-gold-500" />
-                  <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">AI Suggestions</span>
-                  <span className="text-xs text-ink-tertiary hidden sm:inline">— review before saving</span>
-                </div>
-                <div className="flex items-center gap-control">
-                  {!showAiPanel
-                    ? null
-                    : (
-                      <button type="button" onClick={acceptAll} className="btn-primary h-7 px-3 text-xs tracking-widest font-bold">
-                        Accept All
-                      </button>
-                    )
-                  }
-                  <button type="button" onClick={() => setShowAiPanel(p => !p)} className="p-1.5 text-ink-tertiary hover:text-ink-primary rounded transition-colors">
-                    {showAiPanel ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </button>
-                  <button type="button" onClick={() => setAiSuggestion(null)} className="p-1.5 text-ink-tertiary hover:text-error rounded transition-colors">
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {!showAiPanel && (
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-ink-tertiary font-semibold">
-                    {aiAccepted.size} of {AI_FIELD_DEFS.filter(d => d.getValue(aiSuggestion)).length} fields accepted
-                  </p>
-                  <button type="button" onClick={() => setShowAiPanel(true)} className="text-xs text-gold-500 hover:underline font-bold">Review →</button>
-                </div>
-              )}
-
-              {showAiPanel && (
-                <div className="space-y-1">
-                  {AI_FIELD_DEFS.map(def => {
-                    const value = def.getValue(aiSuggestion);
-                    if (!value && value !== 0) return null;
-                    const isAccepted = aiAccepted.has(def.key);
-                    const isDismissed = aiDismissed.has(def.key);
-                    const isLow = def.isLowConfidence?.(aiSuggestion);
-                    return (
-                      <div key={def.key} className={`flex items-center gap-control p-control rounded-lg transition-colors ${isAccepted ? 'bg-emerald-500/5 border border-emerald-500/10' : isDismissed ? 'opacity-40 bg-surface-base' : 'bg-surface-base'}`}>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[10px] font-bold text-ink-tertiary uppercase tracking-widest block">{def.label}</span>
-                          <div className="flex items-center gap-1 min-w-0">
-                            <p className="text-sm font-semibold text-ink-primary truncate">{String(value)}</p>
-                            {isLow && <span title="Low AI confidence"><AlertTriangle size={11} className="text-amber-500 shrink-0" /></span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {isAccepted ? (
-                            <CheckCircle size={16} className="text-emerald-500" />
-                          ) : isDismissed ? (
-                            <XCircle size={16} className="text-ink-tertiary" />
-                          ) : (
-                            <>
-                              <button type="button" onClick={() => acceptField(def)} title="Accept" className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors active:scale-90">
-                                <CheckCircle size={15} />
-                              </button>
-                              <button type="button" onClick={() => setAiDismissed(prev => new Set([...prev, def.key]))} title="Dismiss" className="p-1.5 text-ink-tertiary hover:bg-error/10 hover:text-error rounded transition-colors active:scale-90">
-                                <XCircle size={15} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <button type="button" onClick={acceptAll} className="btn-primary w-full h-10 text-xs tracking-widest font-bold mt-control">
-                    Accept All
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Visibility panel */}
           <div className="card-vault p-padding space-y-padding">

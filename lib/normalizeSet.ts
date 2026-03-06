@@ -6,6 +6,7 @@ export interface NormalizedSet {
   manufacturer: string | null;
   productLine: string | null;
   sport: string | null;
+  category: 'Sports' | 'TCG' | 'Non-Sports';
 }
 
 // Canonical manufacturer names keyed by lowercase aliases.
@@ -42,7 +43,27 @@ const SPORT_PATTERNS: [RegExp, string][] = [
   [/\bla\s*liga\b/i,           'Soccer'],
   [/\bligue\s*1\b/i,           'Soccer'],
   [/\bchampions\s*league\b/i,  'Soccer'],
+  // Generic football should map to Soccer only when no stronger NFL signal exists
   [/\bfootball\b/i,            'Soccer'],
+];
+
+const TCG_PATTERNS: RegExp[] = [
+  /\bpok[eé]mon\b/i,
+  /\bmagic\s*the\s*gathering\b/i,
+  /\bmtg\b/i,
+  /\byu-?gi-?oh\b/i,
+  /\blorcana\b/i,
+  /\bone\s*piece\b/i,
+  /\bdragon\s*ball\s*super\b/i,
+];
+
+const NON_SPORT_PATTERNS: RegExp[] = [
+  /\bmarvel\b/i,
+  /\bstar\s*wars\b/i,
+  /\bdisney\b/i,
+  /\bpixar\b/i,
+  /\bharry\s*potter\b/i,
+  /\bstranger\s*things\b/i,
 ];
 
 function deriveSeasonEnd(start: number, rawEnd: number): number {
@@ -64,35 +85,47 @@ export function normalizeSet(
     manufacturer?: string | null;
     productLine?: string | null;
     sport?: string | null;
+    category?: 'Sports' | 'TCG' | 'Non-Sports' | null;
   }
 ): NormalizedSet {
   const h = hints ?? {};
 
-  // ── Year extraction ──────────────────────────────────────────────────────────
-  let yearStart: number | null = h.setYearStart ?? null;
-  let yearEnd: number | null   = h.setYearEnd   ?? null;
-
-  if (yearStart === null) {
+  // ── Year extraction (prefer explicit year in set string when present) ──────
+  const parseYearsFromRaw = (text: string): { start: number | null; end: number | null } => {
     // 4-digit / 2-or-4-digit season: "2023-24", "2023/2024"
-    const m4 = raw.match(/(\d{4})[-/](\d{2,4})/);
+    const m4 = text.match(/(\d{4})[-/](\d{2,4})/);
     if (m4) {
-      yearStart = parseInt(m4[1] ?? '0', 10);
-      yearEnd   = deriveSeasonEnd(yearStart, parseInt(m4[2] ?? '0', 10));
-    } else {
-      // 2-digit shorthand: "23-24", "23/24"
-      const m2 = raw.match(/\b(\d{2})[-/](\d{2})\b/);
-      if (m2) {
-        yearStart = 2000 + parseInt(m2[1] ?? '0', 10);
-        yearEnd   = 2000 + parseInt(m2[2] ?? '0', 10);
-      } else {
-        // Single 4-digit year
-        const m1 = raw.match(/\b(20\d{2}|19\d{2})\b/);
-        if (m1) {
-          yearStart = parseInt(m1[1] ?? '0', 10);
-          yearEnd   = yearStart;
-        }
-      }
+      const start = parseInt(m4[1] ?? '0', 10);
+      return { start, end: deriveSeasonEnd(start, parseInt(m4[2] ?? '0', 10)) };
     }
+
+    // 2-digit shorthand: "23-24", "23/24"
+    const m2 = text.match(/\b(\d{2})[-/](\d{2})\b/);
+    if (m2) {
+      return {
+        start: 2000 + parseInt(m2[1] ?? '0', 10),
+        end: 2000 + parseInt(m2[2] ?? '0', 10),
+      };
+    }
+
+    // Single 4-digit year
+    const m1 = text.match(/\b(20\d{2}|19\d{2})\b/);
+    if (m1) {
+      const y = parseInt(m1[1] ?? '0', 10);
+      return { start: y, end: y };
+    }
+
+    return { start: null, end: null };
+  };
+
+  const rawYears = parseYearsFromRaw(raw);
+  let yearStart: number | null = h.setYearStart ?? rawYears.start;
+  let yearEnd: number | null = h.setYearEnd ?? rawYears.end;
+
+  // If the set text contains an explicit year, trust that over model hints.
+  if (rawYears.start !== null) {
+    yearStart = rawYears.start;
+    yearEnd = rawYears.end;
   }
 
   // ── Manufacturer extraction ──────────────────────────────────────────────────
@@ -111,8 +144,16 @@ export function normalizeSet(
     }
   }
 
-  // ── Sport detection ──────────────────────────────────────────────────────────
+  // ── Sport/domain detection ───────────────────────────────────────────────────
   let sport: string | null = h.sport?.trim() || null;
+  let category: 'Sports' | 'TCG' | 'Non-Sports' = h.category ?? 'Sports';
+
+  if (!h.category) {
+    if (TCG_PATTERNS.some((p) => p.test(raw))) category = 'TCG';
+    else if (NON_SPORT_PATTERNS.some((p) => p.test(raw))) category = 'Non-Sports';
+    else category = 'Sports';
+  }
+
   if (!sport) {
     for (const [pattern, canonical] of SPORT_PATTERNS) {
       if (pattern.test(raw)) {
@@ -120,6 +161,10 @@ export function normalizeSet(
         break;
       }
     }
+  }
+
+  if (category !== 'Sports') {
+    sport = null;
   }
 
   // ── Product line extraction ──────────────────────────────────────────────────
@@ -180,5 +225,6 @@ export function normalizeSet(
     manufacturer:    mfrCanonical,
     productLine,
     sport,
+    category,
   };
 }
