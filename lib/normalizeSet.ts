@@ -77,6 +77,10 @@ function buildSeasonStr(start: number, end: number | null): string {
   return `${start}-${suffix}`;
 }
 
+function isFourDigitYear(year: number | null | undefined): year is number {
+  return typeof year === 'number' && year >= 1000;
+}
+
 export function normalizeSet(
   raw: string,
   hints?: {
@@ -122,8 +126,10 @@ export function normalizeSet(
   let yearStart: number | null = h.setYearStart ?? rawYears.start;
   let yearEnd: number | null = h.setYearEnd ?? rawYears.end;
 
-  // If the set text contains an explicit year, trust that over model hints.
-  if (rawYears.start !== null) {
+  // Only let raw text override hint years when hints are missing or less reliable.
+  // This avoids downgrading validated 4-digit hints from values like "95-96".
+  const hintYearsAreReliable = isFourDigitYear(h.setYearStart) && isFourDigitYear(h.setYearEnd);
+  if (rawYears.start !== null && !hintYearsAreReliable) {
     yearStart = rawYears.start;
     yearEnd = rawYears.end;
   }
