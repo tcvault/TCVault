@@ -6,6 +6,7 @@ export interface NormalizedSet {
   manufacturer: string | null;
   productLine: string | null;
   sport: string | null;
+  category: 'Sports' | 'TCG' | 'Non-Sports';
 }
 
 // Canonical manufacturer names keyed by lowercase aliases.
@@ -42,7 +43,27 @@ const SPORT_PATTERNS: [RegExp, string][] = [
   [/\bla\s*liga\b/i,           'Soccer'],
   [/\bligue\s*1\b/i,           'Soccer'],
   [/\bchampions\s*league\b/i,  'Soccer'],
+  // Generic football should map to Soccer only when no stronger NFL signal exists
   [/\bfootball\b/i,            'Soccer'],
+];
+
+const TCG_PATTERNS: RegExp[] = [
+  /\bpok[eé]mon\b/i,
+  /\bmagic\s*the\s*gathering\b/i,
+  /\bmtg\b/i,
+  /\byu-?gi-?oh\b/i,
+  /\blorcana\b/i,
+  /\bone\s*piece\b/i,
+  /\bdragon\s*ball\s*super\b/i,
+];
+
+const NON_SPORT_PATTERNS: RegExp[] = [
+  /\bmarvel\b/i,
+  /\bstar\s*wars\b/i,
+  /\bdisney\b/i,
+  /\bpixar\b/i,
+  /\bharry\s*potter\b/i,
+  /\bstranger\s*things\b/i,
 ];
 
 function deriveSeasonEnd(start: number, rawEnd: number): number {
@@ -64,6 +85,7 @@ export function normalizeSet(
     manufacturer?: string | null;
     productLine?: string | null;
     sport?: string | null;
+    category?: 'Sports' | 'TCG' | 'Non-Sports' | null;
   }
 ): NormalizedSet {
   const h = hints ?? {};
@@ -111,8 +133,16 @@ export function normalizeSet(
     }
   }
 
-  // ── Sport detection ──────────────────────────────────────────────────────────
+  // ── Sport/domain detection ───────────────────────────────────────────────────
   let sport: string | null = h.sport?.trim() || null;
+  let category: 'Sports' | 'TCG' | 'Non-Sports' = h.category ?? 'Sports';
+
+  if (!h.category) {
+    if (TCG_PATTERNS.some((p) => p.test(raw))) category = 'TCG';
+    else if (NON_SPORT_PATTERNS.some((p) => p.test(raw))) category = 'Non-Sports';
+    else category = 'Sports';
+  }
+
   if (!sport) {
     for (const [pattern, canonical] of SPORT_PATTERNS) {
       if (pattern.test(raw)) {
@@ -120,6 +150,10 @@ export function normalizeSet(
         break;
       }
     }
+  }
+
+  if (category !== 'Sports') {
+    sport = null;
   }
 
   // ── Product line extraction ──────────────────────────────────────────────────
@@ -180,5 +214,6 @@ export function normalizeSet(
     manufacturer:    mfrCanonical,
     productLine,
     sport,
+    category,
   };
 }

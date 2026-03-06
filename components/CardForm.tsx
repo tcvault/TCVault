@@ -99,6 +99,7 @@ interface AiSuggestion {
   manufacturer: string | null;
   productLine: string | null;
   sport: string | null;
+  category: 'Sports' | 'TCG' | 'Non-Sports';
   // Phase 3
   correctedByMemory?: boolean;
 }
@@ -138,6 +139,8 @@ const AI_FIELD_DEFS: AiFieldDef[] = [
       setYearEnd: s.setYearEnd ?? undefined,
       manufacturer: s.manufacturer ?? undefined,
       productLine: s.productLine ?? undefined,
+      sport: s.sport ?? undefined,
+      category: s.category,
     }),
     isLowConfidence: (s) => (s.setConfidence ?? 1) < 0.6 || (s.yearConfidence ?? 1) < 0.6,
   },
@@ -344,6 +347,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           manufacturer: result.manufacturer ?? null,
           productLine: result.productLine ?? null,
           sport: result.sport ?? null,
+          category: result.category ?? null,
         });
         let suggestion: AiSuggestion = { ...result, ...normalized };
 
@@ -440,6 +444,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       manufacturer: updated.manufacturer || null,
       productLine: updated.productLine || null,
       sport: updated.sport || null,
+      category: formData.category ?? null,
     });
     setFormData(prev => ({
       ...prev,
@@ -449,6 +454,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       setYearEnd: normalized.setYearEnd ?? undefined,
       manufacturer: normalized.manufacturer ?? undefined,
       productLine: normalized.productLine ?? undefined,
+      sport: normalized.sport ?? undefined,
+      category: normalized.category,
     }));
   };
 
@@ -484,6 +491,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         setYearEnd: normalized.setYearEnd ?? undefined,
         manufacturer: normalized.manufacturer ?? undefined,
         productLine: normalized.productLine ?? undefined,
+        sport: normalized.sport ?? undefined,
+        category: normalized.category,
       };
     }
 
