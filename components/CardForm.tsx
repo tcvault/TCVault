@@ -103,6 +103,68 @@ interface AiSuggestion {
   correctedByMemory?: boolean;
 }
 
+interface AiFieldDef {
+  key: string;
+  label: string;
+  getValue: (s: AiSuggestion) => string | number | undefined;
+  apply: (s: AiSuggestion, prev: Partial<Card>) => Partial<Card>;
+  isLowConfidence?: (s: AiSuggestion) => boolean;
+}
+
+const AI_FIELD_DEFS: AiFieldDef[] = [
+  {
+    key: 'playerName', label: 'Player',
+    getValue: (s) => s.playerName,
+    apply: (s, p) => ({ ...p, playerName: s.playerName }),
+  },
+  {
+    key: 'team', label: 'Team',
+    getValue: (s) => s.team,
+    apply: (s, p) => ({ ...p, team: s.team }),
+  },
+  {
+    key: 'cardSpecifics', label: 'Parallel / Variant',
+    getValue: (s) => s.cardSpecifics,
+    apply: (s, p) => ({ ...p, cardSpecifics: s.cardSpecifics }),
+  },
+  {
+    key: 'setDisplay', label: 'Set',
+    getValue: (s) => s.setDisplay,
+    apply: (s, p) => ({
+      ...p,
+      set: s.setDisplay,
+      setCanonicalKey: s.setCanonicalKey,
+      setYearStart: s.setYearStart ?? undefined,
+      setYearEnd: s.setYearEnd ?? undefined,
+      manufacturer: s.manufacturer ?? undefined,
+      productLine: s.productLine ?? undefined,
+      sport: s.sport ?? undefined,
+      category: s.category,
+    }),
+    isLowConfidence: (s) => (s.setConfidence ?? 1) < 0.6 || (s.yearConfidence ?? 1) < 0.6,
+  },
+  {
+    key: 'condition', label: 'Grade',
+    getValue: (s) => s.condition,
+    apply: (s, p) => s.condition !== undefined ? { ...p, condition: s.condition } : p,
+  },
+  {
+    key: 'estimatedValue', label: 'Market Value',
+    getValue: (s) => `£${s.estimatedValue}`,
+    apply: (s, p) => ({ ...p, marketValue: s.estimatedValue }),
+  },
+  {
+    key: 'serialNumber', label: 'Serial #',
+    getValue: (s) => s.serialNumber,
+    apply: (s, p) => ({ ...p, serialNumber: s.serialNumber }),
+  },
+  {
+    key: 'rarityTier', label: 'Rarity',
+    getValue: (s) => s.rarityTier,
+    apply: (s, p) => ({ ...p, rarityTier: s.rarityTier }),
+  },
+];
+
 const MFR_OPTIONS = ['Panini', 'Topps', 'Upper Deck', 'Futera', 'Score', 'Leaf', 'Fleer', 'Other'];
 
 function buildSeasonStr(start: number, end: number | null | undefined): string {
