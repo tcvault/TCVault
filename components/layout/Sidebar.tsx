@@ -43,7 +43,7 @@ export const Sidebar = ({
       <nav className="space-y-major flex-1 overflow-y-auto no-scrollbar mt-12 pb-8">
         <div className="space-y-control">
           <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Community</span>
-          <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
+          <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Collector's Corner" />
           <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
         </div>
 

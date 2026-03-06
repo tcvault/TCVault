@@ -218,7 +218,8 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass, 
       <div className="flex items-end justify-between px-1 md:px-0">
         <div className="space-y-control">
           <span className="text-micro font-semibold text-ink-secondary/60 uppercase tracking-widest">Community Pulse</span>
-          <h1>Global Feed</h1>
+          <h1>Collector's Corner</h1>
+          <p className="text-sm text-ink-tertiary">Share finds, talk releases, and see what the hobby is buzzing about.</p>
         </div>
         {!user ? (
           <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="btn-primary text-xs tracking-widest">Join to Post</button>

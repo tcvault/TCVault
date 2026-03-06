@@ -23,7 +23,7 @@ export const MobileNav = ({
 }: MobileNavProps) => {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-elevated border-t border-border-soft flex items-center justify-around px-8 z-[50] shadow-xl">
-      <MobileNavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={20} />} label="Feed" />
+      <MobileNavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={20} />} label="Corner" />
       <MobileNavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={20} />} label="Explore" />
       {!isGuest ? (
         <>
