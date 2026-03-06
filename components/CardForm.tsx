@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
-import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop, ShieldCheck } from 'lucide-react';
+import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop, Scissors, ShieldCheck } from 'lucide-react';
 import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
+import ManualCropModal from './ManualCropModal';
 import { vaultStorage, supabase } from '../services/storage';
 
 interface CardFormProps {
@@ -108,6 +109,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   const [hasScanned, setHasScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCropping, setIsCropping] = useState<number | null>(null);
+  const [manualCropIndex, setManualCropIndex] = useState<number | null>(null);
+  const [isManualCropSaving, setIsManualCropSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const standardConditions = ['Ungraded', 'Raw', 'PSA 10', 'PSA 9', 'PSA 8', 'BGS 10 Black Label', 'BGS 10', 'BGS 9.5', 'SGC 10', 'CGC 10'];
@@ -198,13 +201,41 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         
         if (onToast) onToast("Image recropped successfully", "success");
       } else {
-        if (onToast) onToast("Could not detect card boundaries", "error");
+        if (onToast) onToast("Could not detect card boundaries. Try Manual Crop.", "info");
       }
     } catch (err) {
       console.error("Recrop failed:", err);
       if (onToast) onToast("Recrop analysis failed", "error");
     } finally {
       setIsCropping(null);
+    }
+  };
+
+  const handleManualCropApply = async (box: BoundingBox) => {
+    if (manualCropIndex === null) return;
+    setIsManualCropSaving(true);
+    try {
+      let userId = 'local-guest';
+      if (supabase) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) userId = user.id;
+      }
+      const src = images[manualCropIndex];
+      if (!src) return;
+      const croppedImage = await performCrop(src, box);
+      const storedUrl = await vaultStorage.uploadImage(userId, croppedImage);
+      setImages(prev => {
+        const next = [...prev];
+        next[manualCropIndex!] = storedUrl;
+        return next;
+      });
+      if (onToast) onToast("Manual crop applied", "success");
+      setManualCropIndex(null);
+    } catch (err) {
+      console.error("Manual crop failed:", err);
+      if (onToast) onToast("Manual crop failed. Please try again.", "error");
+    } finally {
+      setIsManualCropSaving(false);
     }
   };
 
@@ -271,6 +302,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   };
 
   return (
+    <>
     <div className={`max-w-4xl mx-auto space-y-major pb-16 ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="flex items-center justify-between gap-padding">
         <h2 className="text-[32px] font-bold tracking-tighter text-ink-primary leading-tight">
@@ -312,12 +344,13 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                   )}
                   <div className="absolute top-4 right-4 flex flex-col gap-control z-20">
                     <button onClick={() => removeImage(idx)} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-error text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg"><Trash2 size={16} /></button>
-                    <button type="button" onClick={() => handleRecrop(idx)} disabled={isCropping !== null} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-gold-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
+                    <button type="button" title="AI Re-crop" onClick={() => handleRecrop(idx)} disabled={isCropping !== null || isManualCropSaving} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-gold-500 text-white rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Crop size={16} /></button>
+                    <button type="button" title="Manual Crop" onClick={() => setManualCropIndex(idx)} disabled={isCropping !== null || isManualCropSaving} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-surface-elevated border border-border-soft text-ink-tertiary hover:text-ink-primary rounded-xl opacity-0 group-hover:opacity-100 transition-all active:scale-95 shadow-lg disabled:opacity-50"><Scissors size={16} /></button>
                   </div>
                 </div>
               ))}
               {(images.length < 4 || (isCropping !== null && !images[isCropping])) && (
-                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null} className="aspect-[3/4] rounded-xl border border-dashed border-border-soft flex flex-col items-center justify-center gap-padding hover:border-ink-primary/20 hover:bg-surface-elevated transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 active:scale-[0.98] relative">
+                <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null || isManualCropSaving} className="aspect-[3/4] rounded-xl border border-dashed border-border-soft flex flex-col items-center justify-center gap-padding hover:border-ink-primary/20 hover:bg-surface-elevated transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 active:scale-[0.98] relative">
                   {isSaving || (isCropping !== null && !images[isCropping]) ? (
                     <div className="flex flex-col items-center gap-control">
                        <Loader2 className="text-gold-500 animate-spin" size={24} />
@@ -334,7 +367,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" multiple onChange={handleFileChange} />
             {images.length > 0 && (
-              <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null} className={`w-full h-14 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-control active:scale-[0.97] ${hasScanned ? 'btn-secondary text-ink-tertiary' : 'btn-primary'}`}>
+              <button type="button" onClick={runScanner} disabled={isScanning || isSaving || isCropping !== null || isManualCropSaving} className={`w-full h-14 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-control active:scale-[0.97] ${hasScanned ? 'btn-secondary text-ink-tertiary' : 'btn-primary'}`}>
                 {isScanning ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={16} />}
                 <span className="uppercase text-xs tracking-widest">{hasScanned ? 'Re-identify Card' : 'Identify with AI'}</span>
               </button>
@@ -424,7 +457,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
               <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-error border-error/20 hover:bg-error/10 h-14 px-6 uppercase text-xs tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Card</span></button>
             )}
             <button type="button" onClick={onCancel} className="btn-secondary flex-1 h-14 uppercase text-xs tracking-widest">Discard</button>
-            <button type="submit" disabled={isSaving || isCropping !== null} className={`btn-primary flex-[2] h-14 uppercase text-xs tracking-widest ${isSaving || isCropping !== null ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <button type="submit" disabled={isSaving || isCropping !== null || isManualCropSaving} className={`btn-primary flex-[2] h-14 uppercase text-xs tracking-widest ${isSaving || isCropping !== null || isManualCropSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2" size={20} />}
               <span>{isEditing ? 'Update Card' : 'Add to Collection'}</span>
             </button>
@@ -432,6 +465,15 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         </form>
       </div>
     </div>
+    {manualCropIndex !== null && images[manualCropIndex] && (
+      <ManualCropModal
+        imageSrc={images[manualCropIndex]!}
+        onApply={handleManualCropApply}
+        onCancel={() => setManualCropIndex(null)}
+        isSaving={isManualCropSaving}
+      />
+    )}
+    </>
   );
 };
 
