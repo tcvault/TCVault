@@ -77,6 +77,10 @@ function buildSeasonStr(start: number, end: number | null): string {
   return `${start}-${suffix}`;
 }
 
+function isFourDigitYear(year: number | null | undefined): year is number {
+  return typeof year === 'number' && year >= 1000;
+}
+
 export function normalizeSet(
   raw: string,
   hints?: {
@@ -90,31 +94,44 @@ export function normalizeSet(
 ): NormalizedSet {
   const h = hints ?? {};
 
-  // ── Year extraction ──────────────────────────────────────────────────────────
-  let yearStart: number | null = h.setYearStart ?? null;
-  let yearEnd: number | null   = h.setYearEnd   ?? null;
-
-  if (yearStart === null) {
+  // ── Year extraction (prefer explicit year in set string when present) ──────
+  const parseYearsFromRaw = (text: string): { start: number | null; end: number | null } => {
     // 4-digit / 2-or-4-digit season: "2023-24", "2023/2024"
-    const m4 = raw.match(/(\d{4})[-/](\d{2,4})/);
+    const m4 = text.match(/(\d{4})[-/](\d{2,4})/);
     if (m4) {
-      yearStart = parseInt(m4[1] ?? '0', 10);
-      yearEnd   = deriveSeasonEnd(yearStart, parseInt(m4[2] ?? '0', 10));
-    } else {
-      // 2-digit shorthand: "23-24", "23/24"
-      const m2 = raw.match(/\b(\d{2})[-/](\d{2})\b/);
-      if (m2) {
-        yearStart = 2000 + parseInt(m2[1] ?? '0', 10);
-        yearEnd   = 2000 + parseInt(m2[2] ?? '0', 10);
-      } else {
-        // Single 4-digit year
-        const m1 = raw.match(/\b(20\d{2}|19\d{2})\b/);
-        if (m1) {
-          yearStart = parseInt(m1[1] ?? '0', 10);
-          yearEnd   = yearStart;
-        }
-      }
+      const start = parseInt(m4[1] ?? '0', 10);
+      return { start, end: deriveSeasonEnd(start, parseInt(m4[2] ?? '0', 10)) };
     }
+
+    // 2-digit shorthand: "23-24", "23/24"
+    const m2 = text.match(/\b(\d{2})[-/](\d{2})\b/);
+    if (m2) {
+      return {
+        start: 2000 + parseInt(m2[1] ?? '0', 10),
+        end: 2000 + parseInt(m2[2] ?? '0', 10),
+      };
+    }
+
+    // Single 4-digit year
+    const m1 = text.match(/\b(20\d{2}|19\d{2})\b/);
+    if (m1) {
+      const y = parseInt(m1[1] ?? '0', 10);
+      return { start: y, end: y };
+    }
+
+    return { start: null, end: null };
+  };
+
+  const rawYears = parseYearsFromRaw(raw);
+  let yearStart: number | null = h.setYearStart ?? rawYears.start;
+  let yearEnd: number | null = h.setYearEnd ?? rawYears.end;
+
+  // Only let raw text override hint years when hints are missing or less reliable.
+  // This avoids downgrading validated 4-digit hints from values like "95-96".
+  const hintYearsAreReliable = isFourDigitYear(h.setYearStart) && isFourDigitYear(h.setYearEnd);
+  if (rawYears.start !== null && !hintYearsAreReliable) {
+    yearStart = rawYears.start;
+    yearEnd = rawYears.end;
   }
 
   // ── Manufacturer extraction ──────────────────────────────────────────────────
