@@ -283,10 +283,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
   );
 };
 
-const Stat = ({ icon, label, value }: any) => (
+interface StatProps { icon: React.ReactNode; label: string; value: string | number; }
+const Stat = ({ icon, label, value }: StatProps) => (
   <div className="p-padding bg-surface-base rounded-xl flex flex-col gap-padding border border-border-soft hover:bg-surface-elevated transition-colors group">
     <div className="text-gold-500 opacity-60 group-hover:opacity-100 transition-opacity flex justify-between">
-      {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { size: 16 }) : icon}
+      {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<{ size?: number }>, { size: 16 }) : icon}
     </div>
     <div className="space-y-0.5">
       <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest leading-none block">{label}</span>
@@ -295,7 +296,8 @@ const Stat = ({ icon, label, value }: any) => (
   </div>
 );
 
-const Detail = ({ label, value }: any) => (
+interface DetailProps { label: string; value: React.ReactNode; }
+const Detail = ({ label, value }: DetailProps) => (
   <div className="space-y-control">
     <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">{label}</span>
     <p className="text-sm font-semibold text-ink-tertiary leading-relaxed">{value}</p>
@@ -314,7 +316,8 @@ const EditField = ({ label, value, onChange }: { label: string, value: string, o
   </div>
 );
 
-const TabButton = ({ active, onClick, icon, label, count }: any) => (
+interface TabButtonProps { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; count?: number; }
+const TabButton = ({ active, onClick, icon, label, count }: TabButtonProps) => (
   <button 
     onClick={onClick}
     className={`flex items-center gap-control px-4 h-10 rounded-full transition-all active:scale-95 whitespace-nowrap relative ${

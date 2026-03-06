@@ -6,10 +6,10 @@ import {
   Loader2, Globe, Lock, Crop, Scissors, ShieldCheck, CheckCircle, XCircle,
   AlertTriangle,
 } from 'lucide-react';
-import { identifyCard, getCardBoundingBox, BoundingBox, IdentifiedCard } from '../services/gemini';
+import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
 import ManualCropModal from './ManualCropModal';
 import { vaultStorage, supabase } from '../services/storage';
-import { normalizeSet, NormalizedSet } from '../lib/normalizeSet';
+import { normalizeSet } from '../lib/normalizeSet';
 import { writeCorrectionEvent, getCorrectionMap, applyAutoCorrect } from '../services/corrections';
 
 // ── Image helpers ────────────────────────────────────────────────────────────
@@ -510,9 +510,9 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
       // Phase 3: fire-and-forget correction event (does not block save)
       if (aiSuggestion && supabase) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        supabase.auth.getUser().then((res: any) => {
-          if (res?.data?.user) writeCorrectionEvent(res.data.user.id, completeCard, aiSuggestion as any);
+        supabase.auth.getUser().then((result: { data: { user: { id: string } | null } }) => {
+          const user = result.data?.user;
+          if (user) writeCorrectionEvent(user.id, completeCard, aiSuggestion as unknown as Parameters<typeof writeCorrectionEvent>[2]);
         }).catch(() => { /* non-critical */ });
       }
     } catch (err: unknown) {

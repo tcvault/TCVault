@@ -48,13 +48,13 @@ export function normalizeSet(
 
   if (yearStart === null) {
     // 4-digit / 2-or-4-digit season: "2023-24", "2023/2024"
-    const m4 = raw.match(/(\d{4})[\/\-](\d{2,4})/);
+    const m4 = raw.match(/(\d{4})[-/](\d{2,4})/);
     if (m4) {
       yearStart = parseInt(m4[1] ?? '0', 10);
       yearEnd   = deriveSeasonEnd(yearStart, parseInt(m4[2] ?? '0', 10));
     } else {
       // 2-digit shorthand: "23-24", "23/24"
-      const m2 = raw.match(/\b(\d{2})[\/\-](\d{2})\b/);
+      const m2 = raw.match(/\b(\d{2})[-/](\d{2})\b/);
       if (m2) {
         yearStart = 2000 + parseInt(m2[1] ?? '0', 10);
         yearEnd   = 2000 + parseInt(m2[2] ?? '0', 10);
@@ -90,8 +90,8 @@ export function normalizeSet(
 
   if (!productLine) {
     let stripped = raw
-      .replace(/\b\d{4}[\/\-]\d{2,4}\b/g, '')
-      .replace(/\b\d{2}[\/\-]\d{2}\b/g, '')
+      .replace(/\b\d{4}[-/]\d{2,4}\b/g, '')
+      .replace(/\b\d{2}[-/]\d{2}\b/g, '')
       .replace(/\b20\d{2}\b/g, '')
       .replace(/\bsoccer\b/gi, '')
       .replace(/\bfootball\b/gi, '')
@@ -113,7 +113,7 @@ export function normalizeSet(
     }
 
     // Clean up punctuation artefacts
-    stripped = stripped.replace(/^[\s,\-\/]+|[\s,\-\/]+$/g, '').replace(/\s{2,}/g, ' ').trim();
+    stripped = stripped.replace(/^[\s,\-/]+|[\s,\-/]+$/g, '').replace(/\s{2,}/g, ' ').trim();
     productLine = stripped || null;
   }
 

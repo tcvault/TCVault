@@ -148,7 +148,8 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
   );
 };
 
-const StatCard = ({ label, value, icon }: any) => (
+interface StatCardProps { label: string; value: string | number; icon: React.ReactNode; }
+const StatCard = ({ label, value, icon }: StatCardProps) => (
   <div className="card-vault hover:border-gold-500/20 transition-all space-y-control shadow-sm active:scale-[0.99] group">
     <div className="flex items-center gap-padding">
       <div className="p-2 rounded-lg bg-surface-base border border-border-soft">{icon}</div>

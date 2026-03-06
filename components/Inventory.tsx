@@ -146,9 +146,9 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         backgroundColor: '#faf8f4',
         cacheBust: true,
         pixelRatio: 1,
-        filter: (node: any) => {
+        filter: (node: Node) => {
           // Skip remote stylesheets that cause CORS 'cssRules' access errors
-          if (node.tagName === 'LINK' && node.rel === 'stylesheet' && !node.href?.startsWith(window.location.origin)) {
+          if (node instanceof HTMLLinkElement && node.rel === 'stylesheet' && !node.href?.startsWith(window.location.origin)) {
             return false;
           }
           return true;

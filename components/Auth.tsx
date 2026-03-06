@@ -209,7 +209,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
   );
 };
 
-const AuthField = ({ label, value, onChange, icon, type = 'text', placeholder, extra }: any) => (
+interface AuthFieldProps {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  icon: React.ReactNode;
+  type?: string;
+  placeholder?: string;
+  extra?: React.ReactNode;
+}
+const AuthField = ({ label, value, onChange, icon, type = 'text', placeholder, extra }: AuthFieldProps) => (
   <div className="space-y-control">
     <div className="flex items-center justify-between px-1">
       <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">{label}</label>
