@@ -25,6 +25,7 @@ export interface IdentifiedCard {
   setConfidence?: number;
   yearConfidence?: number;
   sport?: string;
+  category?: 'Sports' | 'TCG' | 'Non-Sports';
 }
 
 export interface MarketPriceResult {

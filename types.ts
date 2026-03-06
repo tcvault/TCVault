@@ -97,6 +97,8 @@ export interface Card {
   setYearEnd?: number | undefined;
   manufacturer?: string | undefined;
   productLine?: string | undefined;
+  sport?: string | undefined;
+  category?: 'Sports' | 'TCG' | 'Non-Sports' | undefined;
 }
 
 export interface CollectionStats {

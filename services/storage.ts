@@ -183,6 +183,8 @@ class CloudStorageService {
           setYearEnd: item.set_year_end ?? undefined,
           manufacturer: item.manufacturer || undefined,
           productLine: item.product_line || undefined,
+          sport: item.sport || undefined,
+          category: item.category || undefined,
         }));
       }
     }
@@ -224,7 +226,14 @@ class CloudStorageService {
           ownerId: item.user_id,
           certNumber: item.cert_number,
           marketMeta: item.market_meta || undefined,
-          marketValueLocked: item.market_value_locked ?? false
+          marketValueLocked: item.market_value_locked ?? false,
+          setCanonicalKey: item.set_canonical_key || undefined,
+          setYearStart: item.set_year_start ?? undefined,
+          setYearEnd: item.set_year_end ?? undefined,
+          manufacturer: item.manufacturer || undefined,
+          productLine: item.product_line || undefined,
+          sport: item.sport || undefined,
+          category: item.category || undefined,
         }));
       }
     }
@@ -265,6 +274,8 @@ class CloudStorageService {
         set_year_end: card.setYearEnd ?? null,
         manufacturer: card.manufacturer ?? null,
         product_line: card.productLine ?? null,
+        sport: card.sport ?? null,
+        category: card.category ?? null,
       };
 
       let { data, error } = await supabase.from('cards').upsert(payload).select().single();
@@ -279,6 +290,13 @@ class CloudStorageService {
         delete minimalPayload.page_id;
         delete minimalPayload.market_meta;
         delete minimalPayload.market_value_locked;
+        delete minimalPayload.set_canonical_key;
+        delete minimalPayload.set_year_start;
+        delete minimalPayload.set_year_end;
+        delete minimalPayload.manufacturer;
+        delete minimalPayload.product_line;
+        delete minimalPayload.sport;
+        delete minimalPayload.category;
         
         const retry = await supabase.from('cards').upsert(minimalPayload).select().single();
         data = retry.data;
@@ -317,6 +335,8 @@ class CloudStorageService {
           setYearEnd: data.set_year_end ?? undefined,
           manufacturer: data.manufacturer || undefined,
           productLine: data.product_line || undefined,
+          sport: data.sport || undefined,
+          category: data.category || undefined,
         };
 
         // Update local storage only on success
