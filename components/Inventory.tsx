@@ -83,6 +83,8 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         comparison = a.marketValue - b.marketValue;
       } else if (sortBy === 'pricePaid') {
         comparison = a.pricePaid - b.pricePaid;
+      } else if (sortBy === 'setNumber') {
+        comparison = (a.setNumber || '').localeCompare(b.setNumber || '', undefined, { numeric: true });
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -219,6 +221,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <option value="marketValue">Value</option>
                 <option value="pricePaid">Cost</option>
                 <option value="playerName">Name</option>
+                <option value="setNumber">Set No.</option>
               </select>
               <ArrowUpDown size={14} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />

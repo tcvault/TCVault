@@ -113,5 +113,5 @@ export enum ViewMode {
   SETTINGS = 'SETTINGS'
 }
 
-export type SortField = 'playerName' | 'purchaseDate' | 'marketValue' | 'pricePaid';
+export type SortField = 'playerName' | 'purchaseDate' | 'marketValue' | 'pricePaid' | 'setNumber';
 export type SortOrder = 'asc' | 'desc';
