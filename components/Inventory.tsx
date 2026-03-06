@@ -51,7 +51,16 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
   , [pages, activePageId]);
 
   const uniqueTeams = useMemo(() => Array.from(new Set(cards.map(c => c.team).filter((t): t is string => !!t))).sort(), [cards]);
-  const uniqueSets = useMemo(() => Array.from(new Set(cards.map(c => c.set).filter((s): s is string => !!s))).sort(), [cards]);
+  const uniqueSets = useMemo(() => {
+    const seen = new Map<string, string>(); // key -> display label
+    for (const c of cards) {
+      const key = c.setCanonicalKey || c.set;
+      if (key && !seen.has(key)) seen.set(key, c.set);
+    }
+    return Array.from(seen.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cards]);
   const uniqueRarities = useMemo(() => Array.from(new Set(cards.map(c => c.rarityTier).filter(Boolean))).sort() as string[], [cards]);
   const uniqueConditions = useMemo(() => Array.from(new Set(cards.map(c => c.condition).filter((c): c is string => !!c))).sort(), [cards]);
 
@@ -67,7 +76,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
       }
       if (filters.player && !card.playerName.toLowerCase().includes(filters.player.toLowerCase())) return false;
       if (filters.team !== 'all' && card.team !== filters.team) return false;
-      if (filters.set !== 'all' && card.set !== filters.set) return false;
+      if (filters.set !== 'all' && (card.setCanonicalKey || card.set) !== filters.set) return false;
       if (filters.condition !== 'all' && card.condition !== filters.condition) return false;
       if (filters.rarity !== 'all' && card.rarityTier !== filters.rarity) return false;
       return true;
@@ -242,7 +251,20 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-control animate-in slide-in-from-top-2 duration-300">
             <FilterSelect value={filters.team} onChange={(v: string) => setFilters({...filters, team: v})} options={uniqueTeams} placeholder="Team" />
-            <FilterSelect value={filters.set} onChange={(v: string) => setFilters({...filters, set: v})} options={uniqueSets} placeholder="Set" />
+            <div className="relative group">
+              <select
+                value={filters.set}
+                onChange={(e) => setFilters({...filters, set: e.target.value})}
+                style={{ colorScheme: 'light' }}
+                className={`w-full bg-surface-elevated border rounded-xl h-12 px-4 text-xs font-bold uppercase tracking-widest appearance-none cursor-pointer outline-none transition-all focus:border-gold-500/40 ${filters.set !== 'all' ? 'border-gold-500/40 text-gold-500' : 'border-border-soft text-ink-tertiary hover:text-ink-secondary'}`}
+              >
+                <option value="all">Set</option>
+                {uniqueSets.map(({ key, label }) => (
+                  <option key={key} value={key} className="bg-surface-base text-ink-primary font-semibold">{label}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
+            </div>
             <FilterSelect value={filters.condition} onChange={(v: string) => setFilters({...filters, condition: v})} options={uniqueConditions} placeholder="Grade" />
             <FilterSelect value={filters.rarity} onChange={(v: string) => setFilters({...filters, rarity: v})} options={uniqueRarities} placeholder="Rarity" />
             {hasActiveFilters && <button onClick={resetAllViewFilters} className="col-span-full text-center text-xs font-bold text-error uppercase tracking-widest hover:text-error/80 transition-colors py-control active:scale-95">Reset Filters</button>}

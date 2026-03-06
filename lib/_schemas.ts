@@ -14,6 +14,12 @@ export const IdentifiedCardSchema = z.object({
   reasoning: z.string().optional(),
   rarityTier: z.enum(["Base", "Parallel", "Chase", "1/1"]).optional(),
   checklistVerified: z.boolean().optional(),
+  setYearStart:   z.number().optional(),
+  setYearEnd:     z.number().nullable().optional(),
+  manufacturer:   z.string().optional(),
+  productLine:    z.string().optional(),
+  setConfidence:  z.number().min(0).max(1).optional(),
+  yearConfidence: z.number().min(0).max(1).optional(),
 });
 
 export const BoundingBoxSchema = z.object({

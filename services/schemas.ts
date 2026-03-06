@@ -41,6 +41,11 @@ export const CardSchema = z.object({
   ownerId: z.string().optional(),
   marketMeta: z.any().optional(),
   marketValueLocked: z.boolean().optional(),
+  setCanonicalKey: z.string().optional(),
+  setYearStart: z.number().optional(),
+  setYearEnd: z.number().optional(),
+  manufacturer: z.string().optional(),
+  productLine: z.string().optional(),
 });
 
 /** Safely parse JSON and validate with a Zod schema. Returns null on any failure. */

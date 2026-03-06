@@ -18,6 +18,12 @@ export interface IdentifiedCard {
   reasoning?: string;
   rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
   checklistVerified?: boolean;
+  setYearStart?: number;
+  setYearEnd?: number | null;
+  manufacturer?: string;
+  productLine?: string;
+  setConfidence?: number;
+  yearConfidence?: number;
 }
 
 export interface MarketPriceResult {

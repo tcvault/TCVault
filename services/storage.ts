@@ -177,7 +177,12 @@ class CloudStorageService {
           rarityTier: item.rarity_tier as any,
           isPublic: item.is_public ?? true,
           marketMeta: item.market_meta || undefined,
-          marketValueLocked: item.market_value_locked ?? false
+          marketValueLocked: item.market_value_locked ?? false,
+          setCanonicalKey: item.set_canonical_key || undefined,
+          setYearStart: item.set_year_start ?? undefined,
+          setYearEnd: item.set_year_end ?? undefined,
+          manufacturer: item.manufacturer || undefined,
+          productLine: item.product_line || undefined,
         }));
       }
     }
@@ -254,7 +259,12 @@ class CloudStorageService {
         is_public: card.isPublic ?? true,
         created_at: new Date(createdAt).toISOString(),
         market_meta: (card as any).marketMeta ?? null,
-        market_value_locked: (card as any).marketValueLocked ?? false
+        market_value_locked: (card as any).marketValueLocked ?? false,
+        set_canonical_key: card.setCanonicalKey ?? null,
+        set_year_start: card.setYearStart ?? null,
+        set_year_end: card.setYearEnd ?? null,
+        manufacturer: card.manufacturer ?? null,
+        product_line: card.productLine ?? null,
       };
 
       let { data, error } = await supabase.from('cards').upsert(payload).select().single();
@@ -301,9 +311,14 @@ class CloudStorageService {
           rarityTier: data.rarity_tier as any,
           isPublic: data.is_public ?? true,
           marketMeta: data.market_meta || undefined,
-          marketValueLocked: data.market_value_locked ?? false
+          marketValueLocked: data.market_value_locked ?? false,
+          setCanonicalKey: data.set_canonical_key || undefined,
+          setYearStart: data.set_year_start ?? undefined,
+          setYearEnd: data.set_year_end ?? undefined,
+          manufacturer: data.manufacturer || undefined,
+          productLine: data.product_line || undefined,
         };
-        
+
         // Update local storage only on success
         const current = await this.getCards();
         const existingIdx = current.findIndex(c => c.id === savedCard.id);

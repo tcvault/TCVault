@@ -92,6 +92,11 @@ export interface Card {
   ownerId?: string | undefined;
   marketMeta?: MarketMeta | undefined;
   marketValueLocked?: boolean | undefined;
+  setCanonicalKey?: string | undefined;
+  setYearStart?: number | undefined;
+  setYearEnd?: number | undefined;
+  manufacturer?: string | undefined;
+  productLine?: string | undefined;
 }
 
 export interface CollectionStats {

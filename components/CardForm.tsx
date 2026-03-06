@@ -1,20 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
-import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop, Scissors, ShieldCheck } from 'lucide-react';
-import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
+import {
+  Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye,
+  BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, ChevronUp,
+  Loader2, Globe, Lock, Crop, Scissors, ShieldCheck, CheckCircle, XCircle,
+  AlertTriangle,
+} from 'lucide-react';
+import { identifyCard, getCardBoundingBox, BoundingBox, IdentifiedCard } from '../services/gemini';
 import ManualCropModal from './ManualCropModal';
 import { vaultStorage, supabase } from '../services/storage';
+import { normalizeSet, NormalizedSet } from '../lib/normalizeSet';
+import { writeCorrectionEvent, getCorrectionMap, applyAutoCorrect } from '../services/corrections';
 
-interface CardFormProps {
-  onSubmit: (card: Card) => void;
-  onDelete?: ((id: string) => void) | undefined;
-  onCancel: () => void;
-  initialData?: Card | undefined;
-  pages: BinderPage[];
-  onToast?: ((message: string, type: 'success' | 'error' | 'info') => void) | undefined;
-  animationClass?: string | undefined;
-}
-
+// ── Image helpers ────────────────────────────────────────────────────────────
 const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -39,67 +37,159 @@ const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
 const performCrop = (imgSrc: string, box: BoundingBox): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
-    if (imgSrc.startsWith('http')) {
-      img.crossOrigin = "anonymous";
-    }
+    if (imgSrc.startsWith('http')) img.crossOrigin = 'anonymous';
     img.src = imgSrc;
     img.onload = () => {
       const isPng = imgSrc.includes('image/png');
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) { resolve(imgSrc); return; }
-
-      // Normalized coordinates (0-1000) to pixel coordinates
       const x = (box.xmin / 1000) * img.width;
       const y = (box.ymin / 1000) * img.height;
       const width = ((box.xmax - box.xmin) / 1000) * img.width;
       const height = ((box.ymax - box.ymin) / 1000) * img.height;
-
-      // Add 5% padding
       const padW = width * 0.05;
       const padH = height * 0.05;
-
-      let sx = x - padW;
-      let sy = y - padH;
-      let sw = width + padW * 2;
-      let sh = height + padH * 2;
-
-      // Clamp to image boundaries
+      let sx = x - padW, sy = y - padH, sw = width + padW * 2, sh = height + padH * 2;
       if (sx < 0) { sw += sx; sx = 0; }
       if (sy < 0) { sh += sy; sy = 0; }
       if (sx + sw > img.width) sw = img.width - sx;
       if (sy + sh > img.height) sh = img.height - sy;
-
-      // Ensure we have valid dimensions and avoid zero-size canvas
       sw = Math.max(1, Math.floor(sw));
       sh = Math.max(1, Math.floor(sh));
-
       canvas.width = sw;
       canvas.height = sh;
-
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      
       try {
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
         resolve(canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : 0.9));
       } catch (e) {
-        console.error("Crop failed (likely CORS or Canvas limit):", e);
-        resolve(imgSrc); // Fallback to original
+        console.error('Crop failed:', e);
+        resolve(imgSrc);
       }
     };
     img.onerror = () => resolve(imgSrc);
   });
 };
 
+// ── AI suggestion type (concrete, avoids exactOptionalPropertyTypes conflicts) ─
+interface AiSuggestion {
+  // Core identification
+  playerName: string;
+  team: string;
+  cardSpecifics: string;
+  set: string;
+  setNumber?: string;
+  condition?: string;
+  estimatedValue: number;
+  description: string;
+  serialNumber?: string;
+  certNumber?: string;
+  reasoning?: string;
+  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
+  checklistVerified?: boolean;
+  setConfidence?: number;
+  yearConfidence?: number;
+  // Normalised set fields
+  setDisplay: string;
+  setCanonicalKey: string;
+  setYearStart: number | null;
+  setYearEnd: number | null;
+  manufacturer: string | null;
+  productLine: string | null;
+  // Phase 3
+  correctedByMemory?: boolean;
+}
+
+interface AiFieldDef {
+  key: string;
+  label: string;
+  getValue: (s: AiSuggestion) => string | number | undefined;
+  apply: (s: AiSuggestion, prev: Partial<Card>) => Partial<Card>;
+  isLowConfidence?: (s: AiSuggestion) => boolean;
+}
+
+const AI_FIELD_DEFS: AiFieldDef[] = [
+  {
+    key: 'playerName', label: 'Player',
+    getValue: (s) => s.playerName,
+    apply: (s, p) => ({ ...p, playerName: s.playerName }),
+  },
+  {
+    key: 'team', label: 'Team',
+    getValue: (s) => s.team,
+    apply: (s, p) => ({ ...p, team: s.team }),
+  },
+  {
+    key: 'cardSpecifics', label: 'Parallel / Variant',
+    getValue: (s) => s.cardSpecifics,
+    apply: (s, p) => ({ ...p, cardSpecifics: s.cardSpecifics }),
+  },
+  {
+    key: 'setDisplay', label: 'Set',
+    getValue: (s) => s.setDisplay,
+    apply: (s, p) => ({
+      ...p,
+      set: s.setDisplay,
+      setCanonicalKey: s.setCanonicalKey,
+      setYearStart: s.setYearStart ?? undefined,
+      setYearEnd: s.setYearEnd ?? undefined,
+      manufacturer: s.manufacturer ?? undefined,
+      productLine: s.productLine ?? undefined,
+    }),
+    isLowConfidence: (s) => (s.setConfidence ?? 1) < 0.6 || (s.yearConfidence ?? 1) < 0.6,
+  },
+  {
+    key: 'condition', label: 'Grade',
+    getValue: (s) => s.condition,
+    apply: (s, p) => s.condition !== undefined ? { ...p, condition: s.condition } : p,
+  },
+  {
+    key: 'estimatedValue', label: 'Market Value',
+    getValue: (s) => `£${s.estimatedValue}`,
+    apply: (s, p) => ({ ...p, marketValue: s.estimatedValue }),
+  },
+  {
+    key: 'serialNumber', label: 'Serial #',
+    getValue: (s) => s.serialNumber,
+    apply: (s, p) => ({ ...p, serialNumber: s.serialNumber }),
+  },
+  {
+    key: 'rarityTier', label: 'Rarity',
+    getValue: (s) => s.rarityTier,
+    apply: (s, p) => ({ ...p, rarityTier: s.rarityTier }),
+  },
+];
+
+const MFR_OPTIONS = ['Panini', 'Topps', 'Upper Deck', 'Futera', 'Score', 'Leaf', 'Fleer', 'Other'];
+
+function buildSeasonStr(start: number, end: number | null | undefined): string {
+  if (!end || end === start) return String(start);
+  return `${start}-${String(end).slice(-2)}`;
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+interface CardFormProps {
+  onSubmit: (card: Card) => void;
+  onDelete?: ((id: string) => void) | undefined;
+  onCancel: () => void;
+  initialData?: Card | undefined;
+  pages: BinderPage[];
+  onToast?: ((message: string, type: 'success' | 'error' | 'info') => void) | undefined;
+  animationClass?: string | undefined;
+}
+
 const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initialData, pages, onToast, animationClass }) => {
   const isEditing = !!initialData;
+
+  // ── Core form state ───────────────────────────────────────────────────────
   const [formData, setFormData] = useState<Partial<Card>>({
     playerName: '', team: '', cardSpecifics: '', set: '', setNumber: '',
     condition: 'Ungraded', pricePaid: 0, marketValue: 0,
     purchaseDate: new Date().toISOString().split('T')[0] ?? '',
     serialNumber: '', certNumber: '', notes: '', pageId: '', rarityTier: 'Base',
-    isPublic: true
+    isPublic: true,
   });
 
   const [images, setImages] = useState<string[]>([]);
@@ -111,8 +201,21 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   const [isCropping, setIsCropping] = useState<number | null>(null);
   const [manualCropIndex, setManualCropIndex] = useState<number | null>(null);
   const [isManualCropSaving, setIsManualCropSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── AI suggestion state (Phase 2) ─────────────────────────────────────────
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
+  const [aiAccepted, setAiAccepted] = useState<Set<string>>(new Set());
+  const [aiDismissed, setAiDismissed] = useState<Set<string>>(new Set());
+  const [showAiPanel, setShowAiPanel] = useState(false);
+
+  // ── Structured set editor state (Phase 2) ────────────────────────────────
+  const [setEditorMode, setSetEditorMode] = useState<'simple' | 'structured'>('simple');
+  const [sFields, setSFields] = useState({ season: '', manufacturer: '', productLine: '', sport: 'Soccer' });
+
+  // ── Save warnings state (Phase 2) ─────────────────────────────────────────
+  const [saveWarnings, setSaveWarnings] = useState<string[]>([]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const standardConditions = ['Ungraded', 'Raw', 'PSA 10', 'PSA 9', 'PSA 8', 'BGS 10 Black Label', 'BGS 10', 'BGS 9.5', 'SGC 10', 'CGC 10'];
 
   useEffect(() => {
@@ -123,19 +226,18 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     }
   }, [initialData]);
 
+  // ── Image handlers ────────────────────────────────────────────────────────
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setError(null);
     setIsSaving(true);
-    
     try {
       let userId = 'local-guest';
       if (supabase) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) userId = user.id;
       }
-
       for (let i = 0; i < files.length; i++) {
         if (i > 0) await new Promise(res => setTimeout(res, 500));
         const file = files[i];
@@ -145,23 +247,20 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           reader.onloadend = () => res(reader.result as string);
           reader.readAsDataURL(file);
         });
-        
         const compressed = await processImage(base64);
         const currentIdx = images.length + i;
         setIsCropping(currentIdx);
-        
         try {
           const box = await getCardBoundingBox(compressed);
           let finalImage = compressed;
           if (box) {
             finalImage = await performCrop(compressed, box);
-            if (onToast && i === 0) onToast("Auto-cropped to focus on the card", "info");
+            if (onToast && i === 0) onToast('Auto-cropped to focus on the card', 'info');
           }
-          
           const storedUrl = await vaultStorage.uploadImage(userId, finalImage);
           setImages(prev => [...prev, storedUrl].slice(0, 4));
         } catch (cropErr) {
-          console.error("Auto-crop failed:", cropErr);
+          console.error('Auto-crop failed:', cropErr);
           const storedUrl = await vaultStorage.uploadImage(userId, compressed);
           setImages(prev => [...prev, storedUrl].slice(0, 4));
         } finally {
@@ -169,7 +268,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setIsSaving(false);
     }
@@ -179,7 +278,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     if (isCropping !== null || isSaving) return;
     const targetImage = images[index];
     if (!targetImage) return;
-
     setIsCropping(index);
     try {
       let userId = 'local-guest';
@@ -187,25 +285,18 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         const { data: { user } } = await supabase.auth.getUser();
         if (user) userId = user.id;
       }
-
       const box = await getCardBoundingBox(targetImage);
       if (box) {
         const croppedImage = await performCrop(targetImage, box);
         const storedUrl = await vaultStorage.uploadImage(userId, croppedImage);
-        
-        setImages(prev => {
-          const newImages = [...prev];
-          newImages[index] = storedUrl;
-          return newImages;
-        });
-        
-        if (onToast) onToast("Image recropped successfully", "success");
+        setImages(prev => { const n = [...prev]; n[index] = storedUrl; return n; });
+        if (onToast) onToast('Image recropped successfully', 'success');
       } else {
-        if (onToast) onToast("Could not detect card boundaries. Try Manual Crop.", "info");
+        if (onToast) onToast('Could not detect card boundaries. Try Manual Crop.', 'info');
       }
     } catch (err) {
-      console.error("Recrop failed:", err);
-      if (onToast) onToast("Recrop analysis failed", "error");
+      console.error('Recrop failed:', err);
+      if (onToast) onToast('Recrop analysis failed', 'error');
     } finally {
       setIsCropping(null);
     }
@@ -224,16 +315,12 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       if (!src) return;
       const croppedImage = await performCrop(src, box);
       const storedUrl = await vaultStorage.uploadImage(userId, croppedImage);
-      setImages(prev => {
-        const next = [...prev];
-        next[manualCropIndex!] = storedUrl;
-        return next;
-      });
-      if (onToast) onToast("Manual crop applied", "success");
+      setImages(prev => { const n = [...prev]; n[manualCropIndex!] = storedUrl; return n; });
+      if (onToast) onToast('Manual crop applied', 'success');
       setManualCropIndex(null);
     } catch (err) {
-      console.error("Manual crop failed:", err);
-      if (onToast) onToast("Manual crop failed. Please try again.", "error");
+      console.error('Manual crop failed:', err);
+      if (onToast) onToast('Manual crop failed. Please try again.', 'error');
     } finally {
       setIsManualCropSaving(false);
     }
@@ -241,6 +328,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
+  // ── AI scanner (Phase 1+3 — stores in aiSuggestion, does NOT auto-apply) ─
   const runScanner = async () => {
     if (images.length === 0) return;
     setIsScanning(true);
@@ -249,53 +337,186 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     try {
       const result = await identifyCard(images);
       if (result) {
-        setFormData(prev => {
-          const newCondition = result.condition || prev.condition || 'Ungraded';
-          const isPSA = newCondition.startsWith('PSA');
-          return {
-            ...prev,
-            playerName: result.playerName,
-            team: result.team || prev.team || '',
-            cardSpecifics: result.cardSpecifics,
-            set: result.set,
-            setNumber: result.setNumber || prev.setNumber || '',
-            condition: newCondition,
-            marketValue: result.estimatedValue,
-            serialNumber: result.serialNumber || prev.serialNumber || '',
-            certNumber: isPSA ? (result.certNumber || prev.certNumber || '') : '',
-            notes: result.description,
-            rarityTier: result.rarityTier
-          };
+        const normalized = normalizeSet(result.set, {
+          setYearStart: result.setYearStart ?? null,
+          setYearEnd: result.setYearEnd ?? null,
+          manufacturer: result.manufacturer ?? null,
+          productLine: result.productLine ?? null,
+        });
+        let suggestion: AiSuggestion = { ...result, ...normalized };
+
+        // Phase 3: apply auto-correct from correction memory
+        try {
+          if (supabase) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const correctionMap = await getCorrectionMap(user.id);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              suggestion = applyAutoCorrect(suggestion as any, correctionMap) as unknown as AiSuggestion;
+              if (suggestion.correctedByMemory && onToast) {
+                onToast('Adjusted based on your prior confirmations', 'info');
+              }
+            }
+          }
+        } catch {
+          // Non-critical — ignore correction map errors
+        }
+
+        setAiSuggestion(suggestion);
+        setAiAccepted(new Set());
+        setAiDismissed(new Set());
+        setShowAiPanel(true);
+        setSFields({
+          season: suggestion.setYearStart
+            ? buildSeasonStr(suggestion.setYearStart, suggestion.setYearEnd)
+            : '',
+          manufacturer: suggestion.manufacturer ?? '',
+          productLine: suggestion.productLine ?? '',
+          sport: 'Soccer',
         });
         setHasScanned(true);
-        if (onToast) onToast("AI Identification complete", 'success');
+        if (onToast && !suggestion.correctedByMemory) {
+          onToast('AI scan complete — review suggestions below', 'info');
+        }
       }
     } catch {
-      setError("AI analysis failed.");
-    } finally { 
-      setIsScanning(false); 
+      setError('AI analysis failed.');
+    } finally {
+      setIsScanning(false);
       setScanStep('');
     }
   };
 
+  // ── AI panel actions ──────────────────────────────────────────────────────
+  const acceptField = (def: AiFieldDef) => {
+    if (!aiSuggestion) return;
+    setFormData(prev => def.apply(aiSuggestion, prev));
+    setAiAccepted(prev => new Set([...prev, def.key]));
+    // When accepting the set field, switch to structured mode and sync sFields
+    if (def.key === 'setDisplay') {
+      setSFields({
+        season: aiSuggestion.setYearStart
+          ? buildSeasonStr(aiSuggestion.setYearStart, aiSuggestion.setYearEnd)
+          : '',
+        manufacturer: aiSuggestion.manufacturer ?? '',
+        productLine: aiSuggestion.productLine ?? '',
+        sport: 'Soccer',
+      });
+      setSetEditorMode('structured');
+    }
+  };
+
+  const acceptAll = () => {
+    if (!aiSuggestion) return;
+    setFormData(prev => {
+      let next = { ...prev };
+      for (const def of AI_FIELD_DEFS) {
+        if (!aiDismissed.has(def.key)) next = def.apply(aiSuggestion, next);
+      }
+      return next;
+    });
+    setSFields({
+      season: aiSuggestion.setYearStart
+        ? buildSeasonStr(aiSuggestion.setYearStart, aiSuggestion.setYearEnd)
+        : '',
+      manufacturer: aiSuggestion.manufacturer ?? '',
+      productLine: aiSuggestion.productLine ?? '',
+      sport: 'Soccer',
+    });
+    setSetEditorMode('structured');
+    setAiAccepted(new Set(AI_FIELD_DEFS.map(d => d.key)));
+    setShowAiPanel(false);
+  };
+
+  // ── Structured set editor helpers ─────────────────────────────────────────
+  const updateStructuredField = (field: string, value: string) => {
+    const updated = { ...sFields, [field]: value };
+    setSFields(updated);
+    const rawStr = [updated.season, updated.manufacturer, updated.productLine, updated.sport]
+      .filter(Boolean).join(' ');
+    const normalized = normalizeSet(rawStr, {
+      manufacturer: updated.manufacturer || null,
+      productLine: updated.productLine || null,
+    });
+    setFormData(prev => ({
+      ...prev,
+      set: normalized.setDisplay,
+      setCanonicalKey: normalized.setCanonicalKey,
+      setYearStart: normalized.setYearStart ?? undefined,
+      setYearEnd: normalized.setYearEnd ?? undefined,
+      manufacturer: normalized.manufacturer ?? undefined,
+      productLine: normalized.productLine ?? undefined,
+    }));
+  };
+
+  const switchToStructured = () => {
+    const normalized = normalizeSet(formData.set || '');
+    setSFields({
+      season: normalized.setYearStart
+        ? buildSeasonStr(normalized.setYearStart, normalized.setYearEnd)
+        : '',
+      manufacturer: normalized.manufacturer ?? '',
+      productLine: normalized.productLine ?? '',
+      sport: 'Soccer',
+    });
+    setSetEditorMode('structured');
+  };
+
+  // ── Submit (Phase 1 + 2 — defensive normalizeSet + warnings) ─────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.playerName || !formData.set) {
-      setError("Identify the card before saving.");
+      setError('Identify the card before saving.');
       return;
     }
+
+    // Defensive normalizeSet pass
+    let cardData = { ...formData };
+    if (!cardData.setCanonicalKey && cardData.set) {
+      const normalized = normalizeSet(cardData.set);
+      cardData = {
+        ...cardData,
+        setCanonicalKey: normalized.setCanonicalKey || undefined,
+        setYearStart: normalized.setYearStart ?? undefined,
+        setYearEnd: normalized.setYearEnd ?? undefined,
+        manufacturer: normalized.manufacturer ?? undefined,
+        productLine: normalized.productLine ?? undefined,
+      };
+    }
+
+    // Build non-blocking save warnings
+    const warnings: string[] = [];
+    if (!cardData.setCanonicalKey && cardData.set) {
+      warnings.push('Set format not recognised — check year and manufacturer');
+    }
+    if (aiSuggestion && (aiSuggestion.setConfidence ?? 1) < 0.5) {
+      warnings.push('AI confidence in set identification is low — please verify');
+    }
+    if (aiSuggestion && (aiSuggestion.yearConfidence ?? 1) < 0.5) {
+      warnings.push('Year could not be verified from the image');
+    }
+    setSaveWarnings(warnings);
+
     setIsSaving(true);
     try {
       const completeCard: Card = {
-        ...formData as Card,
+        ...cardData as Card,
         id: initialData?.id || crypto.randomUUID(),
-        images: images,
+        images,
         createdAt: initialData?.createdAt || Date.now(),
-        isPublic: formData.isPublic || false
+        isPublic: cardData.isPublic ?? false,
       };
       await onSubmit(completeCard);
+
+      // Phase 3: fire-and-forget correction event (does not block save)
+      if (aiSuggestion && supabase) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        supabase.auth.getUser().then((res: any) => {
+          if (res?.data?.user) writeCorrectionEvent(res.data.user.id, completeCard, aiSuggestion as any);
+        }).catch(() => { /* non-critical */ });
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Save error.");
+      setError(err instanceof Error ? err.message : 'Save error.');
     } finally {
       setIsSaving(false);
     }
@@ -312,18 +533,22 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-section">
+
+        {/* ── Left column: Images + AI panel + Visibility ── */}
         <div className="lg:col-span-5 space-y-section">
+
+          {/* Image card */}
           <div className="card-vault p-padding space-y-padding relative overflow-hidden shadow-lg">
             {isScanning && (
               <div className="absolute inset-0 bg-surface-base/95 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-padding space-y-padding text-center animate-in fade-in duration-300">
-                 <div className="relative w-full aspect-[3/4] border border-border-soft rounded-xl overflow-hidden bg-surface-base">
-                   <div className="scanner-line"></div>
-                   <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-gold-500 animate-pulse" /></div>
-                 </div>
-                 <div className="space-y-control">
-                   <span className="text-xs font-bold text-white uppercase tracking-widest bg-gold-500 px-3 py-1 rounded-full shadow-lg shadow-gold-500/20">Identifying...</span>
-                   <p className="text-sm font-semibold text-ink-tertiary animate-pulse">{scanStep}</p>
-                 </div>
+                <div className="relative w-full aspect-[3/4] border border-border-soft rounded-xl overflow-hidden bg-surface-base">
+                  <div className="scanner-line"></div>
+                  <div className="absolute inset-0 flex items-center justify-center"><BrainCircuit size={48} className="text-gold-500 animate-pulse" /></div>
+                </div>
+                <div className="space-y-control">
+                  <span className="text-xs font-bold text-white uppercase tracking-widest bg-gold-500 px-3 py-1 rounded-full shadow-lg shadow-gold-500/20">Identifying...</span>
+                  <p className="text-sm font-semibold text-ink-tertiary animate-pulse">{scanStep}</p>
+                </div>
               </div>
             )}
             <div className="flex items-center justify-between px-2">
@@ -353,8 +578,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                 <button onClick={() => fileInputRef.current?.click()} disabled={isSaving || isCropping !== null || isManualCropSaving} className="aspect-[3/4] rounded-xl border border-dashed border-border-soft flex flex-col items-center justify-center gap-padding hover:border-ink-primary/20 hover:bg-surface-elevated transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 active:scale-[0.98] relative">
                   {isSaving || (isCropping !== null && !images[isCropping]) ? (
                     <div className="flex flex-col items-center gap-control">
-                       <Loader2 className="text-gold-500 animate-spin" size={24} />
-                       <span className="text-xs font-bold text-gold-500 uppercase tracking-[0.2em] animate-pulse">Precision Cropping...</span>
+                      <Loader2 className="text-gold-500 animate-spin" size={24} />
+                      <span className="text-xs font-bold text-gold-500 uppercase tracking-[0.2em] animate-pulse">Precision Cropping...</span>
                     </div>
                   ) : (
                     <>
@@ -374,6 +599,87 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             )}
           </div>
 
+          {/* AI Suggestion Review Panel */}
+          {aiSuggestion && (
+            <div className="card-vault p-padding space-y-control animate-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-control">
+                  <Sparkles size={14} className="text-gold-500" />
+                  <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">AI Suggestions</span>
+                  <span className="text-xs text-ink-tertiary hidden sm:inline">— review before saving</span>
+                </div>
+                <div className="flex items-center gap-control">
+                  {!showAiPanel
+                    ? null
+                    : (
+                      <button type="button" onClick={acceptAll} className="btn-primary h-7 px-3 text-xs tracking-widest font-bold">
+                        Accept All
+                      </button>
+                    )
+                  }
+                  <button type="button" onClick={() => setShowAiPanel(p => !p)} className="p-1.5 text-ink-tertiary hover:text-ink-primary rounded transition-colors">
+                    {showAiPanel ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                  <button type="button" onClick={() => setAiSuggestion(null)} className="p-1.5 text-ink-tertiary hover:text-error rounded transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {!showAiPanel && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-ink-tertiary font-semibold">
+                    {aiAccepted.size} of {AI_FIELD_DEFS.filter(d => d.getValue(aiSuggestion)).length} fields accepted
+                  </p>
+                  <button type="button" onClick={() => setShowAiPanel(true)} className="text-xs text-gold-500 hover:underline font-bold">Review →</button>
+                </div>
+              )}
+
+              {showAiPanel && (
+                <div className="space-y-1">
+                  {AI_FIELD_DEFS.map(def => {
+                    const value = def.getValue(aiSuggestion);
+                    if (!value && value !== 0) return null;
+                    const isAccepted = aiAccepted.has(def.key);
+                    const isDismissed = aiDismissed.has(def.key);
+                    const isLow = def.isLowConfidence?.(aiSuggestion);
+                    return (
+                      <div key={def.key} className={`flex items-center gap-control p-control rounded-lg transition-colors ${isAccepted ? 'bg-emerald-500/5 border border-emerald-500/10' : isDismissed ? 'opacity-40 bg-surface-base' : 'bg-surface-base'}`}>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold text-ink-tertiary uppercase tracking-widest block">{def.label}</span>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <p className="text-sm font-semibold text-ink-primary truncate">{String(value)}</p>
+                            {isLow && <span title="Low AI confidence"><AlertTriangle size={11} className="text-amber-500 shrink-0" /></span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          {isAccepted ? (
+                            <CheckCircle size={16} className="text-emerald-500" />
+                          ) : isDismissed ? (
+                            <XCircle size={16} className="text-ink-tertiary" />
+                          ) : (
+                            <>
+                              <button type="button" onClick={() => acceptField(def)} title="Accept" className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors active:scale-90">
+                                <CheckCircle size={15} />
+                              </button>
+                              <button type="button" onClick={() => setAiDismissed(prev => new Set([...prev, def.key]))} title="Dismiss" className="p-1.5 text-ink-tertiary hover:bg-error/10 hover:text-error rounded transition-colors active:scale-90">
+                                <XCircle size={15} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <button type="button" onClick={acceptAll} className="btn-primary w-full h-10 text-xs tracking-widest font-bold mt-control">
+                    Accept All
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Visibility panel */}
           <div className="card-vault p-padding space-y-padding">
             <h3 className="text-xs font-bold text-ink-tertiary uppercase tracking-widest px-2">Visibility</h3>
             <div className="grid grid-cols-2 gap-control">
@@ -387,17 +693,95 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           </div>
         </div>
 
+        {/* ── Right column: Form ── */}
         <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-section">
           <div className="card-vault p-padding md:p-12 space-y-padding shadow-lg bg-white/[0.01]">
             {error && <div className="p-padding bg-error/10 border border-error/20 rounded-xl flex items-center gap-padding text-error text-sm font-bold tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
               <Field label="Player" value={formData.playerName} onChange={(v: string) => setFormData({...formData, playerName: v})} icon={<User size={16} />} />
               <Field label="Team" value={formData.team} onChange={(v: string) => setFormData({...formData, team: v})} icon={<Users size={16} />} />
             </div>
 
+            {/* ── Set / Product — dual-mode editor (Phase 2) ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
-              <Field label="Set / Product" value={formData.set} onChange={(v: string) => setFormData({...formData, set: v})} icon={<Eye size={16} />} />
+              <div className="space-y-control">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Set / Product</label>
+                  <button
+                    type="button"
+                    onClick={setEditorMode === 'simple' ? switchToStructured : () => setSetEditorMode('simple')}
+                    className="text-[10px] font-bold text-gold-500 hover:underline uppercase tracking-widest"
+                  >
+                    {setEditorMode === 'simple' ? 'Structured ▾' : 'Simple ▾'}
+                  </button>
+                </div>
+
+                {setEditorMode === 'simple' ? (
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-tertiary group-focus-within:text-gold-500 transition-colors"><Eye size={16} /></div>
+                    <input
+                      type="text"
+                      value={formData.set ?? ''}
+                      onChange={e => setFormData({...formData, set: e.target.value, setCanonicalKey: undefined})}
+                      className="w-full bg-surface-base border border-border-soft rounded-xl h-14 pl-12 pr-4 focus:border-gold-500/40 outline-none font-semibold text-sm text-ink-primary transition-all placeholder:text-ink-tertiary"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-control bg-surface-base rounded-xl p-control border border-border-soft">
+                    <div className="grid grid-cols-2 gap-control">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-ink-tertiary uppercase tracking-widest">Season</label>
+                        <input
+                          type="text"
+                          placeholder="2023-24"
+                          value={sFields.season}
+                          onChange={e => updateStructuredField('season', e.target.value)}
+                          className="w-full bg-surface-elevated border border-border-soft rounded-lg h-10 px-3 font-semibold text-sm text-ink-primary outline-none focus:border-gold-500/40 transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-ink-tertiary uppercase tracking-widest">Manufacturer</label>
+                        <div className="relative">
+                          <select
+                            value={sFields.manufacturer}
+                            onChange={e => updateStructuredField('manufacturer', e.target.value)}
+                            style={{ colorScheme: 'light' }}
+                            className="w-full bg-surface-elevated border border-border-soft rounded-lg h-10 px-3 font-semibold text-sm text-ink-primary outline-none focus:border-gold-500/40 appearance-none cursor-pointer transition-all"
+                          >
+                            <option value="">Select...</option>
+                            {MFR_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                          <ChevronDown size={12} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-ink-tertiary uppercase tracking-widest">Product Line</label>
+                        <input
+                          type="text"
+                          placeholder="Donruss Optic"
+                          value={sFields.productLine}
+                          onChange={e => updateStructuredField('productLine', e.target.value)}
+                          className="w-full bg-surface-elevated border border-border-soft rounded-lg h-10 px-3 font-semibold text-sm text-ink-primary outline-none focus:border-gold-500/40 transition-all"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-ink-tertiary uppercase tracking-widest">Sport</label>
+                        <input
+                          type="text"
+                          value={sFields.sport}
+                          onChange={e => updateStructuredField('sport', e.target.value)}
+                          className="w-full bg-surface-elevated border border-border-soft rounded-lg h-10 px-3 font-semibold text-sm text-ink-primary outline-none focus:border-gold-500/40 transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div className="pt-1 border-t border-border-soft">
+                      <span className="text-[10px] text-ink-tertiary font-semibold uppercase tracking-widest">Preview: </span>
+                      <span className="text-xs font-bold text-ink-primary">{formData.set || '—'}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
               <Field label="Set Number" value={formData.setNumber} onChange={(v: string) => setFormData({...formData, setNumber: v})} icon={<Hash size={16} />} />
             </div>
 
@@ -415,23 +799,19 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
               <div className="space-y-control">
                 <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">Grade / Condition</label>
                 <div className="relative group">
-                   <select 
-                    value={formData.condition || ''} 
+                  <select
+                    value={formData.condition || ''}
                     onChange={e => {
                       const newCondition = e.target.value;
                       const isPSA = newCondition.startsWith('PSA');
-                      setFormData({
-                        ...formData, 
-                        condition: newCondition,
-                        certNumber: isPSA ? formData.certNumber : ''
-                      });
-                    }} 
-                    style={{ colorScheme: 'light' }} 
+                      setFormData({ ...formData, condition: newCondition, certNumber: isPSA ? formData.certNumber : '' });
+                    }}
+                    style={{ colorScheme: 'light' }}
                     className="w-full bg-surface-base border border-border-soft rounded-xl h-14 px-padding outline-none font-bold text-sm text-ink-primary focus:border-gold-500/40 appearance-none transition-all cursor-pointer"
                   >
                     {standardConditions.map(c => <option key={c} value={c} className="bg-white font-semibold">{c}</option>)}
-                   </select>
-                   <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
+                  </select>
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
                 </div>
               </div>
               <div className="space-y-control">
@@ -450,8 +830,20 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
               <Field label="Price Paid (£)" type="number" value={formData.pricePaid} onChange={(v: string) => setFormData({...formData, pricePaid: Number(v)})} icon={<PoundSterling size={16} />} />
               <Field label="Market Value (£)" type="number" value={formData.marketValue} onChange={(v: string) => setFormData({...formData, marketValue: Number(v)})} icon={<Zap size={16} />} />
             </div>
+
+            {/* Save-time warnings (non-blocking, Phase 2) */}
+            {saveWarnings.length > 0 && (
+              <div className="space-y-control animate-in slide-in-from-top-2 duration-200">
+                {saveWarnings.map((w, i) => (
+                  <div key={i} className="flex items-center gap-control p-control bg-amber-500/5 border border-amber-500/20 rounded-xl">
+                    <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                    <p className="text-xs font-semibold text-amber-600">{w}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          
+
           <div className="flex gap-control">
             {isEditing && (
               <button type="button" onClick={() => initialData && onDelete?.(initialData.id)} className="btn-secondary text-error border-error/20 hover:bg-error/10 h-14 px-6 uppercase text-xs tracking-widest flex items-center justify-center transition-all active:scale-95"><Trash2 size={20} className="mr-2" /><span className="hidden sm:inline">Delete Card</span></button>
@@ -465,6 +857,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         </form>
       </div>
     </div>
+
     {manualCropIndex !== null && images[manualCropIndex] && (
       <ManualCropModal
         imageSrc={images[manualCropIndex]!}

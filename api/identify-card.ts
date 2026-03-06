@@ -114,6 +114,8 @@ export default async function handler(req: any, res: any) {
             2. **Calculate Mean**: Calculate the Volume-Weighted Mean of these 3 prices.
             3. **Consistency Check**: Round the 'estimatedValue' to the nearest £5.
 
+            7. **Structured Set Fields**: Always extract setYearStart (e.g. 2023), setYearEnd (e.g. 2024), manufacturer (e.g. "Panini"), and productLine (e.g. "Donruss Optic") as separate structured fields in addition to the full set string. Rate setConfidence and yearConfidence from 0 to 1 based on how certain you are.
+
             Output JSON. Be extremely precise with the 'set' name (e.g., "2023-24 Panini Donruss Soccer").`,
           },
         ],
@@ -136,6 +138,12 @@ export default async function handler(req: any, res: any) {
             reasoning: { type: Type.STRING },
             rarityTier: { type: Type.STRING, enum: ["Base", "Parallel", "Chase", "1/1"] },
             checklistVerified: { type: Type.BOOLEAN },
+            setYearStart:    { type: Type.NUMBER, description: "Season start year (e.g. 2023 for '2023-24')" },
+            setYearEnd:      { type: Type.NUMBER, description: "Season end year; same as start for single-year sets" },
+            manufacturer:    { type: Type.STRING, description: "Card manufacturer: Panini, Topps, Upper Deck, etc." },
+            productLine:     { type: Type.STRING, description: "Product line: Donruss, Prizm, Chrome, Select, Optic, etc." },
+            setConfidence:   { type: Type.NUMBER, description: "Set identification confidence 0-1" },
+            yearConfidence:  { type: Type.NUMBER, description: "Year identification confidence 0-1" },
           },
           required: ["playerName", "team", "cardSpecifics", "set", "estimatedValue"],
         },
