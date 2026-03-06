@@ -98,6 +98,7 @@ interface AiSuggestion {
   setYearEnd: number | null;
   manufacturer: string | null;
   productLine: string | null;
+  sport: string | null;
   // Phase 3
   correctedByMemory?: boolean;
 }
@@ -342,6 +343,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           setYearEnd: result.setYearEnd ?? null,
           manufacturer: result.manufacturer ?? null,
           productLine: result.productLine ?? null,
+          sport: result.sport ?? null,
         });
         let suggestion: AiSuggestion = { ...result, ...normalized };
 
@@ -372,7 +374,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             : '',
           manufacturer: suggestion.manufacturer ?? '',
           productLine: suggestion.productLine ?? '',
-          sport: 'Soccer',
+          sport: suggestion.sport ?? '',
         });
         setHasScanned(true);
         if (onToast && !suggestion.correctedByMemory) {
@@ -400,7 +402,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           : '',
         manufacturer: aiSuggestion.manufacturer ?? '',
         productLine: aiSuggestion.productLine ?? '',
-        sport: 'Soccer',
+        sport: aiSuggestion.sport ?? '',
       });
       setSetEditorMode('structured');
     }
@@ -421,7 +423,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         : '',
       manufacturer: aiSuggestion.manufacturer ?? '',
       productLine: aiSuggestion.productLine ?? '',
-      sport: 'Soccer',
+      sport: aiSuggestion.sport ?? '',
     });
     setSetEditorMode('structured');
     setAiAccepted(new Set(AI_FIELD_DEFS.map(d => d.key)));
@@ -437,6 +439,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     const normalized = normalizeSet(rawStr, {
       manufacturer: updated.manufacturer || null,
       productLine: updated.productLine || null,
+      sport: updated.sport || null,
     });
     setFormData(prev => ({
       ...prev,
@@ -457,7 +460,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         : '',
       manufacturer: normalized.manufacturer ?? '',
       productLine: normalized.productLine ?? '',
-      sport: 'Soccer',
+      sport: normalized.sport ?? '',
     });
     setSetEditorMode('structured');
   };

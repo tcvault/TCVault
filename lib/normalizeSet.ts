@@ -5,6 +5,7 @@ export interface NormalizedSet {
   setYearEnd: number | null;
   manufacturer: string | null;
   productLine: string | null;
+  sport: string | null;
 }
 
 // Canonical manufacturer names keyed by lowercase aliases.
@@ -18,6 +19,30 @@ const MFR_ALIASES: [string, string][] = [
   ['score',      'Score'],
   ['leaf',       'Leaf'],
   ['fleer',      'Fleer'],
+];
+
+// Sport detection patterns. Order matters — most specific first.
+const SPORT_PATTERNS: [RegExp, string][] = [
+  [/\bformula\s*one\b/i,       'Formula 1'],
+  [/\bformula\s*1\b/i,         'Formula 1'],
+  [/\bf1\b/i,                  'Formula 1'],
+  [/\bbasketball\b/i,          'Basketball'],
+  [/\bnba\b/i,                 'Basketball'],
+  [/\bbaseball\b/i,            'Baseball'],
+  [/\bmlb\b/i,                 'Baseball'],
+  [/\bice\s*hockey\b/i,        'Hockey'],
+  [/\bhockey\b/i,              'Hockey'],
+  [/\bnhl\b/i,                 'Hockey'],
+  [/\bnfl\b/i,                 'American Football'],
+  [/\bamerican\s*football\b/i, 'American Football'],
+  [/\bsoccer\b/i,              'Soccer'],
+  [/\bpremier\s*league\b/i,    'Soccer'],
+  [/\bbundesliga\b/i,          'Soccer'],
+  [/\bserie\s*a\b/i,           'Soccer'],
+  [/\bla\s*liga\b/i,           'Soccer'],
+  [/\bligue\s*1\b/i,           'Soccer'],
+  [/\bchampions\s*league\b/i,  'Soccer'],
+  [/\bfootball\b/i,            'Soccer'],
 ];
 
 function deriveSeasonEnd(start: number, rawEnd: number): number {
@@ -38,6 +63,7 @@ export function normalizeSet(
     setYearEnd?: number | null;
     manufacturer?: string | null;
     productLine?: string | null;
+    sport?: string | null;
   }
 ): NormalizedSet {
   const h = hints ?? {};
@@ -85,6 +111,17 @@ export function normalizeSet(
     }
   }
 
+  // ── Sport detection ──────────────────────────────────────────────────────────
+  let sport: string | null = h.sport?.trim() || null;
+  if (!sport) {
+    for (const [pattern, canonical] of SPORT_PATTERNS) {
+      if (pattern.test(raw)) {
+        sport = canonical;
+        break;
+      }
+    }
+  }
+
   // ── Product line extraction ──────────────────────────────────────────────────
   let productLine: string | null = h.productLine?.trim() || null;
 
@@ -93,9 +130,12 @@ export function normalizeSet(
       .replace(/\b\d{4}[-/]\d{2,4}\b/g, '')
       .replace(/\b\d{2}[-/]\d{2}\b/g, '')
       .replace(/\b20\d{2}\b/g, '')
-      .replace(/\bsoccer\b/gi, '')
-      .replace(/\bfootball\b/gi, '')
       .trim();
+
+    // Strip all sport keywords
+    for (const [pattern] of SPORT_PATTERNS) {
+      stripped = stripped.replace(pattern, '');
+    }
 
     if (mfrCanonical) {
       // Remove the canonical manufacturer name (case-insensitive)
@@ -124,13 +164,13 @@ export function normalizeSet(
   if (seasonStr)    displayParts.push(seasonStr);
   if (mfrCanonical) displayParts.push(mfrCanonical);
   if (productLine)  displayParts.push(productLine);
-  displayParts.push('Soccer');
+  if (sport)        displayParts.push(sport);
 
   const keyParts: string[] = [];
   if (seasonStr)    keyParts.push(seasonStr);
   if (mfrCanonical) keyParts.push(mfrCanonical.toLowerCase().replace(/\s+/g, '-'));
   if (productLine)  keyParts.push(productLine.toLowerCase().replace(/\s+/g, '-'));
-  keyParts.push('soccer');
+  if (sport)        keyParts.push(sport.toLowerCase().replace(/\s+/g, '-'));
 
   return {
     setDisplay:      displayParts.join(' '),
@@ -139,5 +179,6 @@ export function normalizeSet(
     setYearEnd:      yearEnd,
     manufacturer:    mfrCanonical,
     productLine,
+    sport,
   };
 }

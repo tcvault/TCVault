@@ -24,6 +24,7 @@ export interface IdentifiedCard {
   productLine?: string;
   setConfidence?: number;
   yearConfidence?: number;
+  sport?: string;
 }
 
 export interface MarketPriceResult {

@@ -98,25 +98,26 @@ export default async function handler(req: any, res: any) {
         parts: [
           ...imageParts,
           {
-            text: `Act as a Senior Soccer Card Historian and Authenticator.
-            Master Registry: ${UNIVERSAL_SOCCER_CARD_REGISTRY}
+            text: `Act as a Senior Trading Card Historian and Authenticator.
+            Master Registry (Soccer): ${UNIVERSAL_SOCCER_CARD_REGISTRY}
 
             IDENTIFICATION PROTOCOL:
-            1. **Visual Analysis**: Examine logos (Panini, Topps, Donruss, Optic), year, and player.
-            2. **Parallel Detection**: Check for refractors, patterns (Mojo, Wave, Ice), and colors.
-            3. **Donruss Specifics**: For Donruss 2023-24, distinguish between standard Donruss and "Optic" versions. Check for "Press Proof" text.
-            4. **Serial Number**: If a number like "XX/YY" is visible, use it to confirm the parallel type from the Registry.
-            5. **Grading Detection**: Check if the card is in a graded slab (PSA, BGS, SGC, CGC). If so, identify the grading company and the numeric grade (e.g., "PSA 10", "BGS 9.5"). Populate the 'condition' field with this information. If not graded, use 'Ungraded' or a descriptive condition like 'Near Mint'.
-            6. **Certification Number**: ONLY if the card is identified as a PSA graded slab, look for the unique PSA certification number (usually 8-10 digits). Populate the 'certNumber' field. If the card is BGS, SGC, CGC or Ungraded, do NOT populate the 'certNumber' field.
+            1. **Visual Analysis**: Examine logos (Panini, Topps, Donruss, Optic, Upper Deck), year, player, and sport.
+            2. **Sport Detection**: Identify the sport (Soccer, Formula 1, Basketball, Baseball, Hockey, American Football, etc.) from logos, imagery, and branding.
+            3. **Parallel Detection**: Check for refractors, patterns (Mojo, Wave, Ice), and colors.
+            4. **Donruss Specifics**: For Donruss 2023-24, distinguish between standard Donruss and "Optic" versions. Check for "Press Proof" text.
+            5. **Serial Number**: If a number like "XX/YY" is visible, use it to confirm the parallel type.
+            6. **Grading Detection**: Check if the card is in a graded slab (PSA, BGS, SGC, CGC). If so, identify the grading company and the numeric grade (e.g., "PSA 10", "BGS 9.5"). Populate the 'condition' field with this information. If not graded, use 'Ungraded' or a descriptive condition like 'Near Mint'.
+            7. **Certification Number**: ONLY if the card is identified as a PSA graded slab, look for the unique PSA certification number (usually 8-10 digits). Populate the 'certNumber' field. If the card is BGS, SGC, CGC or Ungraded, do NOT populate the 'certNumber' field.
 
             VALUATION PROTOCOL:
             1. **Valuation Anchor**: Identify the 3 most common RECENT SOLD prices for this exact parallel and grade.
             2. **Calculate Mean**: Calculate the Volume-Weighted Mean of these 3 prices.
             3. **Consistency Check**: Round the 'estimatedValue' to the nearest £5.
 
-            7. **Structured Set Fields**: Always extract setYearStart (e.g. 2023), setYearEnd (e.g. 2024), manufacturer (e.g. "Panini"), and productLine (e.g. "Donruss Optic") as separate structured fields in addition to the full set string. Rate setConfidence and yearConfidence from 0 to 1 based on how certain you are.
+            8. **Structured Set Fields**: Always extract setYearStart (e.g. 2023), setYearEnd (e.g. 2024), manufacturer (e.g. "Topps"), productLine (e.g. "Chrome Legends"), and sport (e.g. "Formula 1") as separate structured fields. Rate setConfidence and yearConfidence from 0 to 1 based on how certain you are.
 
-            Output JSON. Be extremely precise with the 'set' name (e.g., "2023-24 Panini Donruss Soccer").`,
+            Output JSON. Be extremely precise with the 'set' name (e.g., "2022 Topps Chrome Formula 1 Legends" or "2023-24 Panini Donruss Soccer").`,
           },
         ],
       },
@@ -144,6 +145,7 @@ export default async function handler(req: any, res: any) {
             productLine:     { type: Type.STRING, description: "Product line: Donruss, Prizm, Chrome, Select, Optic, etc." },
             setConfidence:   { type: Type.NUMBER, description: "Set identification confidence 0-1" },
             yearConfidence:  { type: Type.NUMBER, description: "Year identification confidence 0-1" },
+            sport:           { type: Type.STRING, description: "Sport: Soccer, Formula 1, Basketball, Baseball, Hockey, American Football, etc." },
           },
           required: ["playerName", "team", "cardSpecifics", "set", "estimatedValue"],
         },

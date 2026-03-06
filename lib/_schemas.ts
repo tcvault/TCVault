@@ -20,6 +20,7 @@ export const IdentifiedCardSchema = z.object({
   productLine:    z.string().optional(),
   setConfidence:  z.number().min(0).max(1).optional(),
   yearConfidence: z.number().min(0).max(1).optional(),
+  sport:          z.string().optional(),
 });
 
 export const BoundingBoxSchema = z.object({
