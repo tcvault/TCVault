@@ -147,6 +147,10 @@ const AI_FIELD_DEFS: AiFieldDef[] = [
     isLowConfidence: (s) => (s.setConfidence ?? 1) < 0.6 || (s.yearConfidence ?? 1) < 0.6,
   },
   {
+    key: 'setNumber', label: 'Set Number',
+    getValue: (s) => s.setNumber,
+    apply: (s, p) => ({ ...p, setNumber: s.setNumber }),
+  },  {
     key: 'condition', label: 'Grade',
     getValue: (s) => s.condition,
     apply: (s, p) => s.condition !== undefined ? { ...p, condition: s.condition } : p,
@@ -996,6 +1000,9 @@ const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
 );
 
 export default CardForm;
+
+
+
 
 
 

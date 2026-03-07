@@ -10,6 +10,7 @@ interface HardEvidence {
   setNumber?: string;
   serialNumber?: string;
   copyrightYear?: number;
+  ocrText?: string;
   setYearStart?: number;
   setYearEnd?: number;
   manufacturer?: string;
@@ -26,8 +27,33 @@ const normalizeSetNumber = (value?: string): string | undefined => {
 
 const normalizeSerial = (value?: string): string | undefined => {
   if (!value) return undefined;
-  const m = value.match(/\b\d{1,4}\s*\/\s*\d{1,4}\b/);
-  return m ? m[0].replace(/\s+/g, "") : undefined;
+  const m = value.match(/\b([A-Za-z0-9]{1,4})\s*\/\s*(\d{1,4})\b/);
+  if (!m) return undefined;
+  const rawLeft = (m[1] ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const right = m[2] ?? "";
+  const left = rawLeft
+    .replace(/[ODQ]/g, "0")
+    .replace(/[IL]/g, "1")
+    .replace(/[^0-9]/g, "");
+  if (!left || !right) return undefined;
+  return `${left}/${right}`;
+};
+
+const extractCopyrightYear = (text?: string): number | undefined => {
+  if (!text) return undefined;
+  const m = text.match(/(?:©|\(c\)|copyright)\D*(20\d{2})/i);
+  if (!m?.[1]) return undefined;
+  const y = Number(m[1]);
+  return Number.isFinite(y) ? y : undefined;
+};
+
+const extractSetNumberFromText = (text?: string): string | undefined => {
+  if (!text) return undefined;
+  const matches = Array.from(text.matchAll(/\b(\d{1,3})\b/g))
+    .map((m) => Number(m[1]))
+    .filter((n) => Number.isFinite(n) && n >= 100 && n <= 399);
+  if (matches.length === 0) return undefined;
+  return String(matches[0]);
 };
 const extractJsonObject = (text: string): Record<string, unknown> => {
   try {
@@ -299,6 +325,7 @@ export default async function handler(req: any, res: any) {
               productLine: { type: Type.STRING },
               sport: { type: Type.STRING },
               category: { type: Type.STRING, enum: ["Sports", "TCG", "Non-Sports"] },
+              ocrText: { type: Type.STRING },
             },
           },
         },
@@ -311,9 +338,10 @@ export default async function handler(req: any, res: any) {
       // Non-critical: keep primary parsed output.
     }
 
-    const setNumber = normalizeSetNumber(hardEvidence.setNumber ?? parsed.setNumber);
-    const serialNumber = normalizeSerial(hardEvidence.serialNumber ?? parsed.serialNumber);
-    const copyrightYear = hardEvidence.copyrightYear ?? parsed.copyrightYear;
+    const ocrText = typeof hardEvidence.ocrText === "string" ? hardEvidence.ocrText : undefined;
+    const setNumber = normalizeSetNumber(hardEvidence.setNumber ?? parsed.setNumber ?? extractSetNumberFromText(ocrText));
+    const serialNumber = normalizeSerial(hardEvidence.serialNumber ?? parsed.serialNumber ?? ocrText);
+    const copyrightYear = hardEvidence.copyrightYear ?? parsed.copyrightYear ?? extractCopyrightYear(ocrText);
 
     if (setNumber) parsed.setNumber = setNumber;
     if (serialNumber) parsed.serialNumber = serialNumber;
@@ -350,6 +378,11 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Identification failed" });
   }
 }
+
+
+
+
+
 
 
 
