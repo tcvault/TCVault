@@ -41,9 +41,12 @@ export default async function handler(req: any, res: any) {
     let imageMimeType = "image/jpeg";
 
     if (imageData.startsWith("http")) {
-      const fetchRes = await fetch(imageData, { signal: AbortSignal.timeout(15_000) });
+      const fetchRes = await fetch(imageData, { signal: AbortSignal.timeout(15_000) }).catch((fetchError: any) => {
+        const isTimeout = fetchError?.name === "TimeoutError" || fetchError?.name === "AbortError";
+        throw Object.assign(new Error(isTimeout ? "Remote image fetch timed out" : "Remote image fetch failed"), { status: isTimeout ? 504 : 502 });
+      });
       if (!fetchRes.ok) {
-        return res.status(400).json({ error: `Remote image fetch failed (${fetchRes.status})` });
+        throw Object.assign(new Error(`Remote image fetch failed (${fetchRes.status})`), { status: 502 });
       }
       const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
       const detectedMime = contentType.split(";")[0].trim();
@@ -105,8 +108,13 @@ export default async function handler(req: any, res: any) {
     res.json(parseGeminiJson(response.text || "{}", BoundingBoxSchema));
   } catch (error: any) {
     console.error("Bounding box error:", error);
+    if (typeof error?.status === "number" && error.status >= 400 && error.status < 600) {
+      return res.status(error.status).json({ error: error.message || "Bounding box detection failed" });
+    }
     res.status(500).json({ error: "Bounding box detection failed" });
   }
 }
+
+
 
 
