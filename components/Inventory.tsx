@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, BinderPage, SortField, SortOrder } from '../types';
 import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw, Share2, ExternalLink, Instagram, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -296,7 +296,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <h4 className="font-bold text-sm text-ink-primary truncate group-hover:text-gold-500 transition-colors">{card.playerName}</h4>
                 <p className="text-xs text-ink-secondary/60 font-semibold uppercase tracking-widest truncate">{card.set} {card.setNumber ? `#${card.setNumber}` : ''}</p>
                 <div className="flex items-center justify-between pt-0.5">
-                  <span className="text-sm font-bold text-ink-secondary/80 tabular">Â£{card.marketValue.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-ink-secondary/80 tabular">£{card.marketValue.toLocaleString()}</span>
                   {card.serialNumber && <span className="text-xs font-bold text-gold-500 px-1.5 py-0.5 bg-gold-500/5 rounded border border-gold-500/10">{card.serialNumber}</span>}
                 </div>
               </div>
@@ -440,12 +440,12 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <div className={`pt-section border-t border-border-soft space-y-section mt-auto ${isExporting ? 'pb-8' : ''}`}>
                    {!isExporting && (
                      <div className="grid grid-cols-2 gap-control">
-                        <div className="p-padding rounded-xl bg-surface-base border border-border-soft space-y-control"><span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Paid</span><p className="text-xl font-bold text-ink-primary">Â£{selectedCard.pricePaid}</p></div>
+                        <div className="p-padding rounded-xl bg-surface-base border border-border-soft space-y-control"><span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Paid</span><p className="text-xl font-bold text-ink-primary">£{selectedCard.pricePaid}</p></div>
                         <div className="p-padding rounded-xl bg-gold-500/5 border border-gold-500/10 space-y-control relative group text-center">
                           <span className="text-xs font-bold text-gold-500 uppercase tracking-widest">Market</span>
                           <div className="flex items-center justify-center gap-control">
                             <div className="space-y-0.5">
-                              <p className="text-xl font-bold text-gold-500">Â£{selectedCard.marketValue}</p>
+                              <p className="text-xl font-bold text-gold-500">£{selectedCard.marketValue}</p>
                               {selectedCard.marketMeta && (
                                 <>
                                   <p className="text-xs font-semibold text-ink-tertiary uppercase tracking-tight">

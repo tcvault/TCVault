@@ -1,4 +1,4 @@
-﻿import { Type } from "@google/genai";
+import { Type } from "@google/genai";
 import { generateWithRetry, DEFAULT_MODEL, UNIVERSAL_SOCCER_CARD_REGISTRY } from "../lib/_gemini";
 import { IdentifiedCardSchema } from "../lib/_schemas";
 import { requireAuth, checkRateLimit } from "../lib/_auth";
@@ -129,7 +129,7 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Authentication â€” must come before any expensive work
+  // Authentication - must come before any expensive work
   const userId = await requireAuth(req, res);
   if (!userId) return;
 
@@ -145,7 +145,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: `Maximum ${MAX_IMAGES} images allowed` });
   }
 
-  // Validate each image entry â€” all validation before fetching anything
+  // Validate each image entry - all validation before fetching anything
   for (const img of images) {
     if (typeof img !== "string") {
       return res.status(400).json({ error: "Each image must be a string" });
@@ -229,7 +229,7 @@ export default async function handler(req: any, res: any) {
             1. **Visual Analysis**: Examine logos (Panini, Topps, Donruss, Optic, Upper Deck), year, player, and sport.
             2. **Domain Detection**: Identify the category first: Sports, TCG, or Non-Sports.
                - Sports examples: Soccer, Formula 1, Basketball, Baseball, Hockey, American Football.
-               - TCG examples: PokÃ©mon, Magic: The Gathering, Yu-Gi-Oh!, One Piece, Lorcana.
+               - TCG examples: Pokemon, Magic: The Gathering, Yu-Gi-Oh!, One Piece, Lorcana.
                - Non-Sports examples: Marvel, Star Wars, entertainment franchises.
             3. **Sport Detection**: If and only if category is Sports, identify sport from logos, imagery, and branding.
             4. **Parallel/Variant Detection**: Check for refractors, patterns (Mojo, Wave, Ice), foil treatments, rarity markers, and variant text.
@@ -241,7 +241,7 @@ export default async function handler(req: any, res: any) {
             VALUATION PROTOCOL:
             1. **Valuation Anchor**: Identify the 3 most common RECENT SOLD prices for this exact parallel and grade.
             2. **Calculate Mean**: Calculate the Volume-Weighted Mean of these 3 prices.
-            3. **Consistency Check**: Round the 'estimatedValue' to the nearest Â£5.
+            3. **Consistency Check**: Round the 'estimatedValue' to the nearest £5.
 
             9. **Structured Set Fields**: Always extract setYearStart (e.g. 2023), setYearEnd (e.g. 2024), manufacturer (e.g. "Topps"), productLine (e.g. "Chrome Legends"), category (Sports | TCG | Non-Sports), and sport (Sports only; otherwise empty) as separate structured fields. Rate setConfidence and yearConfidence from 0 to 1 based on how certain you are.
             10. **Parallel Confidence**: Output parallelConfidence (0-1). If serial text is hard to read, keep this below 0.7.

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ViewMode, Card, User } from '../types';
 import { Search, TrendingUp, Users, ChevronRight, Globe, User as UserIcon, Loader2, X, ChevronLeft, ChevronRight as ChevronRightIcon, ArrowLeft, Grid, Filter } from 'lucide-react';
 import { vaultStorage } from '../services/storage';
@@ -409,7 +409,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                 <Detail label="League/Team" value={selectedCard.team || 'N/A'} />
                 <Detail label="Serial Number" value={selectedCard.serialNumber || 'N/A'} />
                 <Detail label="Condition" value={selectedCard.condition} />
-                <Detail label="Market Value" value={`Â£${selectedCard.marketValue.toLocaleString()}`} />
+                <Detail label="Market Value" value={`£${selectedCard.marketValue.toLocaleString()}`} />
               </div>
 
                <div className="pt-padding border-t border-border-soft space-y-padding">

@@ -1,4 +1,4 @@
-﻿// Gemini service â€” frontend HTTP client only.
+// Gemini service - frontend HTTP client only.
 // All Gemini SDK calls happen server-side in /api/*.
 // No API keys are exposed to the browser.
 
