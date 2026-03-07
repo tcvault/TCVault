@@ -2,8 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User } from '../types';
 import { UserSchema, CardSchema, BinderPageSchema, safeParseJson } from './schemas';
 
-const envUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const processEnv = typeof process !== 'undefined' ? process.env : undefined;
+const envUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || processEnv?.SUPABASE_URL;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || processEnv?.SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
 export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
@@ -426,3 +427,7 @@ class CloudStorageService {
 }
 
 export const vaultStorage = new CloudStorageService();
+
+
+
+

@@ -103,7 +103,7 @@ const Feed: React.FC<FeedProps> = ({ user, onNavigate, onToast, animationClass, 
       };
 
       await vaultStorage.savePost(newPost);
-      setPosts([newPost, ...posts]);
+      setPosts(prev => [newPost, ...prev]);
       setNewPostContent('');
       setPostImage(null);
       setSelectedTag('General');

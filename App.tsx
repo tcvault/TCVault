@@ -29,13 +29,11 @@ interface Toast {
 }
 
 function usePrevious<T>(value: T): T | undefined {
-  const [prev, setPrev] = useState<T | undefined>(undefined);
-  const [current, setCurrent] = useState<T>(value);
-  if (current !== value) {
-    setPrev(current);
-    setCurrent(value);
-  }
-  return prev;
+  const [previous, setPrevious] = useState<T | undefined>(undefined);
+  useEffect(() => {
+    setPrevious(value);
+  }, [value]);
+  return previous;
 }
 
 const App: React.FC = () => {
@@ -519,3 +517,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

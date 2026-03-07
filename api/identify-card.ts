@@ -54,6 +54,9 @@ export default async function handler(req: any, res: any) {
 
         if (img.startsWith("http")) {
           const fetchRes = await fetch(img, { signal: AbortSignal.timeout(15_000) });
+          if (!fetchRes.ok) {
+            throw Object.assign(new Error(`Remote image fetch failed (${fetchRes.status})`), { status: 400 });
+          }
           const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
           const detectedMime = contentType.split(";")[0].trim();
 
@@ -168,3 +171,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Identification failed" });
   }
 }
+
+

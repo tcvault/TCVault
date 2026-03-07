@@ -42,6 +42,9 @@ export default async function handler(req: any, res: any) {
 
     if (imageData.startsWith("http")) {
       const fetchRes = await fetch(imageData, { signal: AbortSignal.timeout(15_000) });
+      if (!fetchRes.ok) {
+        return res.status(400).json({ error: `Remote image fetch failed (${fetchRes.status})` });
+      }
       const contentType = fetchRes.headers.get("content-type") || "image/jpeg";
       const detectedMime = contentType.split(";")[0].trim();
 
@@ -105,3 +108,5 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Bounding box detection failed" });
   }
 }
+
+
