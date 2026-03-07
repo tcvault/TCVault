@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+﻿import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User, WantItem, ReleaseThread, ReleaseThreadComment, AppAlert } from '../types';
 import { UserSchema, CardSchema, BinderPageSchema, safeParseJson } from './schemas';
 
@@ -13,6 +13,17 @@ const LOCAL_CARDS_KEY = 'tcvault_local_cards';
 const LOCAL_PAGES_KEY = 'tcvault_local_pages';
 const LOCAL_PROFILE_PREFIX = 'tcvault_profile_';
 const LOCAL_HIDDEN_POSTS_PREFIX = 'tcvault_hidden_posts_';
+function isMissingRelationError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string; details?: string; status?: number };
+  if (e.status === 404) return true;
+  const haystack = [e.code ?? '', e.message ?? '', e.details ?? ''].join(' ').toLowerCase();
+  return (
+    haystack.includes('does not exist') ||
+    haystack.includes('relation') ||
+    haystack.includes('schema cache')
+  );
+}
 
 class CloudStorageService {
   private async getUserId(): Promise<string | null> {
@@ -164,6 +175,10 @@ class CloudStorageService {
       .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
 
     if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('wants table missing; returning empty wants list. Run latest migrations.');
+        return [];
+      }
       console.error('Error fetching wants:', error);
       throw error;
     }
@@ -198,7 +213,13 @@ class CloudStorageService {
     };
 
     const { error } = await supabase.from('wants').upsert(payload);
-    if (error) throw error;
+    if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('wants table missing; skipping save. Run latest migrations.');
+        return;
+      }
+      throw error;
+    }
 
     if (want.status === 'open') {
       await this.createWantMatchAlerts(want).catch((err) => {
@@ -210,7 +231,13 @@ class CloudStorageService {
   async updateWantStatus(wantId: string, status: WantItem['status']): Promise<void> {
     if (!supabase) return;
     const { error } = await supabase.from('wants').update({ status }).eq('id', wantId);
-    if (error) throw error;
+    if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('wants table missing; skipping status update. Run latest migrations.');
+        return;
+      }
+      throw error;
+    }
   }
 
   private async createWantMatchAlerts(want: WantItem): Promise<void> {
@@ -248,7 +275,13 @@ class CloudStorageService {
 
     if (alerts.length > 0) {
       const { error } = await supabase.from('alerts').insert(alerts);
-      if (error) throw error;
+      if (error) {
+        if (isMissingRelationError(error)) {
+          console.warn('alerts table missing; skipping alerts insert. Run latest migrations.');
+          return;
+        }
+        throw error;
+      }
     }
   }
 
@@ -262,6 +295,10 @@ class CloudStorageService {
       .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
 
     if (threadError) {
+      if (isMissingRelationError(threadError)) {
+        console.warn('release_threads table missing; returning empty threads list. Run latest migrations.');
+        return [];
+      }
       console.error('Error fetching release threads:', threadError);
       throw threadError;
     }
@@ -328,7 +365,13 @@ class CloudStorageService {
       created_at: new Date(thread.createdAt).toISOString(),
     };
     const { error } = await supabase.from('release_threads').upsert(payload);
-    if (error) throw error;
+    if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('release_threads table missing; skipping thread save. Run latest migrations.');
+        return;
+      }
+      throw error;
+    }
   }
 
   async addReleaseThreadComment(comment: ReleaseThreadComment): Promise<void> {
@@ -341,7 +384,13 @@ class CloudStorageService {
       created_at: new Date(comment.createdAt).toISOString(),
     };
     const { error } = await supabase.from('thread_comments').insert(payload);
-    if (error) throw error;
+    if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('thread_comments table missing; skipping comment save. Run latest migrations.');
+        return;
+      }
+      throw error;
+    }
 
     const { data: thread } = await supabase
       .from('release_threads')
@@ -375,6 +424,10 @@ class CloudStorageService {
       .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 20) - 1));
 
     if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('alerts table missing; returning empty alerts list. Run latest migrations.');
+        return [];
+      }
       console.error('Error fetching alerts:', error);
       return [];
     }
@@ -411,6 +464,10 @@ class CloudStorageService {
     });
 
     if (error) {
+      if (isMissingRelationError(error)) {
+        console.warn('post_reports table missing; skipping report. Run latest migrations.');
+        return;
+      }
       console.warn('Post report failed (non-critical):', error.message);
     }
   }
@@ -733,6 +790,9 @@ class CloudStorageService {
 }
 
 export const vaultStorage = new CloudStorageService();
+
+
+
 
 
 
