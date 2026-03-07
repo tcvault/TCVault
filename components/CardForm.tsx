@@ -233,6 +233,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const standardConditions = ['Ungraded', 'Raw', 'PSA 10', 'PSA 9', 'PSA 8', 'BGS 10 Black Label', 'BGS 10', 'BGS 9.5', 'SGC 10', 'CGC 10'];
+  const rarityOptions: Array<NonNullable<Card['rarityTier']>> = ['Base', 'Parallel', 'Chase', '1/1'];
 
   useEffect(() => {
     if (initialData) {
@@ -926,6 +927,23 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                 </div>
               </div>
               <div className="space-y-control">
+                <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">Rarity</label>
+                <div className="relative group">
+                  <select
+                    value={formData.rarityTier || 'Base'}
+                    onChange={e => setFormData({ ...formData, rarityTier: e.target.value as NonNullable<Card['rarityTier']> })}
+                    style={{ colorScheme: 'light' }}
+                    className="w-full bg-surface-base border border-border-soft rounded-xl h-14 px-padding outline-none font-bold text-sm text-ink-primary focus:border-gold-500/40 appearance-none transition-all cursor-pointer"
+                  >
+                    {rarityOptions.map(rarity => <option key={rarity} value={rarity} className="bg-white font-semibold">{rarity}</option>)}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
+              <div className="space-y-control">
                 <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest ml-1">Assign to Binder</label>
                 <div className="relative group">
                   <select value={formData.pageId || ''} onChange={e => setFormData({...formData, pageId: e.target.value})} style={{ colorScheme: 'light' }} className={`w-full bg-surface-base border rounded-xl h-14 px-padding outline-none font-bold text-sm transition-all appearance-none cursor-pointer ${formData.pageId ? 'border-gold-500/40 text-gold-500' : 'border-border-soft text-ink-tertiary'}`}>
@@ -1000,13 +1018,4 @@ const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
 );
 
 export default CardForm;
-
-
-
-
-
-
-
-
-
 
