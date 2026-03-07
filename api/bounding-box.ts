@@ -6,12 +6,25 @@ import { validateImageUrl, ALLOWED_IMAGE_MIMES } from "../lib/_validate";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 
-export default async function handler(req: any, res: any) {
+type ApiRequest = {
+  method?: string;
+  headers: Record<string, string | string[] | undefined>;
+  body?: unknown;
+};
+
+type ApiResponse = {
+  status: (code: number) => ApiResponse;
+  json: (body: unknown) => void;
+};
+
+type ErrorWithStatus = { status?: number; message?: string; name?: string };
+
+export default async function handler(req: ApiRequest, res: ApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Authentication — must come before any expensive work
+  // Authentication - must come before any expensive work
   const userId = await requireAuth(req, res);
   if (!userId) return;
 
@@ -41,8 +54,9 @@ export default async function handler(req: any, res: any) {
     let imageMimeType = "image/jpeg";
 
     if (imageData.startsWith("http")) {
-      const fetchRes = await fetch(imageData, { signal: AbortSignal.timeout(15_000) }).catch((fetchError: any) => {
-        const isTimeout = fetchError?.name === "TimeoutError" || fetchError?.name === "AbortError";
+      const fetchRes = await fetch(imageData, { signal: AbortSignal.timeout(15_000) }).catch((fetchError: unknown) => {
+        const err = fetchError as ErrorWithStatus;
+        const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError";
         throw Object.assign(new Error(isTimeout ? "Remote image fetch timed out" : "Remote image fetch failed"), { status: isTimeout ? 504 : 502 });
       });
       if (!fetchRes.ok) {
@@ -106,16 +120,12 @@ export default async function handler(req: any, res: any) {
 
     if (!response) return res.status(500).json({ error: "Bounding box detection failed" });
     res.json(parseGeminiJson(response.text || "{}", BoundingBoxSchema));
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as ErrorWithStatus;
     console.error("Bounding box error:", error);
-    if (typeof error?.status === "number" && error.status >= 400 && error.status < 600) {
-      return res.status(error.status).json({ error: error.message || "Bounding box detection failed" });
+    if (typeof err?.status === "number" && err.status >= 400 && err.status < 600) {
+      return res.status(err.status).json({ error: err.message || "Bounding box detection failed" });
     }
     res.status(500).json({ error: "Bounding box detection failed" });
   }
 }
-
-
-
-
-
