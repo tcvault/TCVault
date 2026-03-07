@@ -1,4 +1,3 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMarketMeta } from '../services/valuation';
 
@@ -16,19 +15,16 @@ const baseIntel = () => ({
   fxRateUsed: '1.0'
 });
 
-test('buildMarketMeta returns valuation band when enough quality comps exist', () => {
+export function runValuationTests(): void {
   const meta = buildMarketMeta(baseIntel(), { ukBias: true });
   assert.ok(meta);
   assert.ok(meta!.mid > 0);
   assert.ok(meta!.high >= meta!.mid);
   assert.ok(meta!.mid >= meta!.low);
   assert.equal(meta!.compsUsed, 4);
-});
 
-test('buildMarketMeta returns null with insufficient comps', () => {
   const intel = baseIntel();
   intel.sold = intel.sold.slice(0, 3);
-  const meta = buildMarketMeta(intel, { ukBias: true });
-  assert.equal(meta, null);
-});
-
+  const insufficient = buildMarketMeta(intel, { ukBias: true });
+  assert.equal(insufficient, null);
+}
