@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
 import {
   Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye,
@@ -12,7 +12,7 @@ import { vaultStorage, supabase } from '../services/storage';
 import { normalizeSet } from '../lib/normalizeSet';
 import { writeCorrectionEvent, getCorrectionMap, applyAutoCorrect } from '../services/corrections';
 
-// ── Image helpers ────────────────────────────────────────────────────────────
+// â”€â”€ Image helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -73,7 +73,7 @@ const performCrop = (imgSrc: string, box: BoundingBox): Promise<string> => {
   });
 };
 
-// ── AI suggestion type (concrete, avoids exactOptionalPropertyTypes conflicts) ─
+// â”€â”€ AI suggestion type (concrete, avoids exactOptionalPropertyTypes conflicts) â”€
 interface AiSuggestion {
   // Core identification
   playerName: string;
@@ -91,6 +91,8 @@ interface AiSuggestion {
   checklistVerified?: boolean;
   setConfidence?: number;
   yearConfidence?: number;
+  parallelConfidence?: number;
+  copyrightYear?: number;
   // Normalised set fields
   setDisplay: string;
   setCanonicalKey: string;
@@ -151,7 +153,7 @@ const AI_FIELD_DEFS: AiFieldDef[] = [
   },
   {
     key: 'estimatedValue', label: 'Market Value',
-    getValue: (s) => `£${s.estimatedValue}`,
+    getValue: (s) => `Â£${s.estimatedValue}`,
     apply: (s, p) => ({ ...p, marketValue: s.estimatedValue }),
   },
   {
@@ -178,7 +180,7 @@ const LOW_CONFIDENCE_THRESHOLD = 0.6;
 
 const isValidPsaCert = (cert?: string): boolean => !!cert && /^\d{6,12}$/.test(cert);
 
-// ── Component ────────────────────────────────────────────────────────────────
+// â”€â”€ Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface CardFormProps {
   onSubmit: (card: Card) => void;
   onDelete?: ((id: string) => void) | undefined;
@@ -192,7 +194,7 @@ interface CardFormProps {
 const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initialData, pages, onToast, animationClass }) => {
   const isEditing = !!initialData;
 
-  // ── Core form state ───────────────────────────────────────────────────────
+  // â”€â”€ Core form state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [formData, setFormData] = useState<Partial<Card>>({
     playerName: '', team: '', cardSpecifics: '', set: '', setNumber: '',
     condition: 'Ungraded', pricePaid: 0, marketValue: 0,
@@ -211,7 +213,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   const [manualCropIndex, setManualCropIndex] = useState<number | null>(null);
   const [isManualCropSaving, setIsManualCropSaving] = useState(false);
 
-  // ── AI suggestion state (Phase 2) ─────────────────────────────────────────
+  // â”€â”€ AI suggestion state (Phase 2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
   const [aiAccepted, setAiAccepted] = useState<Set<string>>(new Set());
   const [aiDismissed, setAiDismissed] = useState<Set<string>>(new Set());
@@ -219,11 +221,11 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   const [requiredConfirmFields, setRequiredConfirmFields] = useState<Set<string>>(new Set());
   const [isCertFastPath, setIsCertFastPath] = useState(false);
 
-  // ── Structured set editor state (Phase 2) ────────────────────────────────
+  // â”€â”€ Structured set editor state (Phase 2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [setEditorMode, setSetEditorMode] = useState<'simple' | 'structured'>('simple');
   const [sFields, setSFields] = useState({ season: '', manufacturer: '', productLine: '', sport: 'Soccer' });
 
-  // ── Save warnings state (Phase 2) ─────────────────────────────────────────
+  // â”€â”€ Save warnings state (Phase 2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [saveWarnings, setSaveWarnings] = useState<string[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -237,7 +239,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     }
   }, [initialData]);
 
-  // ── Image handlers ────────────────────────────────────────────────────────
+  // â”€â”€ Image handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -343,7 +345,27 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
   const getFieldConfidence = (key: string, suggestion: AiSuggestion): number => {
     if (key === 'setDisplay') {
-      return Math.min(suggestion.setConfidence ?? 0.7, suggestion.yearConfidence ?? 0.7);
+      let score = Math.min(suggestion.setConfidence ?? 0.65, suggestion.yearConfidence ?? 0.65);
+
+      // If copyright year conflicts with detected set year, force manual review.
+      if (
+        typeof suggestion.copyrightYear === 'number' &&
+        typeof suggestion.setYearStart === 'number' &&
+        Math.abs(suggestion.copyrightYear - suggestion.setYearStart) > 1
+      ) {
+        score = Math.min(score, 0.2);
+      }
+
+      // With multiple images (front+back), missing card number means uncertainty.
+      if (images.length >= 2 && !suggestion.setNumber) {
+        score = Math.min(score, 0.55);
+      }
+
+      return score;
+    }
+    if (key === 'cardSpecifics') {
+      const base = suggestion.parallelConfidence ?? (suggestion.serialNumber ? 0.75 : 0.65);
+      return Math.min(base, suggestion.serialNumber ? 0.9 : 0.8);
     }
     if (key === 'estimatedValue') return 0.7;
     if (key === 'condition') {
@@ -362,7 +384,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     });
   };
 
-  // ── AI scanner (Phase 1+3 — stores in aiSuggestion, does NOT auto-apply) ─
+  // â”€â”€ AI scanner (Phase 1+3 â€” stores in aiSuggestion, does NOT auto-apply) â”€
   const runScanner = async () => {
     if (images.length === 0) return;
     setIsScanning(true);
@@ -395,7 +417,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             }
           }
         } catch {
-          // Non-critical — ignore correction map errors
+          // Non-critical â€” ignore correction map errors
         }
 
         const required = new Set<string>();
@@ -465,7 +487,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     }
   };
 
-  // ── AI panel actions ──────────────────────────────────────────────────────
+  // â”€â”€ AI panel actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const acceptField = (def: AiFieldDef) => {
     if (!aiSuggestion) return;
     setFormData(prev => def.apply(aiSuggestion, prev));
@@ -512,7 +534,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     setShowAiPanel(false);
   };
 
-  // ── Structured set editor helpers ─────────────────────────────────────────
+  // â”€â”€ Structured set editor helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const updateStructuredField = (field: string, value: string) => {
     const updated = { ...sFields, [field]: value };
     setSFields(updated);
@@ -550,7 +572,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     setSetEditorMode('structured');
   };
 
-  // ── Submit (Phase 1 + 2 — defensive normalizeSet + warnings) ─────────────
+  // â”€â”€ Submit (Phase 1 + 2 â€” defensive normalizeSet + warnings) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.playerName || !formData.set) {
@@ -584,10 +606,10 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     // Build non-blocking save warnings
     const warnings: string[] = [];
     if (!cardData.setCanonicalKey && cardData.set) {
-      warnings.push('Set format not recognised — check year and manufacturer');
+      warnings.push('Set format not recognised â€” check year and manufacturer');
     }
     if (aiSuggestion && (aiSuggestion.setConfidence ?? 1) < 0.5) {
-      warnings.push('AI confidence in set identification is low — please verify');
+      warnings.push('AI confidence in set identification is low â€” please verify');
     }
     if (aiSuggestion && (aiSuggestion.yearConfidence ?? 1) < 0.5) {
       warnings.push('Year could not be verified from the image');
@@ -631,7 +653,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-section">
 
-        {/* ── Left column: Images + AI panel + Visibility ── */}
+        {/* â”€â”€ Left column: Images + AI panel + Visibility â”€â”€ */}
         <div className="lg:col-span-5 space-y-section">
 
           {/* Image card */}
@@ -703,7 +725,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                 <div className="flex items-center gap-control">
                   <Sparkles size={14} className="text-gold-500" />
                   <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">AI Suggestions</span>
-                  <span className="text-xs text-ink-tertiary hidden sm:inline">— review before saving</span>
+                  <span className="text-xs text-ink-tertiary hidden sm:inline">â€” review before saving</span>
                 </div>
                 <div className="flex items-center gap-control">
                   {!showAiPanel
@@ -805,7 +827,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           </div>
         </div>
 
-        {/* ── Right column: Form ── */}
+        {/* â”€â”€ Right column: Form â”€â”€ */}
         <form onSubmit={handleSubmit} className="lg:col-span-7 space-y-section">
           <div className="card-vault p-padding md:p-12 space-y-padding shadow-lg bg-white/[0.01]">
             {error && <div className="p-padding bg-error/10 border border-error/20 rounded-xl flex items-center gap-padding text-error text-sm font-bold tracking-tight animate-in slide-in-from-top-2 duration-200"><AlertCircle size={16} />{error}</div>}
@@ -815,7 +837,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
               <Field label="Team" value={formData.team} onChange={(v: string) => setFormData({...formData, team: v})} icon={<Users size={16} />} />
             </div>
 
-            {/* ── Set / Product — dual-mode editor (Phase 2) ── */}
+            {/* â”€â”€ Set / Product â€” dual-mode editor (Phase 2) â”€â”€ */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-section">
               <div className="space-y-control">
                 <div className="flex items-center justify-between ml-1">
@@ -825,7 +847,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                     onClick={setEditorMode === 'simple' ? switchToStructured : () => setSetEditorMode('simple')}
                     className="text-[10px] font-bold text-gold-500 hover:underline uppercase tracking-widest"
                   >
-                    {setEditorMode === 'simple' ? 'Structured ▾' : 'Simple ▾'}
+                    {setEditorMode === 'simple' ? 'Structured â–¾' : 'Simple â–¾'}
                   </button>
                 </div>
 
@@ -889,7 +911,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                     </div>
                     <div className="pt-1 border-t border-border-soft">
                       <span className="text-[10px] text-ink-tertiary font-semibold uppercase tracking-widest">Preview: </span>
-                      <span className="text-xs font-bold text-ink-primary">{formData.set || '—'}</span>
+                      <span className="text-xs font-bold text-ink-primary">{formData.set || 'â€”'}</span>
                     </div>
                   </div>
                 )}
@@ -939,8 +961,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-section pt-padding border-t border-border-soft">
-              <Field label="Price Paid (£)" type="number" value={formData.pricePaid} onChange={(v: string) => setFormData({...formData, pricePaid: Number(v)})} icon={<PoundSterling size={16} />} />
-              <Field label="Market Value (£)" type="number" value={formData.marketValue} onChange={(v: string) => setFormData({...formData, marketValue: Number(v)})} icon={<Zap size={16} />} />
+              <Field label="Price Paid (Â£)" type="number" value={formData.pricePaid} onChange={(v: string) => setFormData({...formData, pricePaid: Number(v)})} icon={<PoundSterling size={16} />} />
+              <Field label="Market Value (Â£)" type="number" value={formData.marketValue} onChange={(v: string) => setFormData({...formData, marketValue: Number(v)})} icon={<Zap size={16} />} />
             </div>
 
             {/* Save-time warnings (non-blocking, Phase 2) */}
@@ -1001,4 +1023,5 @@ const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
 );
 
 export default CardForm;
+
 

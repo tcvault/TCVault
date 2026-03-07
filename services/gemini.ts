@@ -1,4 +1,4 @@
-// Gemini service — frontend HTTP client only.
+﻿// Gemini service â€” frontend HTTP client only.
 // All Gemini SDK calls happen server-side in /api/*.
 // No API keys are exposed to the browser.
 
@@ -24,6 +24,8 @@ export interface IdentifiedCard {
   productLine?: string;
   setConfidence?: number;
   yearConfidence?: number;
+  parallelConfidence?: number;
+  copyrightYear?: number;
   sport?: string;
   category?: 'Sports' | 'TCG' | 'Non-Sports';
 }
@@ -112,3 +114,4 @@ export const getMarketIntel = (
   certNumber?: string
 ): Promise<MarketIntel | null> =>
   post<MarketIntel>("/api/market-intel", { playerName, cardSpecifics, set, condition, certNumber });
+

@@ -1,4 +1,4 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 export const IdentifiedCardSchema = z.object({
   playerName: z.string(),
@@ -20,6 +20,8 @@ export const IdentifiedCardSchema = z.object({
   productLine:    z.string().optional(),
   setConfidence:  z.number().min(0).max(1).optional(),
   yearConfidence: z.number().min(0).max(1).optional(),
+  parallelConfidence: z.number().min(0).max(1).optional(),
+  copyrightYear: z.number().optional(),
   sport:          z.string().optional(),
   category:       z.enum(["Sports", "TCG", "Non-Sports"]).optional(),
 });
@@ -61,3 +63,4 @@ export function parseGeminiJson<T>(text: string, schema: z.ZodType<T>): T {
   const parsed = JSON.parse(text || "{}");
   return schema.parse(parsed);
 }
+

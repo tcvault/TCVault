@@ -1,4 +1,4 @@
-import { Type } from "@google/genai";
+﻿import { Type } from "@google/genai";
 import { generateWithRetry, DEFAULT_MODEL, UNIVERSAL_SOCCER_CARD_REGISTRY } from "../lib/_gemini";
 import { IdentifiedCardSchema, parseGeminiJson } from "../lib/_schemas";
 import { requireAuth, checkRateLimit } from "../lib/_auth";
@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Authentication — must come before any expensive work
+  // Authentication â€” must come before any expensive work
   const userId = await requireAuth(req, res);
   if (!userId) return;
 
@@ -28,7 +28,7 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: `Maximum ${MAX_IMAGES} images allowed` });
   }
 
-  // Validate each image entry — all validation before fetching anything
+  // Validate each image entry â€” all validation before fetching anything
   for (const img of images) {
     if (typeof img !== "string") {
       return res.status(400).json({ error: "Each image must be a string" });
@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
             1. **Visual Analysis**: Examine logos (Panini, Topps, Donruss, Optic, Upper Deck), year, player, and sport.
             2. **Domain Detection**: Identify the category first: Sports, TCG, or Non-Sports.
                - Sports examples: Soccer, Formula 1, Basketball, Baseball, Hockey, American Football.
-               - TCG examples: Pokémon, Magic: The Gathering, Yu-Gi-Oh!, One Piece, Lorcana.
+               - TCG examples: PokÃ©mon, Magic: The Gathering, Yu-Gi-Oh!, One Piece, Lorcana.
                - Non-Sports examples: Marvel, Star Wars, entertainment franchises.
             3. **Sport Detection**: If and only if category is Sports, identify sport from logos, imagery, and branding.
             4. **Parallel/Variant Detection**: Check for refractors, patterns (Mojo, Wave, Ice), foil treatments, rarity markers, and variant text.
@@ -124,9 +124,12 @@ export default async function handler(req: any, res: any) {
             VALUATION PROTOCOL:
             1. **Valuation Anchor**: Identify the 3 most common RECENT SOLD prices for this exact parallel and grade.
             2. **Calculate Mean**: Calculate the Volume-Weighted Mean of these 3 prices.
-            3. **Consistency Check**: Round the 'estimatedValue' to the nearest £5.
+            3. **Consistency Check**: Round the 'estimatedValue' to the nearest Â£5.
 
             9. **Structured Set Fields**: Always extract setYearStart (e.g. 2023), setYearEnd (e.g. 2024), manufacturer (e.g. "Topps"), productLine (e.g. "Chrome Legends"), category (Sports | TCG | Non-Sports), and sport (Sports only; otherwise empty) as separate structured fields. Rate setConfidence and yearConfidence from 0 to 1 based on how certain you are.
+            10. **Parallel Confidence**: Output parallelConfidence (0-1). If serial text is hard to read, keep this below 0.7.
+            11. **Copyright Year Rule (critical)**: If back image includes copyright (e.g. "© 2025 Topps"), output copyrightYear. For single-year Topps products like F1 Chrome, setYearStart should match copyrightYear unless clear printed set-year evidence says otherwise. If uncertain, lower yearConfidence.
+            12. **Back Number Rule**: If card back number is visible (e.g. "160"), populate setNumber.
 
             Output JSON. Be extremely precise with the 'set' name (e.g., "2022 Topps Chrome Formula 1 Legends" or "2023-24 Panini Donruss Soccer").`,
           },
@@ -156,6 +159,8 @@ export default async function handler(req: any, res: any) {
             productLine:     { type: Type.STRING, description: "Product line: Donruss, Prizm, Chrome, Select, Optic, etc." },
             setConfidence:   { type: Type.NUMBER, description: "Set identification confidence 0-1" },
             yearConfidence:  { type: Type.NUMBER, description: "Year identification confidence 0-1" },
+            parallelConfidence: { type: Type.NUMBER, description: "Parallel/variant confidence 0-1" },
+            copyrightYear:   { type: Type.NUMBER, description: "Copyright year seen on card back if visible (e.g. 2025)" },
             sport:           { type: Type.STRING, description: "Sport: Soccer, Formula 1, Basketball, Baseball, Hockey, American Football, etc." },
             category:        { type: Type.STRING, enum: ["Sports", "TCG", "Non-Sports"], description: "High-level card category" },
           },
@@ -165,7 +170,21 @@ export default async function handler(req: any, res: any) {
     });
 
     if (!response) return res.status(500).json({ error: "Identification failed" });
-    res.json(parseGeminiJson(response.text || "{}", IdentifiedCardSchema));
+
+    const parsed = parseGeminiJson(response.text || "{}", IdentifiedCardSchema);
+
+    // Guardrail: if detected set year conflicts with explicit copyright year,
+    // lower confidence so frontend requires manual confirmation.
+    if (
+      typeof parsed.setYearStart === "number" &&
+      typeof parsed.copyrightYear === "number" &&
+      Math.abs(parsed.setYearStart - parsed.copyrightYear) > 1
+    ) {
+      parsed.yearConfidence = Math.min(parsed.yearConfidence ?? 1, 0.35);
+      parsed.setConfidence = Math.min(parsed.setConfidence ?? 1, 0.55);
+    }
+
+    res.json(parsed);
   } catch (error: any) {
     console.error("Identify card error:", error);
     if (typeof error?.status === "number" && error.status >= 400 && error.status < 600) {
@@ -174,6 +193,7 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Identification failed" });
   }
 }
+
 
 
 
