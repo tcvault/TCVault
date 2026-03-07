@@ -1,6 +1,6 @@
 ﻿import { Type } from "@google/genai";
 import { generateWithRetry, DEFAULT_MODEL, UNIVERSAL_SOCCER_CARD_REGISTRY } from "../lib/_gemini";
-import { IdentifiedCardSchema, parseGeminiJson } from "../lib/_schemas";
+import { IdentifiedCardSchema } from "../lib/_schemas";
 import { requireAuth, checkRateLimit } from "../lib/_auth";
 import { validateImageUrl, ALLOWED_IMAGE_MIMES } from "../lib/_validate";
 
@@ -15,7 +15,7 @@ interface HardEvidence {
   manufacturer?: string;
   productLine?: string;
   sport?: string;
-  category?: \"Sports\" | \"TCG\" | \"Non-Sports\";
+  category?: "Sports" | "TCG" | "Non-Sports";
 }
 
 const normalizeSetNumber = (value?: string): string | undefined => {
@@ -27,7 +27,75 @@ const normalizeSetNumber = (value?: string): string | undefined => {
 const normalizeSerial = (value?: string): string | undefined => {
   if (!value) return undefined;
   const m = value.match(/\b\d{1,4}\s*\/\s*\d{1,4}\b/);
-  return m ? m[0].replace(/\s+/g, \"\") : undefined;
+  return m ? m[0].replace(/\s+/g, "") : undefined;
+};
+const extractJsonObject = (text: string): Record<string, unknown> => {
+  try {
+    return JSON.parse(text || "{}") as Record<string, unknown>;
+  } catch {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (!m) return {};
+    try {
+      return JSON.parse(m[0]) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+};
+
+const toStringValue = (v: unknown, fallback = ""): string =>
+  typeof v === "string" ? v.trim() : fallback;
+
+const toNumberValue = (v: unknown, fallback = 0): number =>
+  typeof v === "number" && Number.isFinite(v) ? v : fallback;
+
+const coerceIdentifiedCard = (raw: Record<string, unknown>) => {
+  const coerced = {
+    playerName: toStringValue(raw.playerName, "Unknown"),
+    team: toStringValue(raw.team, "N/A"),
+    cardSpecifics: toStringValue(raw.cardSpecifics, ""),
+    set: toStringValue(raw.set, ""),
+    setNumber: typeof raw.setNumber === "string" ? raw.setNumber : undefined,
+    condition: typeof raw.condition === "string" ? raw.condition : "Ungraded",
+    estimatedValue: toNumberValue(raw.estimatedValue, 0),
+    description: toStringValue(raw.description, ""),
+    serialNumber: typeof raw.serialNumber === "string" ? raw.serialNumber : undefined,
+    certNumber: typeof raw.certNumber === "string" ? raw.certNumber : undefined,
+    reasoning: typeof raw.reasoning === "string" ? raw.reasoning : undefined,
+    rarityTier:
+      raw.rarityTier === "Base" ||
+      raw.rarityTier === "Parallel" ||
+      raw.rarityTier === "Chase" ||
+      raw.rarityTier === "1/1"
+        ? raw.rarityTier
+        : undefined,
+    checklistVerified: typeof raw.checklistVerified === "boolean" ? raw.checklistVerified : undefined,
+    setYearStart: typeof raw.setYearStart === "number" ? raw.setYearStart : undefined,
+    setYearEnd: typeof raw.setYearEnd === "number" ? raw.setYearEnd : undefined,
+    manufacturer: typeof raw.manufacturer === "string" ? raw.manufacturer : undefined,
+    productLine: typeof raw.productLine === "string" ? raw.productLine : undefined,
+    setConfidence: typeof raw.setConfidence === "number" ? raw.setConfidence : undefined,
+    yearConfidence: typeof raw.yearConfidence === "number" ? raw.yearConfidence : undefined,
+    parallelConfidence: typeof raw.parallelConfidence === "number" ? raw.parallelConfidence : undefined,
+    copyrightYear: typeof raw.copyrightYear === "number" ? raw.copyrightYear : undefined,
+    sport: typeof raw.sport === "string" ? raw.sport : undefined,
+    category:
+      raw.category === "Sports" || raw.category === "TCG" || raw.category === "Non-Sports"
+        ? raw.category
+        : undefined,
+  };
+
+  const checked = IdentifiedCardSchema.safeParse(coerced);
+  if (checked.success) return checked.data;
+
+  return {
+    ...coerced,
+    playerName: coerced.playerName || "Unknown",
+    team: coerced.team || "N/A",
+    cardSpecifics: coerced.cardSpecifics || "",
+    set: coerced.set || "Unspecified Set",
+    estimatedValue: Number.isFinite(coerced.estimatedValue) ? coerced.estimatedValue : 0,
+  };
 };
 
 export default async function handler(req: any, res: any) {
@@ -194,7 +262,7 @@ export default async function handler(req: any, res: any) {
 
     if (!response) return res.status(500).json({ error: "Identification failed" });
 
-    const parsed = parseGeminiJson(response.text || "{}", IdentifiedCardSchema);
+    const parsed = coerceIdentifiedCard(extractJsonObject(response.text || "{}"));
 
     // Second pass: extract hard evidence only (numbers/years/text tokens).
     let hardEvidence: HardEvidence = {};
@@ -237,7 +305,7 @@ export default async function handler(req: any, res: any) {
       });
 
       if (evidenceResponse?.text) {
-        hardEvidence = JSON.parse(evidenceResponse.text) as HardEvidence;
+        hardEvidence = extractJsonObject(evidenceResponse.text) as HardEvidence;
       }
     } catch {
       // Non-critical: keep primary parsed output.
@@ -282,6 +350,9 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Identification failed" });
   }
 }
+
+
+
 
 
 
