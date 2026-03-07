@@ -3,6 +3,8 @@ import { generateWithRetry, DEFAULT_MODEL, UNIVERSAL_SOCCER_CARD_REGISTRY } from
 import { IdentifiedCardSchema } from "../lib/_schemas";
 import { requireAuth, checkRateLimit } from "../lib/_auth";
 import { validateImageUrl, ALLOWED_IMAGE_MIMES } from "../lib/_validate";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { normalizeSet } from "../lib/normalizeSet";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES = 3;
@@ -18,6 +20,93 @@ interface HardEvidence {
   sport?: string;
   category?: "Sports" | "TCG" | "Non-Sports";
 }
+
+interface ParallelReference {
+  parallelName: string;
+  serialFormat?: string;
+  rarityTier?: "Base" | "Parallel" | "Chase" | "1/1";
+  notes?: string;
+}
+
+const MAX_PARALLEL_REFERENCE_HINTS = 25;
+
+const getBearerToken = (req: any): string | null => {
+  const authHeader = req?.headers?.authorization;
+  const authValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+  if (!authValue || typeof authValue !== "string") return null;
+  return authValue.startsWith("Bearer ") ? authValue.slice(7) : null;
+};
+
+const getApiSupabaseClient = (token: string): SupabaseClient | null => {
+  const url =
+    process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    "";
+  const key =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "";
+
+  if (!url || !key || !token) return null;
+
+  return createClient(url, key, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  });
+};
+
+const fetchParallelReferences = async (
+  userId: string,
+  setCanonicalKey: string,
+  token: string
+): Promise<ParallelReference[]> => {
+  const client = getApiSupabaseClient(token);
+  if (!client || !setCanonicalKey) return [];
+
+  const { data, error } = await client
+    .from("set_parallel_references")
+    .select("parallel_name, serial_format, rarity_tier, notes")
+    .eq("user_id", userId)
+    .eq("set_canonical_key", setCanonicalKey)
+    .order("parallel_name", { ascending: true })
+    .limit(MAX_PARALLEL_REFERENCE_HINTS);
+
+  if (error || !data) return [];
+
+  return data
+    .map((row) => ({
+      parallelName: typeof row.parallel_name === "string" ? row.parallel_name : "",
+      serialFormat: typeof row.serial_format === "string" ? row.serial_format : undefined,
+      rarityTier:
+        row.rarity_tier === "Base" ||
+        row.rarity_tier === "Parallel" ||
+        row.rarity_tier === "Chase" ||
+        row.rarity_tier === "1/1"
+          ? row.rarity_tier
+          : undefined,
+      notes: typeof row.notes === "string" ? row.notes : undefined,
+    }))
+    .filter((r) => r.parallelName);
+};
+
+const buildParallelHintBlock = (refs: ParallelReference[]): string => {
+  if (!refs.length) return "";
+  const lines = refs.map((r, idx) => {
+    const details = [
+      r.serialFormat ? `serial: ${r.serialFormat}` : "",
+      r.rarityTier ? `tier: ${r.rarityTier}` : "",
+      r.notes ? `notes: ${r.notes}` : "",
+    ].filter(Boolean);
+    return `${idx + 1}. ${r.parallelName}${details.length ? ` (${details.join("; ")})` : ""}`;
+  });
+
+  return `\nUSER PARALLEL REFERENCE (PERSONAL LIBRARY):\nUse this as a high-priority checklist when identifying parallel/variant for this set.\n${lines.join("\n")}\nIf image evidence conflicts with this list, trust direct visual evidence and lower parallelConfidence.`;
+};
 
 const normalizeSetNumber = (value?: string): string | undefined => {
   if (!value) return undefined;
@@ -135,6 +224,8 @@ export default async function handler(req: any, res: any) {
 
   // Per-user rate limit: 20 identify calls / minute
   if (!checkRateLimit(userId, "identify-card", res, 20)) return;
+
+  const authToken = getBearerToken(req);
 
   const { images } = req.body as { images: unknown };
 
@@ -290,6 +381,72 @@ export default async function handler(req: any, res: any) {
 
     const parsed = coerceIdentifiedCard(extractJsonObject(response.text || "{}"));
 
+    // Optional refinement: if set-level reference rows exist for this user,
+    // use them as constraints for parallel naming consistency.
+    try {
+      if (authToken) {
+        const normalized = normalizeSet(parsed.set, {
+          setYearStart: parsed.setYearStart ?? null,
+          setYearEnd: parsed.setYearEnd ?? null,
+          manufacturer: parsed.manufacturer ?? null,
+          productLine: parsed.productLine ?? null,
+          sport: parsed.sport ?? null,
+          category: parsed.category ?? null,
+        });
+
+        if (normalized.setCanonicalKey) {
+          const refs = await fetchParallelReferences(userId, normalized.setCanonicalKey, authToken);
+          if (refs.length > 0) {
+            const hintBlock = buildParallelHintBlock(refs);
+            const refineResponse = await generateWithRetry({
+              model: DEFAULT_MODEL,
+              contents: {
+                parts: [
+                  ...imageParts,
+                  {
+                    text: `You are refining an existing identification result for one trading card.\nCurrent identification JSON:\n${JSON.stringify(parsed)}\n${hintBlock}\nReturn JSON only with fields: cardSpecifics, rarityTier, parallelConfidence, serialNumber. Preserve existing meaning and only change fields if image evidence supports it.`,
+                  },
+                ],
+              },
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    cardSpecifics: { type: Type.STRING },
+                    rarityTier: { type: Type.STRING, enum: ["Base", "Parallel", "Chase", "1/1"] },
+                    parallelConfidence: { type: Type.NUMBER },
+                    serialNumber: { type: Type.STRING },
+                  },
+                },
+              },
+            });
+
+            const refined = extractJsonObject(refineResponse?.text || "{}");
+            if (typeof refined.cardSpecifics === "string" && refined.cardSpecifics.trim()) {
+              parsed.cardSpecifics = refined.cardSpecifics.trim();
+            }
+            if (
+              refined.rarityTier === "Base" ||
+              refined.rarityTier === "Parallel" ||
+              refined.rarityTier === "Chase" ||
+              refined.rarityTier === "1/1"
+            ) {
+              parsed.rarityTier = refined.rarityTier;
+            }
+            if (typeof refined.parallelConfidence === "number" && Number.isFinite(refined.parallelConfidence)) {
+              parsed.parallelConfidence = refined.parallelConfidence;
+            }
+            if (typeof refined.serialNumber === "string" && refined.serialNumber.trim()) {
+              parsed.serialNumber = refined.serialNumber.trim();
+            }
+          }
+        }
+      }
+    } catch {
+      // Non-critical refinement path.
+    }
+
     // Second pass: extract hard evidence only (numbers/years/text tokens).
     let hardEvidence: HardEvidence = {};
     try {
@@ -378,6 +535,10 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Identification failed" });
   }
 }
+
+
+
+
 
 
 

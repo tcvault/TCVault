@@ -172,3 +172,24 @@ export enum ViewMode {
 export type SortField = 'playerName' | 'purchaseDate' | 'marketValue' | 'pricePaid' | 'setNumber';
 export type SortOrder = 'asc' | 'desc';
 
+
+export interface SetParallelReference {
+  id: string;
+  userId: string;
+  setCanonicalKey: string;
+  setDisplay?: string | undefined;
+  manufacturer?: string | undefined;
+  productLine?: string | undefined;
+  sport?: string | undefined;
+  category?: 'Sports' | 'TCG' | 'Non-Sports' | undefined;
+  parallelName: string;
+  serialFormat?: string | undefined;
+  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1' | undefined;
+  printRun?: number | undefined;
+  notes?: string | undefined;
+  sourceUrl: string;
+  sourceLabel?: string | undefined;
+  personalUseOnly: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
