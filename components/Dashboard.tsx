@@ -1,7 +1,6 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { CollectionStats, Card, ViewMode } from '../types';
-import { TrendingUp, Layers, Activity, Star, Clock, Plus, ChevronRight, Ghost, Edit3, ArrowUpRight, ArrowDownRight, Percent } from 'lucide-react';
-import EmptyState from './EmptyState';
+import { TrendingUp, Layers, Activity, Clock, Plus, ChevronRight, Ghost, Edit3, ArrowUpRight, ArrowDownRight, Percent } from 'lucide-react';
 
 interface DashboardProps {
   stats: CollectionStats;
@@ -12,11 +11,6 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, onEditCard, animationClass }) => {
-  const [isSpotlightLoaded, setIsSpotlightLoaded] = useState(false);
-
-  const spotlightCard = recentCards.length > 0
-    ? recentCards.reduce((prev, current) => (prev.marketValue > current.marketValue) ? prev : current, recentCards[0]!)
-    : null;
 
   const insights = useMemo(() => {
     const validCards = recentCards.filter(c => Number.isFinite(c.pricePaid) && Number.isFinite(c.marketValue));
@@ -55,67 +49,6 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
           <span>Log pickup</span>
         </button>
       </div>
-
-      {spotlightCard ? (
-        <div className="relative card-vault overflow-hidden border-border-soft group cursor-pointer shadow-xl min-h-[400px] p-0" onClick={() => onNavigate(ViewMode.INVENTORY)}>
-          <div className={`absolute inset-0 bg-gradient-to-r from-ink-primary via-ink-primary/80 to-transparent z-10 transition-opacity duration-1000 ease-out ${isSpotlightLoaded ? 'opacity-100' : 'opacity-0'}`}></div>
-
-          <div className={`relative z-20 p-major flex flex-col justify-center max-w-lg h-full space-y-section transition-all duration-700 delay-300 ${isSpotlightLoaded ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}>
-            <div className="flex items-center gap-control">
-              <Star size={16} className="text-gold-500 fill-gold-500" />
-              <span className="text-xs font-semibold text-gold-500 uppercase tracking-widest">The grails</span>
-            </div>
-            <h2 className="text-white group-hover:text-gold-500 transition-colors">{spotlightCard.playerName}</h2>
-            <p className="text-sm font-semibold text-ink-on-dark">
-              {spotlightCard.cardSpecifics} - {spotlightCard.set} {spotlightCard.setNumber ? `#${spotlightCard.setNumber}` : ''}
-              {spotlightCard.serialNumber && <span className="ml-2 px-2 py-0.5 bg-gold-500/20 text-gold-500 rounded text-xs font-bold">{spotlightCard.serialNumber}</span>}
-            </p>
-            <div className="flex items-center gap-major pt-control">
-              <div className="space-y-control">
-                <span className="text-xs font-semibold text-ink-on-dark/60 uppercase tracking-widest">Market estimate</span>
-                <p className="text-2xl font-bold text-gold-500 tabular">GBP {spotlightCard.marketValue.toLocaleString()}</p>
-              </div>
-              <div className="space-y-control">
-                <span className="text-xs font-semibold text-ink-on-dark/60 uppercase tracking-widest">Grade</span>
-                <p className="text-2xl font-bold text-white tabular">{spotlightCard.condition}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="absolute right-0 top-0 bottom-0 w-1/2 overflow-hidden hidden md:flex items-center justify-center bg-ink-primary p-10">
-            <div className="relative w-full h-full flex items-center justify-center">
-              {spotlightCard.images && spotlightCard.images[0] ? (
-                <div className={`relative w-full h-full flex items-center justify-center img-loading ${isSpotlightLoaded ? '!before:hidden' : ''}`}>
-                  <img
-                    src={spotlightCard.images[0]}
-                    onLoad={(e) => {
-                      (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading');
-                      setIsSpotlightLoaded(true);
-                    }}
-                    className={`max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-[1.02] transition-all duration-700 select-none z-10 ${isSpotlightLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
-                    alt="Spotlight Card"
-                  />
-                </div>
-              ) : (
-                <div className="w-56 aspect-[3/4] rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-4 text-ink-secondary animate-in fade-in zoom-in-95 duration-700">
-                  <Ghost size={48} className="opacity-20" />
-                  <span className="text-xs font-black uppercase tracking-widest opacity-30">No image</span>
-                </div>
-              )}
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-l from-transparent to-ink-primary/80 pointer-events-none z-20"></div>
-          </div>
-        </div>
-      ) : (
-        <EmptyState compact
-          icon={<Ghost />}
-          title="Collection is empty"
-          message="Your highlights will appear here once you log your first pickup."
-          actionLabel="Start your collection"
-          onAction={() => onNavigate(ViewMode.ADD_CARD)}
-        />
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-section">
         <StatCard label="Total cards" value={stats.totalCards.toString()} icon={<Layers size={16} className="text-ink-secondary/60" />} />
         <StatCard label="Market value" value={`GBP ${stats.totalMarketValue.toLocaleString()}`} icon={<TrendingUp size={16} className="text-ink-secondary/60" />} />
