@@ -175,7 +175,6 @@ function buildSeasonStr(start: number, end: number | null | undefined): string {
   return `${start}-${String(end).slice(-2)}`;
 }
 
-const HIGH_CONFIDENCE_THRESHOLD = 0.85;
 const LOW_CONFIDENCE_THRESHOLD = 0.6;
 
 const isValidPsaCert = (cert?: string): boolean => !!cert && /^\d{6,12}$/.test(cert);
@@ -341,8 +340,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
-  const getFieldLabel = (key: string) => AI_FIELD_DEFS.find(def => def.key === key)?.label || key;
-
   const getFieldConfidence = (key: string, suggestion: AiSuggestion): number => {
     if (key === 'setDisplay') {
       let score = Math.min(suggestion.setConfidence ?? 0.65, suggestion.yearConfidence ?? 0.65);
@@ -384,7 +381,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     });
   };
 
-  // â”€â”€ AI scanner (Phase 1+3 â€” stores in aiSuggestion, does NOT auto-apply) â”€
+  // AI scanner: auto-apply all detected fields (no confirmation gate)
   const runScanner = async () => {
     if (images.length === 0) return;
     setIsScanning(true);
@@ -420,21 +417,14 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           // Non-critical â€” ignore correction map errors
         }
 
-        const required = new Set<string>();
         const autoAccepted = new Set<string>();
         let nextForm: Partial<Card> = { ...formData };
 
         for (const def of AI_FIELD_DEFS) {
           const value = def.getValue(suggestion);
           if (value === undefined || value === '') continue;
-
-          const confidence = getFieldConfidence(def.key, suggestion);
-          if (confidence >= HIGH_CONFIDENCE_THRESHOLD) {
-            nextForm = def.apply(suggestion, nextForm);
-            autoAccepted.add(def.key);
-          } else if (confidence < LOW_CONFIDENCE_THRESHOLD) {
-            required.add(def.key);
-          }
+          nextForm = def.apply(suggestion, nextForm);
+          autoAccepted.add(def.key);
         }
 
         const certFastPath = suggestion.condition?.startsWith('PSA') && isValidPsaCert(suggestion.certNumber);
@@ -467,16 +457,13 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
         setAiSuggestion(suggestion);
         setAiAccepted(autoAccepted);
         setAiDismissed(new Set());
-        setRequiredConfirmFields(required);
-        setShowAiPanel(required.size > 0);
+        setRequiredConfirmFields(new Set());
+        setShowAiPanel(false);
         setHasScanned(true);
-
-        if (onToast && required.size > 0) {
-          onToast('Review required for low-confidence fields before saving', 'info');
-        } else if (onToast && autoAccepted.size > 0 && !suggestion.correctedByMemory) {
-          onToast(`AI scan complete - auto-applied ${autoAccepted.size} high-confidence fields`, 'success');
+        if (onToast && autoAccepted.size > 0 && !suggestion.correctedByMemory) {
+          onToast(`AI scan complete - auto-filled ${autoAccepted.size} fields`, 'success');
         } else if (onToast && !suggestion.correctedByMemory) {
-          onToast('AI scan complete - review suggestions below', 'info');
+          onToast('AI scan complete', 'info');
         }
       }
     } catch {
@@ -579,14 +566,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       setError('Identify the card before saving.');
       return;
     }
-
-    if (requiredConfirmFields.size > 0) {
-      const requiredLabels = Array.from(requiredConfirmFields).map(getFieldLabel).join(', ');
-      setError(`Confirm low-confidence fields before saving: ${requiredLabels}`);
-      setShowAiPanel(true);
-      return;
-    }
-
     // Defensive normalizeSet pass
     let cardData = { ...formData };
     if (!cardData.setCanonicalKey && cardData.set) {
@@ -607,12 +586,6 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     const warnings: string[] = [];
     if (!cardData.setCanonicalKey && cardData.set) {
       warnings.push('Set format not recognised â€” check year and manufacturer');
-    }
-    if (aiSuggestion && (aiSuggestion.setConfidence ?? 1) < 0.5) {
-      warnings.push('AI confidence in set identification is low â€” please verify');
-    }
-    if (aiSuggestion && (aiSuggestion.yearConfidence ?? 1) < 0.5) {
-      warnings.push('Year could not be verified from the image');
     }
     setSaveWarnings(warnings);
 
@@ -725,7 +698,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                 <div className="flex items-center gap-control">
                   <Sparkles size={14} className="text-gold-500" />
                   <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">AI Suggestions</span>
-                  <span className="text-xs text-ink-tertiary hidden sm:inline">â€” review before saving</span>
+                  <span className="text-xs text-ink-tertiary hidden sm:inline">â€” auto-applied</span>
                 </div>
                 <div className="flex items-center gap-control">
                   {!showAiPanel
@@ -753,7 +726,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                     </p>
                     {requiredConfirmFields.size > 0 && (
                       <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
-                        {requiredConfirmFields.size} field(s) require confirmation before save
+                        {requiredConfirmFields.size} auto-filled from image evidence
                       </p>
                     )}
                     {isCertFastPath && (
@@ -1023,5 +996,10 @@ const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
 );
 
 export default CardForm;
+
+
+
+
+
 
 

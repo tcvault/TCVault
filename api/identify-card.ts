@@ -6,6 +6,29 @@ import { validateImageUrl, ALLOWED_IMAGE_MIMES } from "../lib/_validate";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_IMAGES = 3;
+interface HardEvidence {
+  setNumber?: string;
+  serialNumber?: string;
+  copyrightYear?: number;
+  setYearStart?: number;
+  setYearEnd?: number;
+  manufacturer?: string;
+  productLine?: string;
+  sport?: string;
+  category?: \"Sports\" | \"TCG\" | \"Non-Sports\";
+}
+
+const normalizeSetNumber = (value?: string): string | undefined => {
+  if (!value) return undefined;
+  const m = value.match(/\b\d{1,4}\b/);
+  return m?.[0];
+};
+
+const normalizeSerial = (value?: string): string | undefined => {
+  if (!value) return undefined;
+  const m = value.match(/\b\d{1,4}\s*\/\s*\d{1,4}\b/);
+  return m ? m[0].replace(/\s+/g, \"\") : undefined;
+};
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -173,15 +196,81 @@ export default async function handler(req: any, res: any) {
 
     const parsed = parseGeminiJson(response.text || "{}", IdentifiedCardSchema);
 
-    // Guardrail: if detected set year conflicts with explicit copyright year,
-    // lower confidence so frontend requires manual confirmation.
-    if (
-      typeof parsed.setYearStart === "number" &&
-      typeof parsed.copyrightYear === "number" &&
-      Math.abs(parsed.setYearStart - parsed.copyrightYear) > 1
-    ) {
-      parsed.yearConfidence = Math.min(parsed.yearConfidence ?? 1, 0.35);
-      parsed.setConfidence = Math.min(parsed.setConfidence ?? 1, 0.55);
+    // Second pass: extract hard evidence only (numbers/years/text tokens).
+    let hardEvidence: HardEvidence = {};
+    try {
+      const evidenceResponse = await generateWithRetry({
+        model: DEFAULT_MODEL,
+        contents: {
+          parts: [
+            ...imageParts,
+            {
+              text: `Extract only directly visible printed evidence from these card images.
+              Return JSON only, no explanation.
+              Fields:
+              - setNumber (card number like 160)
+              - serialNumber (format XX/YY)
+              - copyrightYear (from © 20XX on back)
+              - setYearStart, setYearEnd
+              - manufacturer, productLine, sport, category
+              If unknown, omit the field.`,
+            },
+          ],
+        },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              setNumber: { type: Type.STRING },
+              serialNumber: { type: Type.STRING },
+              copyrightYear: { type: Type.NUMBER },
+              setYearStart: { type: Type.NUMBER },
+              setYearEnd: { type: Type.NUMBER },
+              manufacturer: { type: Type.STRING },
+              productLine: { type: Type.STRING },
+              sport: { type: Type.STRING },
+              category: { type: Type.STRING, enum: ["Sports", "TCG", "Non-Sports"] },
+            },
+          },
+        },
+      });
+
+      if (evidenceResponse?.text) {
+        hardEvidence = JSON.parse(evidenceResponse.text) as HardEvidence;
+      }
+    } catch {
+      // Non-critical: keep primary parsed output.
+    }
+
+    const setNumber = normalizeSetNumber(hardEvidence.setNumber ?? parsed.setNumber);
+    const serialNumber = normalizeSerial(hardEvidence.serialNumber ?? parsed.serialNumber);
+    const copyrightYear = hardEvidence.copyrightYear ?? parsed.copyrightYear;
+
+    if (setNumber) parsed.setNumber = setNumber;
+    if (serialNumber) parsed.serialNumber = serialNumber;
+    if (typeof copyrightYear === "number") parsed.copyrightYear = copyrightYear;
+
+    if (!parsed.manufacturer && hardEvidence.manufacturer) parsed.manufacturer = hardEvidence.manufacturer;
+    if (!parsed.productLine && hardEvidence.productLine) parsed.productLine = hardEvidence.productLine;
+    if (!parsed.sport && hardEvidence.sport) parsed.sport = hardEvidence.sport;
+    if (!parsed.category && hardEvidence.category) parsed.category = hardEvidence.category;
+
+    // Deterministic override: when copyright year is visible, use it as set year anchor.
+    if (typeof copyrightYear === "number") {
+      parsed.setYearStart = copyrightYear;
+      parsed.setYearEnd = copyrightYear;
+    }
+
+    // Deterministic set reconstruction for Topps F1 Chrome Legends family.
+    const isF1ToppsChrome =
+      (parsed.sport || "").toLowerCase().includes("formula") &&
+      (parsed.manufacturer || "").toLowerCase().includes("topps") &&
+      ((parsed.productLine || "").toLowerCase().includes("chrome") || parsed.set.toLowerCase().includes("chrome"));
+
+    if (isF1ToppsChrome && typeof parsed.setYearStart === "number") {
+      const line = (parsed.productLine || "Chrome Legends").trim() || "Chrome Legends";
+      parsed.set = `${parsed.setYearStart} Topps ${line} Formula 1`;
     }
 
     res.json(parsed);
@@ -193,6 +282,8 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Identification failed" });
   }
 }
+
+
 
 
 
