@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { User, Card } from '../types';
 import { User as UserIcon, Settings, Grid, Lock, Unlock, Trophy, ShieldCheck, Camera, Loader2, Save, Edit3 } from 'lucide-react';
 import EmptyState from './EmptyState';
@@ -33,7 +33,7 @@ const processImage = (base64Str: string, maxWidth = 1200): Promise<string> => {
 };
 
 const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUpdateProfile, animationClass }) => {
-  const [activeTab, setActiveTab] = useState<'Public' | 'Private'>('Public');
+  const [activeTab, setActiveTab] = useState<'Public' | 'Private' | 'Grails'>('Public');
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState<User>(user);
   const [avatarDraft, setAvatarDraft] = useState<string | null>(null);
@@ -46,6 +46,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
   const publicCards = cards.filter(c => c.isPublic);
   const privateCards = cards.filter(c => !c.isPublic);
   const grailCards = cards.filter(c => c.rarityTier === '1/1');
+  const visibleCards = activeTab === 'Public' ? publicCards : activeTab === 'Private' ? privateCards : grailCards;
 
   const handleImageUpload = async (file: File, setter: (url: string) => void, type: 'avatar' | 'banner') => {
     setIsUploading(true);
@@ -203,7 +204,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                 <Stat icon={<Grid />} label="Total" value={cards.length.toString()} />
                 <Stat icon={<Unlock />} label="Public" value={publicCards.length.toString()} />
                 <Stat icon={<Lock />} label="Private" value={privateCards.length.toString()} />
-                <Stat icon={<Trophy />} label="Grails" value={grailCards.length.toString()} />
+                <Stat icon={<Trophy />} label="Grails" value={grailCards.length.toString()} onClick={() => setActiveTab('Grails')} />
               </div>
             </div>
 
@@ -239,10 +240,11 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
           <div className="flex items-center gap-control border-b border-border-soft pb-control overflow-x-auto no-scrollbar">
              <TabButton active={activeTab === 'Public'} onClick={() => setActiveTab('Public')} icon={<Unlock size={14} />} label="Public Vault" count={publicCards.length} />
              <TabButton active={activeTab === 'Private'} onClick={() => setActiveTab('Private')} icon={<Lock size={14} />} label="Private Stash" count={privateCards.length} />
+             <TabButton active={activeTab === 'Grails'} onClick={() => setActiveTab('Grails')} icon={<Trophy size={14} />} label="Grails" count={grailCards.length} />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-padding">
-            {(activeTab === 'Public' ? publicCards : privateCards).map(card => (
+            {visibleCards.map(card => (
               <div key={card.id} className="group cursor-pointer space-y-control" onClick={() => onEditCard(card)}>
                 <div className="aspect-[3/4] rounded-xl overflow-hidden border border-border-soft bg-surface-base flex items-center justify-center p-control relative img-loading shadow-sm">
                   <img 
@@ -265,14 +267,16 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
               </div>
             ))}
             
-            {(activeTab === 'Public' ? publicCards : privateCards).length === 0 && (
+            {visibleCards.length === 0 && (
               <div className="col-span-full">
                 <EmptyState compact className="mx-1 sm:mx-0" 
-                  icon={activeTab === 'Public' ? <Unlock /> : <Lock />} 
-                  title={activeTab === 'Public' ? "Vault is empty" : "Stash is empty"} 
+                  icon={activeTab === 'Public' ? <Unlock /> : activeTab === 'Private' ? <Lock /> : <Trophy />} 
+                  title={activeTab === 'Public' ? "Vault is empty" : activeTab === 'Private' ? "Stash is empty" : "No grails yet"} 
                   message={activeTab === 'Public' 
                     ? "Your public collection is currently empty. Items you mark as public will appear here." 
-                    : "Your private stash is empty. Secured items are only visible to you."
+                    : activeTab === 'Private'
+                    ? "Your private stash is empty. Secured items are only visible to you."
+                    : "Set a card's rarity to 1/1 to have it appear in Grails."
                   } 
                 />
               </div>
@@ -284,9 +288,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
   );
 };
 
-interface StatProps { icon: React.ReactNode; label: string; value: string | number; }
-const Stat = ({ icon, label, value }: StatProps) => (
-  <div className="p-padding bg-surface-base rounded-xl flex flex-col gap-padding border border-border-soft hover:bg-surface-elevated transition-colors group">
+interface StatProps { icon: React.ReactNode; label: string; value: string | number; onClick?: () => void; }
+const Stat = ({ icon, label, value, onClick }: StatProps) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`p-padding bg-surface-base rounded-xl flex flex-col gap-padding border border-border-soft hover:bg-surface-elevated transition-colors group text-left w-full ${onClick ? 'cursor-pointer active:scale-[0.99]' : 'cursor-default'}`}
+  >
     <div className="text-gold-500 opacity-60 group-hover:opacity-100 transition-opacity flex justify-between">
       {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<{ size?: number }>, { size: 16 }) : icon}
     </div>
@@ -294,7 +302,7 @@ const Stat = ({ icon, label, value }: StatProps) => (
       <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest leading-none block">{label}</span>
       <p className="text-xl font-bold text-ink-primary tracking-tighter tabular leading-none">{value}</p>
     </div>
-  </div>
+  </button>
 );
 
 interface DetailProps { label: string; value: React.ReactNode; }
@@ -335,5 +343,4 @@ const TabButton = ({ active, onClick, icon, label, count }: TabButtonProps) => (
 );
 
 export default ProfileView;
-
 
