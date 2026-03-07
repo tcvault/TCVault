@@ -534,26 +534,84 @@ class CloudStorageService {
   async getCards(userId?: string): Promise<Card[]> {
     const effectiveUserId = userId || await this.getUserId();
     if (effectiveUserId && supabase) {
-      const { data, error } = await supabase.from('cards').select('*').eq('user_id', effectiveUserId).order('created_at', { ascending: false });
-      if (!error && data) {
-        return data.map((item) => ({
+      type CardRow = {
+        id: string;
+        player_name: string;
+        team: string | null;
+        card_specifics: string;
+        set: string;
+        set_number: string | null;
+        condition: string;
+        price_paid: number | string | null;
+        market_value: number | string | null;
+        purchase_date: string | null;
+        serial_number: string | null;
+        cert_number: string | null;
+        images: string[];
+        notes: string | null;
+        created_at: string;
+        page_id: string | null;
+        rarity_tier: Card['rarityTier'];
+        is_public: boolean | null;
+        market_meta: Card['marketMeta'] | null;
+        market_value_locked: boolean | null;
+        set_canonical_key: string | null;
+        set_year_start: number | null;
+        set_year_end: number | null;
+        manufacturer: string | null;
+        product_line: string | null;
+        sport: string | null;
+        category: Card['category'] | null;
+      };
+
+      const rows: CardRow[] = [];
+      const pageSize = 500;
+      let cursorCreatedAt: string | null = null;
+
+      for (;;) {
+        let query = supabase
+          .from('cards')
+          .select('*')
+          .eq('user_id', effectiveUserId)
+          .order('created_at', { ascending: false })
+          .limit(pageSize);
+
+        if (cursorCreatedAt) {
+          query = query.lt('created_at', cursorCreatedAt);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          console.error('Error fetching cards:', error);
+          break;
+        }
+        if (!data || data.length === 0) break;
+
+        rows.push(...(data as CardRow[]));
+
+        if (data.length < pageSize) break;
+        cursorCreatedAt = String(data[data.length - 1].created_at);
+      }
+
+      if (rows.length > 0) {
+        return rows.map((item) => ({
           id: item.id,
           playerName: item.player_name,
-          team: item.team,
+          team: item.team || undefined,
           cardSpecifics: item.card_specifics,
           set: item.set,
-          setNumber: item.set_number,
+          setNumber: item.set_number || undefined,
           condition: item.condition,
           pricePaid: Number(item.price_paid),
           marketValue: Number(item.market_value),
-          purchaseDate: item.purchase_date,
-          serialNumber: item.serial_number,
-          certNumber: item.cert_number,
+          purchaseDate: item.purchase_date || '',
+          serialNumber: item.serial_number || undefined,
+          certNumber: item.cert_number || undefined,
           images: item.images,
-          notes: item.notes,
+          notes: item.notes || undefined,
           createdAt: new Date(item.created_at).getTime(),
           pageId: item.page_id || '',
-          rarityTier: item.rarity_tier as Card['rarityTier'],
+          rarityTier: item.rarity_tier,
           isPublic: item.is_public ?? true,
           marketMeta: item.market_meta || undefined,
           marketValueLocked: item.market_value_locked ?? false,
@@ -815,6 +873,8 @@ class CloudStorageService {
 }
 
 export const vaultStorage = new CloudStorageService();
+
+
 
 
 
