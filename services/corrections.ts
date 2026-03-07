@@ -1,20 +1,21 @@
 /**
  * services/corrections.ts
  *
- * Phase 3 — Correction memory.
- * Writes AI identification events to `ai_identify_corrections` and builds an
- * auto-correct map so repeated corrections are applied automatically on the
- * next scan.
+ * Correction memory:
+ * - Persist AI identify correction events.
+ * - Learn repeated set corrections per user.
+ * - Auto-apply learned corrections on future scans.
  */
 
 import { supabase } from './storage';
 import { Card } from '../types';
 
-// Minimal surface of a suggestion that corrections cares about
 interface CorrectableSuggestion {
   set: string;
+  setDisplay?: string;
   setCanonicalKey: string | null | undefined;
   setYearStart: number | null | undefined;
+  setYearEnd?: number | null | undefined;
   setConfidence?: number | null;
   yearConfidence?: number | null;
   correctedByMemory?: boolean;
@@ -23,14 +24,14 @@ interface CorrectableSuggestion {
 
 type AiSuggestion = CorrectableSuggestion;
 
-// ── Minimum corrections before auto-correct kicks in ─────────────────────────
+interface CorrectionRule {
+  finalSetKey: string;
+  finalSetRaw?: string;
+  finalYear?: number;
+}
+
 const AUTO_CORRECT_THRESHOLD = 2;
 
-// ── writeCorrectionEvent ──────────────────────────────────────────────────────
-/**
- * Fire-and-forget: record one identify event (corrected or confirmed) after
- * a card is successfully saved.
- */
 export async function writeCorrectionEvent(
   userId: string,
   savedCard: Card,
@@ -40,42 +41,36 @@ export async function writeCorrectionEvent(
 
   try {
     const finalSetKey = savedCard.setCanonicalKey ?? null;
-    const aiSetKey    = aiSuggestion.setCanonicalKey ?? null;
+    const aiSetKey = aiSuggestion.setCanonicalKey ?? null;
     const wasCorrected = finalSetKey !== aiSetKey;
 
     await supabase.from('ai_identify_corrections').insert({
-      user_id:         userId,
-      card_id:         savedCard.id,
-      ai_set_raw:      aiSuggestion.set,
-      ai_set_key:      aiSetKey,
-      final_set_raw:   savedCard.set,
-      final_set_key:   finalSetKey,
-      ai_year_raw:     aiSuggestion.setYearStart ?? null,
-      final_year:      savedCard.setYearStart ?? null,
-      set_confidence:  aiSuggestion.setConfidence ?? null,
+      user_id: userId,
+      card_id: savedCard.id,
+      ai_set_raw: aiSuggestion.set,
+      ai_set_key: aiSetKey,
+      final_set_raw: savedCard.set,
+      final_set_key: finalSetKey,
+      ai_year_raw: aiSuggestion.setYearStart ?? null,
+      final_year: savedCard.setYearStart ?? null,
+      set_confidence: aiSuggestion.setConfidence ?? null,
       year_confidence: aiSuggestion.yearConfidence ?? null,
-      was_corrected:   wasCorrected,
+      was_corrected: wasCorrected,
     });
   } catch (err) {
-    // Corrections are non-critical — log but never surface to user
+    // Non-critical telemetry path.
     console.warn('writeCorrectionEvent failed (non-critical):', err);
   }
 }
 
-// ── getCorrectionMap ──────────────────────────────────────────────────────────
-/**
- * Returns a Map<aiSetKey, finalSetKey> for keys where the user has corrected
- * the AI's suggestion at least AUTO_CORRECT_THRESHOLD times to the same
- * final value.
- */
-export async function getCorrectionMap(userId: string): Promise<Map<string, string>> {
-  const result = new Map<string, string>();
+export async function getCorrectionMap(userId: string): Promise<Map<string, CorrectionRule>> {
+  const result = new Map<string, CorrectionRule>();
   if (!supabase) return result;
 
   try {
     const { data, error } = await supabase
       .from('ai_identify_corrections')
-      .select('ai_set_key, final_set_key')
+      .select('ai_set_key, final_set_key, final_set_raw, final_year')
       .eq('user_id', userId)
       .eq('was_corrected', true)
       .not('ai_set_key', 'is', null)
@@ -83,25 +78,47 @@ export async function getCorrectionMap(userId: string): Promise<Map<string, stri
 
     if (error || !data) return result;
 
-    // Count how many times each (ai_set_key -> final_set_key) pair occurred
-    const counts = new Map<string, Map<string, number>>();
+    const counts = new Map<string, Map<string, { count: number; finalSetRaw?: string; finalYear?: number }>>();
+
     for (const row of data) {
-      const ak = row.ai_set_key as string;
-      const fk = row.final_set_key as string;
-      if (!counts.has(ak)) counts.set(ak, new Map());
-      const inner = counts.get(ak)!;
-      inner.set(fk, (inner.get(fk) ?? 0) + 1);
+      const aiKey = row.ai_set_key as string;
+      const finalKey = row.final_set_key as string;
+      const finalSetRaw = typeof row.final_set_raw === 'string' ? row.final_set_raw : undefined;
+      const finalYear = typeof row.final_year === 'number' ? row.final_year : undefined;
+
+      if (!counts.has(aiKey)) counts.set(aiKey, new Map());
+      const targets = counts.get(aiKey)!;
+      const existing = targets.get(finalKey);
+
+      if (existing) {
+        existing.count += 1;
+        if (!existing.finalSetRaw && finalSetRaw) existing.finalSetRaw = finalSetRaw;
+        if (existing.finalYear === undefined && finalYear !== undefined) existing.finalYear = finalYear;
+      } else {
+        const nextBucket: { count: number; finalSetRaw?: string; finalYear?: number } = { count: 1 };
+        if (finalSetRaw) nextBucket.finalSetRaw = finalSetRaw;
+        if (finalYear !== undefined) nextBucket.finalYear = finalYear;
+        targets.set(finalKey, nextBucket);
+      }
     }
 
-    // Only emit pairs that hit the threshold
     for (const [aiKey, targets] of counts.entries()) {
-      let bestTarget = '';
-      let bestCount = 0;
-      for (const [finalKey, count] of targets.entries()) {
-        if (count > bestCount) { bestCount = count; bestTarget = finalKey; }
+      let bestKey = '';
+      let best = { count: 0 } as { count: number; finalSetRaw?: string; finalYear?: number };
+
+      for (const [finalKey, bucket] of targets.entries()) {
+        if (bucket.count > best.count) {
+          bestKey = finalKey;
+          best = bucket;
+        }
       }
-      if (bestCount >= AUTO_CORRECT_THRESHOLD && bestTarget) {
-        result.set(aiKey, bestTarget);
+
+      if (best.count >= AUTO_CORRECT_THRESHOLD && bestKey) {
+        result.set(aiKey, {
+          finalSetKey: bestKey,
+          ...(best.finalSetRaw ? { finalSetRaw: best.finalSetRaw } : {}),
+          ...(best.finalYear !== undefined ? { finalYear: best.finalYear } : {}),
+        });
       }
     }
   } catch (err) {
@@ -111,18 +128,9 @@ export async function getCorrectionMap(userId: string): Promise<Map<string, stri
   return result;
 }
 
-// ── applyAutoCorrect ──────────────────────────────────────────────────────────
-/**
- * If the suggestion's canonical key is in the correction map, patch the set
- * fields to the user's preferred value and attach `correctedByMemory: true`.
- *
- * NOTE: This only patches the *key* — the setDisplay string stays as-is
- * (the correctionMap stores keys, not display strings).  The UI shows a
- * toast when correctedByMemory is true so the user can verify.
- */
 export function applyAutoCorrect(
   suggestion: AiSuggestion,
-  correctionMap: Map<string, string>
+  correctionMap: Map<string, CorrectionRule>
 ): AiSuggestion & { correctedByMemory?: boolean } {
   const key = suggestion.setCanonicalKey;
   const mapped = key ? correctionMap.get(key) : undefined;
@@ -130,7 +138,14 @@ export function applyAutoCorrect(
 
   return {
     ...suggestion,
-    setCanonicalKey: mapped,
+    setCanonicalKey: mapped.finalSetKey,
+    set: mapped.finalSetRaw ?? suggestion.set,
+    setDisplay: mapped.finalSetRaw ?? suggestion.setDisplay ?? suggestion.set,
+    setYearStart: mapped.finalYear ?? suggestion.setYearStart,
+    setYearEnd: mapped.finalYear ?? suggestion.setYearEnd,
     correctedByMemory: true,
   };
 }
+
+
+

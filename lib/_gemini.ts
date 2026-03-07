@@ -11,22 +11,39 @@ export function getAi(): GoogleGenAI {
   return ai;
 }
 
-export async function generateWithRetry(params: any, retries = 2, delay = 1000) {
+type RetryableErrorShape = {
+  status?: unknown;
+  message?: unknown;
+  error?: { code?: unknown };
+};
+
+const getStatusCode = (error: unknown): number => {
+  if (!error || typeof error !== "object") return 0;
+  const shape = error as RetryableErrorShape;
+  if (typeof shape.status === "number") return shape.status;
+  if (typeof shape.error?.code === "number") return shape.error.code;
+  return 0;
+};
+
+const includesStatusCode = (error: unknown, code: number): boolean => {
+  if (!error || typeof error !== "object") return false;
+  const shape = error as RetryableErrorShape;
+  return typeof shape.message === "string" && shape.message.includes(String(code));
+};
+
+export async function generateWithRetry(params: unknown, retries = 2, delay = 1000) {
   const client = getAi();
   let lastError: unknown;
   for (let i = 0; i <= retries; i++) {
     try {
-      return await client.models.generateContent(params);
-    } catch (error: any) {
+      return await client.models.generateContent(params as Parameters<typeof client.models.generateContent>[0]);
+    } catch (error: unknown) {
       lastError = error;
       // Retry on 429 (rate-limit), 500 (Gemini server error), and 503 (overloaded)
-      const statusCode: number =
-        error?.status ?? error?.error?.code ?? 0;
-      const msgIncludes = (n: number) =>
-        typeof error?.message === "string" && error.message.includes(String(n));
+      const statusCode = getStatusCode(error);
       const isRetryable =
         statusCode === 429 || statusCode === 500 || statusCode === 503 ||
-        msgIncludes(429) || msgIncludes(500) || msgIncludes(503);
+        includesStatusCode(error, 429) || includesStatusCode(error, 500) || includesStatusCode(error, 503);
       if (isRetryable && i < retries) {
         await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
         continue;

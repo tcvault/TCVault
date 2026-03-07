@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { User, Card } from '../types';
-import { User as UserIcon, Settings, Grid, Lock, Unlock, MapPin, Trophy, ShieldCheck, Heart, Camera, Loader2, Save, Edit3 } from 'lucide-react';
+import { User as UserIcon, Settings, Grid, Lock, Unlock, Trophy, ShieldCheck, Camera, Loader2, Save, Edit3 } from 'lucide-react';
 import EmptyState from './EmptyState';
 import { vaultStorage } from '../services/storage';
 
@@ -45,6 +45,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
 
   const publicCards = cards.filter(c => c.isPublic);
   const privateCards = cards.filter(c => !c.isPublic);
+  const grailCards = cards.filter(c => c.rarityTier === '1/1');
 
   const handleImageUpload = async (file: File, setter: (url: string) => void, type: 'avatar' | 'banner') => {
     setIsUploading(true);
@@ -78,7 +79,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
   };
 
   return (
-    <div className={`space-y-major ${animationClass || 'animate-in fade-in duration-300'}`}>
+    <div className={`space-y-major px-3 sm:px-0 pb-24 ${animationClass || 'animate-in fade-in duration-300'}`}>
       <div className="relative">
         <div 
           className="h-48 w-full bg-ink-primary rounded-xl overflow-hidden border border-border-soft relative group/banner transition-all duration-700 shadow-2xl"
@@ -145,7 +146,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                   className="bg-surface-base border border-border-soft rounded-xl h-10 px-padding text-sm font-bold italic focus:border-gold-500/40 outline-none transition-all text-ink-primary w-full max-w-sm" 
                   placeholder="Username"
                 />
-                <p className="text-xs font-bold text-ink-tertiary uppercase tracking-widest px-1">Master Collector • London, UK</p>
+                <p className="text-xs font-bold text-ink-tertiary uppercase tracking-widest px-1">Trading Card Collector</p>
               </div>
             ) : (
               <>
@@ -155,7 +156,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                     <ShieldCheck size={20} className="text-gold-500" />
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-ink-tertiary">Master Collector • London, UK</p>
+                <p className="text-sm font-semibold text-ink-tertiary">Trading Card Collector</p>
               </>
             )}
           </div>
@@ -200,9 +201,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
               <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Collector Stats</h3>
               <div className="grid grid-cols-2 gap-control">
                 <Stat icon={<Grid />} label="Total" value={cards.length.toString()} />
-                <Stat icon={<Heart />} label="Likes" value="1.2k" />
-                <Stat icon={<MapPin />} label="Events" value="12" />
-                <Stat icon={<Trophy />} label="Grails" value={cards.filter(c => c.rarityTier === '1/1').length.toString()} />
+                <Stat icon={<Unlock />} label="Public" value={publicCards.length.toString()} />
+                <Stat icon={<Lock />} label="Private" value={privateCards.length.toString()} />
+                <Stat icon={<Trophy />} label="Grails" value={grailCards.length.toString()} />
               </div>
             </div>
 
@@ -266,7 +267,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
             
             {(activeTab === 'Public' ? publicCards : privateCards).length === 0 && (
               <div className="col-span-full">
-                <EmptyState 
+                <EmptyState compact className="mx-1 sm:mx-0" 
                   icon={activeTab === 'Public' ? <Unlock /> : <Lock />} 
                   title={activeTab === 'Public' ? "Vault is empty" : "Stash is empty"} 
                   message={activeTab === 'Public' 
@@ -334,3 +335,5 @@ const TabButton = ({ active, onClick, icon, label, count }: TabButtonProps) => (
 );
 
 export default ProfileView;
+
+

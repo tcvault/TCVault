@@ -173,6 +173,11 @@ function buildSeasonStr(start: number, end: number | null | undefined): string {
   return `${start}-${String(end).slice(-2)}`;
 }
 
+const HIGH_CONFIDENCE_THRESHOLD = 0.85;
+const LOW_CONFIDENCE_THRESHOLD = 0.6;
+
+const isValidPsaCert = (cert?: string): boolean => !!cert && /^\d{6,12}$/.test(cert);
+
 // ── Component ────────────────────────────────────────────────────────────────
 interface CardFormProps {
   onSubmit: (card: Card) => void;
@@ -211,6 +216,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
   const [aiAccepted, setAiAccepted] = useState<Set<string>>(new Set());
   const [aiDismissed, setAiDismissed] = useState<Set<string>>(new Set());
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [requiredConfirmFields, setRequiredConfirmFields] = useState<Set<string>>(new Set());
+  const [isCertFastPath, setIsCertFastPath] = useState(false);
 
   // ── Structured set editor state (Phase 2) ────────────────────────────────
   const [setEditorMode, setSetEditorMode] = useState<'simple' | 'structured'>('simple');
@@ -332,6 +339,29 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
+  const getFieldLabel = (key: string) => AI_FIELD_DEFS.find(def => def.key === key)?.label || key;
+
+  const getFieldConfidence = (key: string, suggestion: AiSuggestion): number => {
+    if (key === 'setDisplay') {
+      return Math.min(suggestion.setConfidence ?? 0.7, suggestion.yearConfidence ?? 0.7);
+    }
+    if (key === 'estimatedValue') return 0.7;
+    if (key === 'condition') {
+      return suggestion.condition?.startsWith('PSA') && isValidPsaCert(suggestion.certNumber) ? 0.95 : 0.8;
+    }
+    if (key === 'serialNumber') return suggestion.serialNumber ? 0.8 : 0.7;
+    return 0.85;
+  };
+
+  const dismissField = (fieldKey: string) => {
+    setAiDismissed(prev => new Set([...prev, fieldKey]));
+    setRequiredConfirmFields(prev => {
+      const next = new Set(prev);
+      next.delete(fieldKey);
+      return next;
+    });
+  };
+
   // ── AI scanner (Phase 1+3 — stores in aiSuggestion, does NOT auto-apply) ─
   const runScanner = async () => {
     if (images.length === 0) return;
@@ -368,21 +398,63 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           // Non-critical — ignore correction map errors
         }
 
+        const required = new Set<string>();
+        const autoAccepted = new Set<string>();
+        let nextForm: Partial<Card> = { ...formData };
+
+        for (const def of AI_FIELD_DEFS) {
+          const value = def.getValue(suggestion);
+          if (value === undefined || value === '') continue;
+
+          const confidence = getFieldConfidence(def.key, suggestion);
+          if (confidence >= HIGH_CONFIDENCE_THRESHOLD) {
+            nextForm = def.apply(suggestion, nextForm);
+            autoAccepted.add(def.key);
+          } else if (confidence < LOW_CONFIDENCE_THRESHOLD) {
+            required.add(def.key);
+          }
+        }
+
+        const certFastPath = suggestion.condition?.startsWith('PSA') && isValidPsaCert(suggestion.certNumber);
+        if (certFastPath) {
+          nextForm = {
+            ...nextForm,
+            condition: suggestion.condition!,
+            certNumber: suggestion.certNumber!,
+          };
+          autoAccepted.add('condition');
+          setIsCertFastPath(true);
+          if (onToast) onToast('PSA cert detected: grade + cert auto-applied', 'success');
+        } else {
+          setIsCertFastPath(false);
+        }
+
+        if (autoAccepted.has('setDisplay')) {
+          setSFields({
+            season: suggestion.setYearStart
+              ? buildSeasonStr(suggestion.setYearStart, suggestion.setYearEnd)
+              : '',
+            manufacturer: suggestion.manufacturer ?? '',
+            productLine: suggestion.productLine ?? '',
+            sport: suggestion.sport ?? '',
+          });
+          setSetEditorMode('structured');
+        }
+
+        setFormData(nextForm);
         setAiSuggestion(suggestion);
-        setAiAccepted(new Set());
+        setAiAccepted(autoAccepted);
         setAiDismissed(new Set());
-        setShowAiPanel(true);
-        setSFields({
-          season: suggestion.setYearStart
-            ? buildSeasonStr(suggestion.setYearStart, suggestion.setYearEnd)
-            : '',
-          manufacturer: suggestion.manufacturer ?? '',
-          productLine: suggestion.productLine ?? '',
-          sport: suggestion.sport ?? '',
-        });
+        setRequiredConfirmFields(required);
+        setShowAiPanel(required.size > 0);
         setHasScanned(true);
-        if (onToast && !suggestion.correctedByMemory) {
-          onToast('AI scan complete — review suggestions below', 'info');
+
+        if (onToast && required.size > 0) {
+          onToast('Review required for low-confidence fields before saving', 'info');
+        } else if (onToast && autoAccepted.size > 0 && !suggestion.correctedByMemory) {
+          onToast(`AI scan complete - auto-applied ${autoAccepted.size} high-confidence fields`, 'success');
+        } else if (onToast && !suggestion.correctedByMemory) {
+          onToast('AI scan complete - review suggestions below', 'info');
         }
       }
     } catch {
@@ -398,6 +470,11 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     if (!aiSuggestion) return;
     setFormData(prev => def.apply(aiSuggestion, prev));
     setAiAccepted(prev => new Set([...prev, def.key]));
+    setRequiredConfirmFields(prev => {
+      const next = new Set(prev);
+      next.delete(def.key);
+      return next;
+    });
     // When accepting the set field, switch to structured mode and sync sFields
     if (def.key === 'setDisplay') {
       setSFields({
@@ -431,6 +508,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     });
     setSetEditorMode('structured');
     setAiAccepted(new Set(AI_FIELD_DEFS.map(d => d.key)));
+    setRequiredConfirmFields(new Set());
     setShowAiPanel(false);
   };
 
@@ -477,6 +555,13 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     e.preventDefault();
     if (!formData.playerName || !formData.set) {
       setError('Identify the card before saving.');
+      return;
+    }
+
+    if (requiredConfirmFields.size > 0) {
+      const requiredLabels = Array.from(requiredConfirmFields).map(getFieldLabel).join(', ');
+      setError(`Confirm low-confidence fields before saving: ${requiredLabels}`);
+      setShowAiPanel(true);
       return;
     }
 
@@ -632,7 +717,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                   <button type="button" onClick={() => setShowAiPanel(p => !p)} className="p-1.5 text-ink-tertiary hover:text-ink-primary rounded transition-colors">
                     {showAiPanel ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </button>
-                  <button type="button" onClick={() => setAiSuggestion(null)} className="p-1.5 text-ink-tertiary hover:text-error rounded transition-colors">
+                  <button type="button" onClick={() => { setAiSuggestion(null); setRequiredConfirmFields(new Set()); setIsCertFastPath(false); }} className="p-1.5 text-ink-tertiary hover:text-error rounded transition-colors">
                     <X size={16} />
                   </button>
                 </div>
@@ -640,10 +725,22 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
 
               {!showAiPanel && (
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-ink-tertiary font-semibold">
-                    {aiAccepted.size} of {AI_FIELD_DEFS.filter(d => d.getValue(aiSuggestion)).length} fields accepted
-                  </p>
-                  <button type="button" onClick={() => setShowAiPanel(true)} className="text-xs text-gold-500 hover:underline font-bold">Review →</button>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-ink-tertiary font-semibold">
+                      {aiAccepted.size} of {AI_FIELD_DEFS.filter(d => d.getValue(aiSuggestion)).length} fields accepted
+                    </p>
+                    {requiredConfirmFields.size > 0 && (
+                      <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                        {requiredConfirmFields.size} field(s) require confirmation before save
+                      </p>
+                    )}
+                    {isCertFastPath && (
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                        Cert fast path applied
+                      </p>
+                    )}
+                  </div>
+                  <button type="button" onClick={() => setShowAiPanel(true)} className="text-xs text-gold-500 hover:underline font-bold">Review</button>
                 </div>
               )}
 
@@ -654,14 +751,17 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                     if (!value && value !== 0) return null;
                     const isAccepted = aiAccepted.has(def.key);
                     const isDismissed = aiDismissed.has(def.key);
-                    const isLow = def.isLowConfidence?.(aiSuggestion);
+                    const confidence = getFieldConfidence(def.key, aiSuggestion);
+                    const isLow = confidence < LOW_CONFIDENCE_THRESHOLD || !!def.isLowConfidence?.(aiSuggestion);
+                    const requiresConfirm = requiredConfirmFields.has(def.key);
                     return (
-                      <div key={def.key} className={`flex items-center gap-control p-control rounded-lg transition-colors ${isAccepted ? 'bg-emerald-500/5 border border-emerald-500/10' : isDismissed ? 'opacity-40 bg-surface-base' : 'bg-surface-base'}`}>
+                      <div key={def.key} className={`flex items-center gap-control p-control rounded-lg transition-colors ${isAccepted ? 'bg-emerald-500/5 border border-emerald-500/10' : requiresConfirm ? 'bg-amber-500/5 border border-amber-500/20' : isDismissed ? 'opacity-40 bg-surface-base' : 'bg-surface-base'}`}>
                         <div className="flex-1 min-w-0">
                           <span className="text-[10px] font-bold text-ink-tertiary uppercase tracking-widest block">{def.label}</span>
                           <div className="flex items-center gap-1 min-w-0">
                             <p className="text-sm font-semibold text-ink-primary truncate">{String(value)}</p>
                             {isLow && <span title="Low AI confidence"><AlertTriangle size={11} className="text-amber-500 shrink-0" /></span>}
+                            {requiresConfirm && <span className="text-[9px] font-bold text-amber-600 uppercase tracking-widest">Confirm</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-0.5 shrink-0">
@@ -674,7 +774,7 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
                               <button type="button" onClick={() => acceptField(def)} title="Accept" className="p-1.5 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors active:scale-90">
                                 <CheckCircle size={15} />
                               </button>
-                              <button type="button" onClick={() => setAiDismissed(prev => new Set([...prev, def.key]))} title="Dismiss" className="p-1.5 text-ink-tertiary hover:bg-error/10 hover:text-error rounded transition-colors active:scale-90">
+                              <button type="button" onClick={() => dismissField(def.key)} title="Dismiss" className="p-1.5 text-ink-tertiary hover:bg-error/10 hover:text-error rounded transition-colors active:scale-90">
                                 <XCircle size={15} />
                               </button>
                             </>
@@ -901,3 +1001,4 @@ const Field = ({ label, value, onChange, icon, type = 'text' }: FieldProps) => (
 );
 
 export default CardForm;
+

@@ -134,10 +134,11 @@ interface NavButtonProps {
 const NavButton = ({ active, onClick, icon, label, trailing }: NavButtonProps) => (
   <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] relative group ${active ? 'bg-surface-elevated text-ink-primary' : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated/50'}`}>
     <div className="flex items-center gap-4">
-      {React.cloneElement(icon, { size: 16, className: active ? 'text-ink-primary' : '' } as any)}
+      {React.cloneElement(icon as React.ReactElement<{ size?: number; className?: string }>, { size: 16, className: active ? 'text-ink-primary' : '' })}
       <span className={`text-sm ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
     </div>
     {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-gold-500 rounded-full" />}
     {trailing}
   </button>
 );
+

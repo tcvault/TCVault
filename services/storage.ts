@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Card, BinderPage, SocialPost, SocialComment, User } from '../types';
+import { Card, BinderPage, SocialPost, SocialComment, User, WantItem, ReleaseThread, ReleaseThreadComment, AppAlert } from '../types';
 import { UserSchema, CardSchema, BinderPageSchema, safeParseJson } from './schemas';
 
 const processEnv = typeof process !== 'undefined' ? process.env : undefined;
@@ -7,11 +7,12 @@ const envUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || processEnv?.SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
-export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
+export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null;
 
 const LOCAL_CARDS_KEY = 'tcvault_local_cards';
 const LOCAL_PAGES_KEY = 'tcvault_local_pages';
 const LOCAL_PROFILE_PREFIX = 'tcvault_profile_';
+const LOCAL_HIDDEN_POSTS_PREFIX = 'tcvault_hidden_posts_';
 
 class CloudStorageService {
   private async getUserId(): Promise<string | null> {
@@ -78,18 +79,19 @@ class CloudStorageService {
     return local ? safeParseJson(local, UserSchema) : null;
   }
 
-  async getPosts(): Promise<SocialPost[]> {
+  async getPosts(options?: { limit?: number; offset?: number }): Promise<SocialPost[]> {
     if (supabase) {
       const { data, error } = await supabase
         .from('social_posts')
         .select('*, profiles(username, avatar_url)')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
       if (error) {
         console.error("Error fetching posts:", error);
         throw error;
       }
       if (data) {
-        return data.map((p: any) => ({
+        return data.map((p) => ({
           ...p,
           userId: p.user_id,
           username: p.profiles?.username || 'Collector',
@@ -153,12 +155,290 @@ class CloudStorageService {
     }
   }
 
+  async getWants(options?: { limit?: number; offset?: number }): Promise<WantItem[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from('wants')
+      .select('*, profiles(username, avatar_url)')
+      .order('created_at', { ascending: false })
+      .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
+
+    if (error) {
+      console.error('Error fetching wants:', error);
+      throw error;
+    }
+
+    return (data || []).map((w) => ({
+      id: w.id,
+      userId: w.user_id,
+      username: w.profiles?.username || 'Collector',
+      userAvatar: w.profiles?.avatar_url || undefined,
+      title: w.title,
+      details: w.details || undefined,
+      setCanonicalKey: w.set_canonical_key || undefined,
+      setDisplay: w.set_display || undefined,
+      targetPriceGbp: w.target_price_gbp !== null && w.target_price_gbp !== undefined ? Number(w.target_price_gbp) : undefined,
+      status: (w.status || 'open') as WantItem['status'],
+      createdAt: new Date(w.created_at).getTime(),
+    }));
+  }
+
+  async saveWant(want: WantItem): Promise<void> {
+    if (!supabase) return;
+    const payload = {
+      id: want.id,
+      user_id: want.userId,
+      title: want.title,
+      details: want.details || null,
+      set_canonical_key: want.setCanonicalKey || null,
+      set_display: want.setDisplay || null,
+      target_price_gbp: want.targetPriceGbp ?? null,
+      status: want.status,
+      created_at: new Date(want.createdAt).toISOString(),
+    };
+
+    const { error } = await supabase.from('wants').upsert(payload);
+    if (error) throw error;
+
+    if (want.status === 'open') {
+      await this.createWantMatchAlerts(want).catch((err) => {
+        console.warn('Want matching failed (non-critical):', err);
+      });
+    }
+  }
+
+  async updateWantStatus(wantId: string, status: WantItem['status']): Promise<void> {
+    if (!supabase) return;
+    const { error } = await supabase.from('wants').update({ status }).eq('id', wantId);
+    if (error) throw error;
+  }
+
+  private async createWantMatchAlerts(want: WantItem): Promise<void> {
+    if (!supabase || !want.setCanonicalKey) return;
+
+    const { data: matches, error: matchError } = await supabase
+      .from('cards')
+      .select('id, user_id, player_name, set')
+      .eq('is_public', true)
+      .eq('set_canonical_key', want.setCanonicalKey)
+      .neq('user_id', want.userId)
+      .limit(50);
+
+    if (matchError || !matches || matches.length === 0) return;
+
+    const seenUsers = new Set<string>();
+    const alerts: Array<{ user_id: string; alert_type: AppAlert['alertType']; payload: Record<string, unknown>; is_read: boolean }> = [];
+    for (const card of matches) {
+      if (!card.user_id || seenUsers.has(card.user_id)) continue;
+      seenUsers.add(card.user_id);
+      alerts.push({
+        user_id: want.userId,
+        alert_type: 'want_match',
+        payload: {
+          wantId: want.id,
+          matchedUserId: card.user_id,
+          matchedCardId: card.id,
+          matchedCardPlayer: card.player_name,
+          matchedCardSet: card.set,
+          wantTitle: want.title,
+        },
+        is_read: false,
+      });
+    }
+
+    if (alerts.length > 0) {
+      const { error } = await supabase.from('alerts').insert(alerts);
+      if (error) throw error;
+    }
+  }
+
+  async getReleaseThreads(options?: { limit?: number; offset?: number }): Promise<ReleaseThread[]> {
+    if (!supabase) return [];
+
+    const { data: threads, error: threadError } = await supabase
+      .from('release_threads')
+      .select('*, profiles(username, avatar_url)')
+      .order('created_at', { ascending: false })
+      .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
+
+    if (threadError) {
+      console.error('Error fetching release threads:', threadError);
+      throw threadError;
+    }
+
+    const threadIds = (threads || []).map((t) => t.id);
+    let comments: Array<{ id: string; thread_id: string; user_id: string; body: string; created_at: string; profiles?: { username: string | null; avatar_url: string | null } | null }> = [];
+    if (threadIds.length > 0) {
+      const { data: commentData, error: commentError } = await supabase
+        .from('thread_comments')
+        .select('*, profiles(username, avatar_url)')
+        .in('thread_id', threadIds)
+        .order('created_at', { ascending: true });
+      if (commentError) {
+        console.error('Error fetching thread comments:', commentError);
+      } else {
+        comments = (commentData || []) as Array<{ id: string; thread_id: string; user_id: string; body: string; created_at: string; profiles?: { username: string | null; avatar_url: string | null } | null }>;
+      }
+    }
+
+    const commentsByThread = new Map<string, ReleaseThreadComment[]>();
+    for (const c of comments) {
+      const mapped: ReleaseThreadComment = {
+        id: c.id,
+        threadId: c.thread_id,
+        userId: c.user_id,
+        username: c.profiles?.username || 'Collector',
+        userAvatar: c.profiles?.avatar_url || undefined,
+        body: c.body,
+        createdAt: new Date(c.created_at).getTime(),
+      };
+      if (!commentsByThread.has(mapped.threadId)) commentsByThread.set(mapped.threadId, []);
+      commentsByThread.get(mapped.threadId)!.push(mapped);
+    }
+
+    return (threads || []).map((t) => {
+      const threadComments = commentsByThread.get(t.id) || [];
+      return {
+        id: t.id,
+        creatorUserId: t.creator_user_id,
+        username: t.profiles?.username || 'Collector',
+        userAvatar: t.profiles?.avatar_url || undefined,
+        title: t.title,
+        body: t.body || undefined,
+        setCanonicalKey: t.set_canonical_key || undefined,
+        setDisplay: t.set_display || undefined,
+        category: (t.category || 'release') as ReleaseThread['category'],
+        createdAt: new Date(t.created_at).getTime(),
+        commentCount: threadComments.length,
+        comments: threadComments,
+      } as ReleaseThread;
+    });
+  }
+
+  async saveReleaseThread(thread: ReleaseThread): Promise<void> {
+    if (!supabase) return;
+    const payload = {
+      id: thread.id,
+      creator_user_id: thread.creatorUserId,
+      title: thread.title,
+      body: thread.body || null,
+      set_canonical_key: thread.setCanonicalKey || null,
+      set_display: thread.setDisplay || null,
+      category: thread.category,
+      created_at: new Date(thread.createdAt).toISOString(),
+    };
+    const { error } = await supabase.from('release_threads').upsert(payload);
+    if (error) throw error;
+  }
+
+  async addReleaseThreadComment(comment: ReleaseThreadComment): Promise<void> {
+    if (!supabase) return;
+    const payload = {
+      id: comment.id,
+      thread_id: comment.threadId,
+      user_id: comment.userId,
+      body: comment.body,
+      created_at: new Date(comment.createdAt).toISOString(),
+    };
+    const { error } = await supabase.from('thread_comments').insert(payload);
+    if (error) throw error;
+
+    const { data: thread } = await supabase
+      .from('release_threads')
+      .select('creator_user_id, title')
+      .eq('id', comment.threadId)
+      .single();
+
+    if (thread?.creator_user_id && thread.creator_user_id !== comment.userId) {
+      await supabase.from('alerts').insert({
+        user_id: thread.creator_user_id,
+        alert_type: 'thread_reply',
+        payload: {
+          threadId: comment.threadId,
+          threadTitle: thread.title,
+          commenterUserId: comment.userId,
+        },
+        is_read: false,
+      });
+    }
+  }
+
+  async getAlerts(options?: { limit?: number; offset?: number }): Promise<AppAlert[]> {
+    const userId = await this.getUserId();
+    if (!userId || !supabase) return [];
+
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 20) - 1));
+
+    if (error) {
+      console.error('Error fetching alerts:', error);
+      return [];
+    }
+
+    return (data || []).map((a) => ({
+      id: a.id,
+      userId: a.user_id,
+      alertType: a.alert_type,
+      payload: a.payload || {},
+      isRead: !!a.is_read,
+      createdAt: new Date(a.created_at).getTime(),
+      readAt: a.read_at ? new Date(a.read_at).getTime() : undefined,
+    }));
+  }
+
+  async markAlertRead(alertId: string): Promise<void> {
+    if (!supabase) return;
+    const { error } = await supabase
+      .from('alerts')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('id', alertId);
+    if (error) throw error;
+  }
+
+  async reportPost(postId: string, reason: string): Promise<void> {
+    const userId = await this.getUserId();
+    if (!supabase || !userId) return;
+
+    const { error } = await supabase.from('post_reports').insert({
+      post_id: postId,
+      reporter_user_id: userId,
+      reason,
+      created_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.warn('Post report failed (non-critical):', error.message);
+    }
+  }
+
+  getHiddenPosts(userId: string): string[] {
+    const raw = localStorage.getItem(`${LOCAL_HIDDEN_POSTS_PREFIX}${userId}`);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  toggleHiddenPost(userId: string, postId: string): string[] {
+    const current = new Set(this.getHiddenPosts(userId));
+    if (current.has(postId)) current.delete(postId); else current.add(postId);
+    const next = Array.from(current);
+    localStorage.setItem(`${LOCAL_HIDDEN_POSTS_PREFIX}${userId}`, JSON.stringify(next));
+    return next;
+  }
   async getCards(userId?: string): Promise<Card[]> {
     const effectiveUserId = userId || await this.getUserId();
     if (effectiveUserId && supabase) {
       const { data, error } = await supabase.from('cards').select('*').eq('user_id', effectiveUserId).order('created_at', { ascending: false });
       if (!error && data) {
-        return data.map((item: any) => ({
+        return data.map((item) => ({
           id: item.id,
           playerName: item.player_name,
           team: item.team,
@@ -175,7 +455,7 @@ class CloudStorageService {
           notes: item.notes,
           createdAt: new Date(item.created_at).getTime(),
           pageId: item.page_id || '',
-          rarityTier: item.rarity_tier as any,
+          rarityTier: item.rarity_tier as Card['rarityTier'],
           isPublic: item.is_public ?? true,
           marketMeta: item.market_meta || undefined,
           marketValueLocked: item.market_value_locked ?? false,
@@ -193,7 +473,7 @@ class CloudStorageService {
     return local ? (safeParseJson(local, CardSchema.array()) ?? []) : [];
   }
 
-  async getPublicCards(): Promise<Card[]> {
+  async getPublicCards(options?: { limit?: number; offset?: number }): Promise<Card[]> {
     if (supabase) {
       // Fetch cards with profile data joined
       const { data, error } = await supabase
@@ -201,10 +481,10 @@ class CloudStorageService {
         .select('*, profiles(username, avatar_url)')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 50) - 1));
 
       if (!error && data) {
-        return data.map((item: any) => ({
+        return data.map((item) => ({
           id: item.id,
           playerName: item.player_name,
           team: item.team,
@@ -220,7 +500,7 @@ class CloudStorageService {
           notes: item.notes,
           createdAt: new Date(item.created_at).getTime(),
           pageId: item.page_id || '',
-          rarityTier: item.rarity_tier as any,
+          rarityTier: item.rarity_tier as Card['rarityTier'],
           isPublic: item.is_public,
           ownerUsername: item.profiles?.username || 'Collector',
           ownerAvatar: item.profiles?.avatar_url,
@@ -248,7 +528,7 @@ class CloudStorageService {
     const createdAt = card.createdAt || Date.now();
 
     if (userId && supabase) {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         id: cardId,
         user_id: userId,
         player_name: card.playerName,
@@ -268,8 +548,8 @@ class CloudStorageService {
         rarity_tier: card.rarityTier,
         is_public: card.isPublic ?? true,
         created_at: new Date(createdAt).toISOString(),
-        market_meta: (card as any).marketMeta ?? null,
-        market_value_locked: (card as any).marketValueLocked ?? false,
+        market_meta: card.marketMeta ?? null,
+        market_value_locked: card.marketValueLocked ?? false,
         set_canonical_key: card.setCanonicalKey ?? null,
         set_year_start: card.setYearStart ?? null,
         set_year_end: card.setYearEnd ?? null,
@@ -327,7 +607,7 @@ class CloudStorageService {
           notes: data.notes,
           createdAt: new Date(data.created_at).getTime(),
           pageId: data.page_id || '',
-          rarityTier: data.rarity_tier as any,
+          rarityTier: data.rarity_tier as Card['rarityTier'],
           isPublic: data.is_public ?? true,
           marketMeta: data.market_meta || undefined,
           marketValueLocked: data.market_value_locked ?? false,
@@ -359,6 +639,32 @@ class CloudStorageService {
     return newCard;
   }
 
+  async saveValuationSnapshot(card: Card): Promise<void> {
+    const userId = await this.getUserId();
+    if (!userId || !supabase || !card.marketMeta) return;
+
+    try {
+      const meta = card.marketMeta;
+      const payload = {
+        card_id: card.id,
+        user_id: userId,
+        value_low_gbp: meta.low,
+        value_mid_gbp: meta.mid,
+        value_high_gbp: meta.high,
+        confidence: meta.confidence,
+        comps_used: meta.compsUsed,
+        source: meta.valuationVersion || 'market_meta',
+        snapshot: meta,
+      };
+
+      const { error } = await supabase.from('valuation_history').insert(payload);
+      if (error) {
+        console.warn('Valuation snapshot save failed (non-critical):', error.message);
+      }
+    } catch (err) {
+      console.warn('Valuation snapshot save failed (non-critical):', err);
+    }
+  }
   async deleteCard(id: string): Promise<void> {
     const userId = await this.getUserId();
     if (userId && supabase) {
@@ -427,6 +733,11 @@ class CloudStorageService {
 }
 
 export const vaultStorage = new CloudStorageService();
+
+
+
+
+
 
 
 

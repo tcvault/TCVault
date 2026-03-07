@@ -127,11 +127,12 @@ const App: React.FC = () => {
       return;
     }
 
+    const client = supabase;
     let isMounted = true;
 
     const startup = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await client.auth.getSession();
         
         if (session?.user && isMounted && !isTerminating.current) {
           const userId = session.user.id;
@@ -180,7 +181,7 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
     
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (isTerminating.current || !isMounted) return;
       
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
@@ -337,7 +338,7 @@ const App: React.FC = () => {
         return;
       }
 
-      const meta = buildMarketMeta(intel);
+      const meta = buildMarketMeta(intel, { ukBias: true });
       if (!meta) {
         addToast("Not enough high-quality comps to value.", "info");
         return;
@@ -345,9 +346,10 @@ const App: React.FC = () => {
 
       const updatedCard: Card = { ...card, marketValue: meta.mid, marketMeta: meta };
       await vaultStorage.saveCard(updatedCard);
+      await vaultStorage.saveValuationSnapshot(updatedCard);
       setCards(prev => prev.map(c => c.id === card.id ? updatedCard : c));
 
-      addToast(`Updated: £${meta.mid} (£${meta.low}–£${meta.high}, ${meta.confidence})`, "success");
+      addToast(`Updated: GBP ${meta.mid} (GBP ${meta.low}-${meta.high}, ${meta.confidence}, ${meta.compsUsed} comps)`, "success");
     } catch {
       addToast("Market refresh failed", "error");
     }
@@ -517,4 +519,6 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { ViewMode, Card, User } from '../types';
 import { Search, TrendingUp, Users, ChevronRight, Globe, User as UserIcon, Loader2, X, ChevronLeft, ChevronRight as ChevronRightIcon, ArrowLeft, Grid, Filter } from 'lucide-react';
 import { vaultStorage } from '../services/storage';
+import EmptyState from './EmptyState';
 
 interface ExploreProps {
   user: User | null;
@@ -132,7 +133,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
   }, [searchTerm, mode, selectedCollector]);
 
   return (
-    <div className={`space-y-major pb-32 ${animationClass || 'animate-in fade-in duration-300'}`}>
+    <div className={`space-y-major px-3 sm:px-0 pb-24 sm:pb-32 ${animationClass || 'animate-in fade-in duration-300'}`}>
       {/* Header with dynamic breadcrumbs/back navigation */}
       <div className="flex items-center justify-between">
         <div className="space-y-control">
@@ -221,7 +222,14 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                     ))
                   )}
                   {activeCollectors.length === 0 && !isLoading && (
-                    <p className="text-xs font-bold text-ink-tertiary uppercase py-8 text-center col-span-full">No contributors discovered yet</p>
+                    <div className="col-span-full">
+                      <EmptyState
+                        compact
+                        icon={<Users />}
+                        title="No collectors yet"
+                        message="Public collector profiles will appear here as activity grows."
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -274,15 +282,15 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                   </div>
                 ))}
                 {filteredCards.length === 0 && (
-                  <div className="col-span-full py-20 bg-surface-elevated rounded-3xl border-dashed border-border-soft flex flex-col items-center justify-center gap-padding text-center">
-                    <div className="p-6 bg-surface-base rounded-full text-ink-tertiary/20">
-                       <Search size={32} />
-                    </div>
-                    <div className="space-y-control">
-                       <p className="text-sm font-bold text-ink-primary uppercase tracking-tighter">No cards found</p>
-                       <p className="text-xs font-semibold text-ink-tertiary max-w-xs">No cards matching your search.</p>
-                    </div>
-                    <button onClick={resetMode} className="btn-secondary h-10 px-6 uppercase text-xs font-bold tracking-widest">Clear Search</button>
+                  <div className="col-span-full">
+                    <EmptyState
+                      compact
+                      icon={<Search />}
+                      title="No cards found"
+                      message="No cards match your current search."
+                      actionLabel="Clear Search"
+                      onAction={resetMode}
+                    />
                   </div>
                 )}
               </div>
@@ -401,7 +409,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                 <Detail label="League/Team" value={selectedCard.team || 'N/A'} />
                 <Detail label="Serial Number" value={selectedCard.serialNumber || 'N/A'} />
                 <Detail label="Condition" value={selectedCard.condition} />
-                <Detail label="Market Value" value={`£${selectedCard.marketValue.toLocaleString()}`} />
+                <Detail label="Market Value" value={`Â£${selectedCard.marketValue.toLocaleString()}`} />
               </div>
 
                <div className="pt-padding border-t border-border-soft space-y-padding">
@@ -442,3 +450,5 @@ const Detail = ({ label, value }: { label: string, value: React.ReactNode }) => 
 );
 
 export default Explore;
+
+

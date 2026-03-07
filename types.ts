@@ -39,6 +39,55 @@ export interface SocialPost {
   comments: SocialComment[];
 }
 
+
+export interface WantItem {
+  id: string;
+  userId: string;
+  username: string;
+  userAvatar?: string | undefined;
+  title: string;
+  details?: string | undefined;
+  setCanonicalKey?: string | undefined;
+  setDisplay?: string | undefined;
+  targetPriceGbp?: number | undefined;
+  status: 'open' | 'fulfilled' | 'archived';
+  createdAt: number;
+}
+
+export interface ReleaseThreadComment {
+  id: string;
+  threadId: string;
+  userId: string;
+  username: string;
+  userAvatar?: string | undefined;
+  body: string;
+  createdAt: number;
+}
+
+export interface ReleaseThread {
+  id: string;
+  creatorUserId: string;
+  username: string;
+  userAvatar?: string | undefined;
+  title: string;
+  body?: string | undefined;
+  setCanonicalKey?: string | undefined;
+  setDisplay?: string | undefined;
+  category: 'release' | 'discussion' | 'event';
+  createdAt: number;
+  commentCount: number;
+  comments: ReleaseThreadComment[];
+}
+
+export interface AppAlert {
+  id: string;
+  userId: string;
+  alertType: 'want_match' | 'price_change' | 'thread_reply' | 'system';
+  payload: Record<string, unknown>;
+  isRead: boolean;
+  createdAt: number;
+  readAt?: number | undefined;
+}
 export interface MarketComp {
   title: string;
   uri: string;
@@ -122,3 +171,4 @@ export enum ViewMode {
 
 export type SortField = 'playerName' | 'purchaseDate' | 'marketValue' | 'pricePaid' | 'setNumber';
 export type SortOrder = 'asc' | 'desc';
+
