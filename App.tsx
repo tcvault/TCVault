@@ -16,7 +16,7 @@ import { MobileNav } from './components/layout/MobileNav';
 import { BinderBottomSheet } from './components/layout/BinderBottomSheet';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { ConfirmModal } from './components/layout/ConfirmModal';
-import { vaultStorage, supabase } from './services/storage';
+import { vaultStorage, supabase, SchemaMismatchError } from './services/storage';
 import { goldGradientStyle } from './styles';
 import { TCLogo } from './components/Branding';
 
@@ -96,7 +96,8 @@ const App: React.FC = () => {
   const loadData = useCallback(async (userId?: string) => {
     try {
       if (!userId) return;
-      
+      await vaultStorage.assertCoreSchema();
+
       const profile = await vaultStorage.getUserProfile(userId);
       if (profile) setCurrentUser(profile);
       
@@ -108,8 +109,11 @@ const App: React.FC = () => {
       setBinders(storedBinders || []);
     } catch (e) {
       console.error("Vault load error:", e);
+      if (e instanceof SchemaMismatchError) {
+        addToast('Database schema is out of date. Run latest migrations.', 'error');
+      }
     }
-  }, []);
+  }, [addToast]);
 
   const resetLocalUiState = useCallback(() => {
     setCurrentUser(null);
@@ -519,6 +523,9 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
+
 
 
 

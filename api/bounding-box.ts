@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
   if (!userId) return;
 
   // Per-user rate limit: 30 bounding-box calls / minute
-  if (!checkRateLimit(userId, "bounding-box", res, 30)) return;
+  if (!(await checkRateLimit(req, userId, "bounding-box", res, 30))) return;
 
   const { imageData } = req.body as { imageData: unknown };
 
@@ -114,6 +114,7 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Bounding box detection failed" });
   }
 }
+
 
 
 

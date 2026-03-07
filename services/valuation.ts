@@ -1,4 +1,29 @@
-import type { MarketIntel } from './gemini';
+interface MarketIntel {
+  sold: Array<{
+    title: string;
+    uri: string;
+    soldDate?: string;
+    price: number;
+    currency: string;
+    shipping?: number;
+    grade?: string;
+    matchConfidence: number;
+    source: string;
+    flags?: string[];
+  }>;
+  active: Array<{
+    title: string;
+    uri: string;
+    price: number;
+    currency: string;
+    shipping?: number;
+    source: string;
+    flags?: string[];
+  }>;
+  notes?: string;
+  fxRateUsed?: string;
+  sources?: { title: string; uri: string }[];
+}
 import type { MarketMeta, MarketComp } from '../types';
 
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
@@ -186,4 +211,5 @@ export function buildMarketMeta(intel: MarketIntel, options?: BuildMarketMetaOpt
     fxNote: intel.fxRateUsed,
   };
 }
+
 

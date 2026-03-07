@@ -223,7 +223,7 @@ export default async function handler(req: any, res: any) {
   if (!userId) return;
 
   // Per-user rate limit: 20 identify calls / minute
-  if (!checkRateLimit(userId, "identify-card", res, 20)) return;
+  if (!(await checkRateLimit(req, userId, "identify-card", res, 20))) return;
 
   const authToken = getBearerToken(req);
 
@@ -391,7 +391,7 @@ export default async function handler(req: any, res: any) {
           manufacturer: parsed.manufacturer ?? null,
           productLine: parsed.productLine ?? null,
           sport: parsed.sport ?? null,
-          category: parsed.category ?? null,
+          category: parsed.category === 'Sports' || parsed.category === 'TCG' || parsed.category === 'Non-Sports' ? parsed.category : null,
         });
 
         if (normalized.setCanonicalKey) {
@@ -535,6 +535,8 @@ export default async function handler(req: any, res: any) {
     res.status(500).json({ error: "Identification failed" });
   }
 }
+
+
 
 
 

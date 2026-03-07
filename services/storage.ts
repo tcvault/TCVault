@@ -1,4 +1,4 @@
-﻿import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User, WantItem, ReleaseThread, ReleaseThreadComment, AppAlert } from '../types';
 import { UserSchema, CardSchema, BinderPageSchema, safeParseJson } from './schemas';
 
@@ -25,7 +25,58 @@ function isMissingRelationError(error: unknown): boolean {
   );
 }
 
+
+export class SchemaMismatchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SchemaMismatchError';
+  }
+}
+
+function isSchemaDriftError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: string; message?: string; details?: string; status?: number };
+  const haystack = [e.code ?? '', e.message ?? '', e.details ?? ''].join(' ').toLowerCase();
+  return isMissingRelationError(error) || e.code === '42703' || haystack.includes('column');
+}
 class CloudStorageService {
+  private coreSchemaCheckPromise: Promise<void> | null = null;
+
+  async assertCoreSchema(): Promise<void> {
+    if (!supabase) return;
+    if (!this.coreSchemaCheckPromise) {
+      this.coreSchemaCheckPromise = this.checkCoreSchema();
+    }
+    await this.coreSchemaCheckPromise;
+  }
+
+  private async checkCoreSchema(): Promise<void> {
+    if (!supabase) return;
+
+    const checks = [
+      {
+        name: 'cards',
+        run: () => supabase
+          .from('cards')
+          .select('id,player_name,card_specifics,set,market_meta,market_value_locked,set_canonical_key,set_year_start,set_year_end,manufacturer,product_line,sport,category')
+          .limit(1),
+      },
+      { name: 'profiles', run: () => supabase.from('profiles').select('id,username').limit(1) },
+      { name: 'pages', run: () => supabase.from('pages').select('id,name').limit(1) },
+      { name: 'social_posts', run: () => supabase.from('social_posts').select('id,user_id').limit(1) },
+    ];
+
+    for (const check of checks) {
+      const { error } = await check.run();
+      if (error && isSchemaDriftError(error)) {
+        throw new SchemaMismatchError('Database schema is out of date (missing ' + check.name + ' structure). Run the latest Supabase migrations before using the app.');
+      }
+      if (error) {
+        throw error;
+      }
+    }
+  }
+
   private async getUserId(): Promise<string | null> {
     if (!supabase) return null;
     const { data: { session } } = await supabase.auth.getSession();
@@ -392,23 +443,13 @@ class CloudStorageService {
       throw error;
     }
 
-    const { data: thread } = await supabase
-      .from('release_threads')
-      .select('creator_user_id, title')
-      .eq('id', comment.threadId)
-      .single();
+    const { error: notifyError } = await supabase.rpc('create_thread_reply_alert', {
+      p_thread_id: comment.threadId,
+      p_commenter_user_id: comment.userId,
+    });
 
-    if (thread?.creator_user_id && thread.creator_user_id !== comment.userId) {
-      await supabase.from('alerts').insert({
-        user_id: thread.creator_user_id,
-        alert_type: 'thread_reply',
-        payload: {
-          threadId: comment.threadId,
-          threadTitle: thread.title,
-          commenterUserId: comment.userId,
-        },
-        is_read: false,
-      });
+    if (notifyError && !isMissingRelationError(notifyError)) {
+      console.warn('thread_reply alert RPC failed (non-critical):', notifyError.message);
     }
   }
 
@@ -585,6 +626,7 @@ class CloudStorageService {
     const createdAt = card.createdAt || Date.now();
 
     if (userId && supabase) {
+      await this.assertCoreSchema();
       const payload: Record<string, unknown> = {
         id: cardId,
         user_id: userId,
@@ -616,31 +658,11 @@ class CloudStorageService {
         category: card.category ?? null,
       };
 
-      let { data, error } = await supabase.from('cards').upsert(payload).select().single();
-      
-      // Handle missing column errors (e.g. if columns were recently added but DB not updated)
-      if (error && (error.code === '42703' || error.message?.includes('column'))) {
-        console.warn("Detected missing column, retrying with minimal payload...", error.message);
-        const minimalPayload = { ...payload };
-        delete minimalPayload.cert_number;
-        delete minimalPayload.rarity_tier;
-        delete minimalPayload.is_public;
-        delete minimalPayload.page_id;
-        delete minimalPayload.market_meta;
-        delete minimalPayload.market_value_locked;
-        delete minimalPayload.set_canonical_key;
-        delete minimalPayload.set_year_start;
-        delete minimalPayload.set_year_end;
-        delete minimalPayload.manufacturer;
-        delete minimalPayload.product_line;
-        delete minimalPayload.sport;
-        delete minimalPayload.category;
-        
-        const retry = await supabase.from('cards').upsert(minimalPayload).select().single();
-        data = retry.data;
-        error = retry.error;
+      const { data, error } = await supabase.from('cards').upsert(payload).select().single();
+
+      if (error && isSchemaDriftError(error)) {
+        throw new SchemaMismatchError('Database schema does not match application expectations. Apply the latest migrations and retry.');
       }
-      
       if (error) {
         console.error("Card save sync error:", error);
         throw error; // Propagate error to UI
@@ -725,6 +747,7 @@ class CloudStorageService {
   async deleteCard(id: string): Promise<void> {
     const userId = await this.getUserId();
     if (userId && supabase) {
+      await this.assertCoreSchema();
       // .eq('user_id', userId) prevents deleting another user's card
       const { error } = await supabase.from('cards').delete().eq('id', id).eq('user_id', userId);
       if (error) {
@@ -753,6 +776,7 @@ class CloudStorageService {
   async createPage(name: string): Promise<BinderPage> {
     const userId = await this.getUserId();
     if (userId && supabase) {
+      await this.assertCoreSchema();
       const { data, error } = await supabase.from('pages').insert({ user_id: userId, name }).select().single();
       
       if (error) {
@@ -777,6 +801,7 @@ class CloudStorageService {
   async deletePage(id: string): Promise<void> {
     const userId = await this.getUserId();
     if (userId && supabase) {
+      await this.assertCoreSchema();
       // .eq('user_id', userId) prevents deleting another user's page
       const { error } = await supabase.from('pages').delete().eq('id', id).eq('user_id', userId);
       if (error) {
@@ -790,6 +815,15 @@ class CloudStorageService {
 }
 
 export const vaultStorage = new CloudStorageService();
+
+
+
+
+
+
+
+
+
 
 
 

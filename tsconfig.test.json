@@ -1,0 +1,19 @@
+{
+    "compilerOptions":  {
+                            "target":  "ES2020",
+                            "module":  "CommonJS",
+                            "moduleResolution":  "Node",
+                            "esModuleInterop":  true,
+                            "strict":  true,
+                            "skipLibCheck":  true,
+                            "outDir":  ".test-dist",
+                            "rootDir":  "."
+                        },
+    "include":  [
+                    "tests/**/*.ts",
+                    "lib/normalizeSet.ts",
+                    "lib/_validate.ts",
+                    "services/valuation.ts",
+                    "types.ts"
+                ]
+}
