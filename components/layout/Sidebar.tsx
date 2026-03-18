@@ -25,7 +25,7 @@ export const Sidebar = ({
   handleLogout
 }: SidebarProps) => {
   return (
-    <div className="p-8 flex flex-col h-full overflow-hidden">
+    <div className="px-4 py-6 flex flex-col h-full overflow-hidden">
       <div className="cursor-pointer mb-2" onClick={() => setView(ViewMode.FEED)}>
         <TCLogoHorizontal className="h-10" />
       </div>
