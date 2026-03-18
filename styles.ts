@@ -1,6 +1,6 @@
 export const goldGradientStyle = {
   background: 'var(--gold-gradient)',
-  boxShadow: '0 8px 24px -4px rgba(212,175,55,0.4)',
+  boxShadow: '0 8px 24px -4px rgba(165, 132, 42, 0.45)',
   color: 'var(--ink-primary)',
 };
 

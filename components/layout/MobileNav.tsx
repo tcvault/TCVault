@@ -22,7 +22,7 @@ export const MobileNav = ({
   goldGradientStyle
 }: MobileNavProps) => {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-elevated border-t border-border-soft flex items-center justify-around px-8 z-[50] shadow-xl">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-elevated flex items-center justify-around px-8 z-[50] shadow-[0_-4px_24px_rgba(0,0,0,0.10),0_-1px_0_rgba(203,185,150,0.6)]">
       <MobileNavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={20} />} label="Corner" />
       <MobileNavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={20} />} label="Explore" />
       {!isGuest ? (
@@ -65,8 +65,17 @@ interface MobileNavButtonProps {
 
 const MobileNavButton = ({ active, onClick, icon, label }: MobileNavButtonProps) => (
   <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all p-2 active:scale-[0.97] relative ${active ? 'text-ink-primary' : 'text-ink-tertiary'}`}>
-    {React.cloneElement(icon as React.ReactElement<{ size?: number }>, { size: 20 })}
-    <span className="text-xs font-bold uppercase tracking-widest leading-none">{label}</span>
-    {active && <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-gold-500 rounded-full" />}
+    {React.cloneElement(icon as React.ReactElement<{ size?: number; className?: string }>, {
+      size: 20,
+      className: active ? 'text-gold-500' : '',
+    })}
+    <span className={`text-xs font-bold uppercase tracking-widest leading-none ${active ? 'text-gold-700' : ''}`}>{label}</span>
+    {/* Gold bar indicator at top of nav */}
+    {active && (
+      <div
+        className="absolute -top-[1px] left-1/2 -translate-x-1/2 h-[2px] w-8 rounded-full"
+        style={{ background: 'var(--gold-gradient)' }}
+      />
+    )}
   </button>
 );

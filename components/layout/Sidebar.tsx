@@ -1,8 +1,7 @@
 import React from 'react';
 import { Rss, Compass, LayoutDashboard as DashboardIcon, Layers as BinderIcon, ChevronDown, PlusCircle, User as UserIcon, Power } from 'lucide-react';
 import { ViewMode, User, BinderPage } from '../../types';
-import { TCLogo } from '../Branding';
-import { goldTextStyle } from '../../styles';
+import { TCLogoHorizontal } from '../Branding';
 
 interface SidebarProps {
   view: ViewMode;
@@ -27,17 +26,8 @@ export const Sidebar = ({
 }: SidebarProps) => {
   return (
     <div className="p-8 flex flex-col h-full overflow-hidden">
-      <div className="flex items-center gap-3 cursor-pointer mb-2" onClick={() => setView(ViewMode.FEED)}>
-        <TCLogo className="w-10 h-10 shrink-0" />
-        <div>
-          <p className="text-sm font-bold tracking-tighter leading-none">
-            <span style={goldTextStyle}>TC</span>
-            <span className="text-ink-primary ml-1">Vault</span>
-          </p>
-          <p style={goldTextStyle} className="text-xs font-semibold tracking-widest leading-none mt-0.5">
-            Collectors Community
-          </p>
-        </div>
+      <div className="cursor-pointer mb-2" onClick={() => setView(ViewMode.FEED)}>
+        <TCLogoHorizontal className="h-10" />
       </div>
 
       <nav className="space-y-major flex-1 overflow-y-auto no-scrollbar mt-12 pb-8">
@@ -132,12 +122,32 @@ interface NavButtonProps {
 }
 
 const NavButton = ({ active, onClick, icon, label, trailing }: NavButtonProps) => (
-  <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] relative group ${active ? 'bg-surface-elevated text-ink-primary' : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated/50'}`}>
+  <button
+    onClick={onClick}
+    className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all duration-150 active:scale-[0.97] relative group ${
+      active
+        ? 'text-ink-primary'
+        : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated/50'
+    }`}
+    style={active ? {
+      background: 'rgba(199, 165, 75, 0.10)',
+      border: '1px solid rgba(199, 165, 75, 0.18)',
+    } : undefined}
+  >
     <div className="flex items-center gap-4">
-      {React.cloneElement(icon as React.ReactElement<{ size?: number; className?: string }>, { size: 16, className: active ? 'text-ink-primary' : '' })}
+      {React.cloneElement(icon as React.ReactElement<{ size?: number; className?: string }>, {
+        size: 16,
+        className: active ? 'text-gold-500' : '',
+      })}
       <span className={`text-sm ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
     </div>
-    {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-gold-500 rounded-full" />}
+    {/* Gold left indicator bar */}
+    {active && (
+      <div
+        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full"
+        style={{ background: 'var(--gold-gradient)' }}
+      />
+    )}
     {trailing}
   </button>
 );
