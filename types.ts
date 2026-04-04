@@ -1,17 +1,17 @@
 export interface User {
   id: string;
   username: string;
-  avatar?: string | undefined;
-  bio?: string | undefined;
-  favClub?: string | undefined;
-  favPlayer?: string | undefined;
-  bannerUrl?: string | undefined;
+  avatar?: string;
+  bio?: string;
+  favClub?: string;
+  favPlayer?: string;
+  bannerUrl?: string; // New: Custom profile banner
 }
 
 export interface BinderPage {
   id: string;
   name: string;
-  description?: string | undefined;
+  description?: string;
 }
 
 export type PostTag = 'Pickup' | 'PC Update' | 'Show Coverage' | 'General';
@@ -20,8 +20,22 @@ export interface SocialComment {
   id: string;
   userId: string;
   username: string;
-  userAvatar?: string | undefined;
+  userAvatar?: string;
   content: string;
+  createdAt: number;
+}
+
+export type NotificationType = 'like' | 'comment';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  postId: string;
+  fromUserId: string;
+  fromUsername: string;
+  content?: string;
+  isRead: boolean;
   createdAt: number;
 }
 
@@ -29,125 +43,69 @@ export interface SocialPost {
   id: string;
   userId: string;
   username: string;
-  userAvatar?: string | undefined;
+  userAvatar?: string;
   content: string;
   tag: PostTag;
-  imageUrl?: string | undefined;
-  likes: string[];
+  imageUrl?: string;
+  likes: string[]; // array of user IDs
   createdAt: number;
   commentCount: number;
   comments: SocialComment[];
 }
 
-
-export interface WantItem {
-  id: string;
-  userId: string;
-  username: string;
-  userAvatar?: string | undefined;
-  title: string;
-  details?: string | undefined;
-  setCanonicalKey?: string | undefined;
-  setDisplay?: string | undefined;
-  targetPriceGbp?: number | undefined;
-  status: 'open' | 'fulfilled' | 'archived';
-  createdAt: number;
-}
-
-export interface ReleaseThreadComment {
-  id: string;
-  threadId: string;
-  userId: string;
-  username: string;
-  userAvatar?: string | undefined;
-  body: string;
-  createdAt: number;
-}
-
-export interface ReleaseThread {
-  id: string;
-  creatorUserId: string;
-  username: string;
-  userAvatar?: string | undefined;
-  title: string;
-  body?: string | undefined;
-  setCanonicalKey?: string | undefined;
-  setDisplay?: string | undefined;
-  category: 'release' | 'discussion' | 'event';
-  createdAt: number;
-  commentCount: number;
-  comments: ReleaseThreadComment[];
-}
-
-export interface AppAlert {
-  id: string;
-  userId: string;
-  alertType: 'want_match' | 'price_change' | 'thread_reply' | 'system';
-  payload: Record<string, unknown>;
-  isRead: boolean;
-  createdAt: number;
-  readAt?: number | undefined;
-}
 export interface MarketComp {
   title: string;
   uri: string;
-  soldDate?: string | undefined;
-  priceGbp: number;
-  shippingGbp?: number | undefined;
+  soldDate?: string;         // ISO
+  priceGbp: number;          // normalized GBP
+  shippingGbp?: number;
   source: 'eBay' | 'PWCC' | 'Goldin' | 'MySlabs' | 'COMC' | 'Other';
-  matchConfidence: number;
-  grade?: string | undefined;
-  flags?: string[] | undefined;
+  matchConfidence: number;   // 0..1
+  grade?: string;            // "PSA 10", "BGS 9.5", "RAW NM"
+  flags?: string[];          // ["lot", "damaged", "unknownParallel"]
 }
 
 export interface MarketMeta {
-  valuationVersion: string;
-  updatedAt: number;
+  valuationVersion: string;  // "v1"
+  updatedAt: number;         // epoch ms
   compsUsed: number;
-  liquidity30d?: number | undefined;
+  liquidity30d?: number;     // sold count in last 30d
   confidence: 'low' | 'medium' | 'high';
-  low: number;
-  mid: number;
-  high: number;
-  spreadPct?: number | undefined;
-  summary?: string | undefined;
-  sources?: { title: string; uri: string }[] | undefined;
-  comps?: MarketComp[] | undefined;
-  fxNote?: string | undefined;
+  low: number;               // quick-sale
+  mid: number;               // fair
+  high: number;              // premium
+  spreadPct?: number;        // active-vs-sold signal
+  summary?: string;
+  sources?: { title: string; uri: string }[];
+  comps?: MarketComp[];      // keep last N (e.g. 12)
+  fxNote?: string;
 }
 
 export interface Card {
   id: string;
   playerName: string;
-  team?: string | undefined;
+  team?: string;
   cardSpecifics: string;
   set: string;
-  setNumber?: string | undefined;
+  setNumber?: string;
   condition: string;
   pricePaid: number;
   marketValue: number;
   purchaseDate: string;
-  serialNumber?: string | undefined;
-  certNumber?: string | undefined;
+  serialNumber?: string;
+  certNumber?: string;
   images: string[];
-  notes?: string | undefined;
+  notes?: string;
   createdAt: number;
-  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1' | undefined;
-  isWishlist?: boolean | undefined;
-  pageId?: string | undefined;
-  isPublic: boolean;
-  ownerUsername?: string | undefined;
-  ownerAvatar?: string | undefined;
-  ownerId?: string | undefined;
-  marketMeta?: MarketMeta | undefined;
-  marketValueLocked?: boolean | undefined;
-  setCanonicalKey?: string | undefined;
-  setYearStart?: number | undefined;
-  setYearEnd?: number | undefined;
-  manufacturer?: string | undefined;
-  productLine?: string | undefined;
-  sport?: string | undefined;
-  category?: 'Sports' | 'TCG' | 'Non-Sports' | undefined;
+  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1';
+  isWishlist?: boolean;
+  pageId?: string;
+  isPublic: boolean; // New: Social visibility
+  ownerUsername?: string; // New: Display name of the collector
+  ownerAvatar?: string; // New: Avatar of the collector
+  ownerId?: string; // New: ID to filter by collector
+  marketMeta?: MarketMeta;
+  marketValueLocked?: boolean; // manual override protection
 }
 
 export interface CollectionStats {
@@ -156,7 +114,7 @@ export interface CollectionStats {
   totalMarketValue: number;
   valueGrowth: number;
   topSet: string;
-  dailyChange?: number | undefined;
+  dailyChange?: number;
 }
 
 export enum ViewMode {
@@ -166,30 +124,9 @@ export enum ViewMode {
   INVENTORY = 'INVENTORY',
   ADD_CARD = 'ADD_CARD',
   PROFILE = 'PROFILE',
-  SETTINGS = 'SETTINGS'
+  SETTINGS = 'SETTINGS',
+  NOTIFICATIONS = 'NOTIFICATIONS'
 }
 
-export type SortField = 'playerName' | 'purchaseDate' | 'marketValue' | 'pricePaid' | 'setNumber';
+export type SortField = 'playerName' | 'purchaseDate' | 'marketValue' | 'pricePaid';
 export type SortOrder = 'asc' | 'desc';
-
-
-export interface SetParallelReference {
-  id: string;
-  userId: string;
-  setCanonicalKey: string;
-  setDisplay?: string | undefined;
-  manufacturer?: string | undefined;
-  productLine?: string | undefined;
-  sport?: string | undefined;
-  category?: 'Sports' | 'TCG' | 'Non-Sports' | undefined;
-  parallelName: string;
-  serialFormat?: string | undefined;
-  rarityTier?: 'Base' | 'Parallel' | 'Chase' | '1/1' | undefined;
-  printRun?: number | undefined;
-  notes?: string | undefined;
-  sourceUrl: string;
-  sourceLabel?: string | undefined;
-  personalUseOnly: boolean;
-  createdAt: number;
-  updatedAt: number;
-}

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ViewMode, Card, User } from '../types';
 import { Search, TrendingUp, Users, ChevronRight, Globe, User as UserIcon, Loader2, X, ChevronLeft, ChevronRight as ChevronRightIcon, ArrowLeft, Grid, Filter } from 'lucide-react';
 import { vaultStorage } from '../services/storage';
-import EmptyState from './EmptyState';
 
 interface ExploreProps {
   user: User | null;
@@ -89,7 +88,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
     const collectorsMap = new Map<string, { id: string; username: string; avatar?: string }>();
     publicCards.forEach(c => {
       if (c.ownerId && c.ownerUsername) {
-        collectorsMap.set(c.ownerId, { id: c.ownerId, username: c.ownerUsername, ...(c.ownerAvatar !== undefined ? { avatar: c.ownerAvatar } : {}) });
+        collectorsMap.set(c.ownerId, { id: c.ownerId, username: c.ownerUsername, avatar: c.ownerAvatar });
       }
     });
     return Array.from(collectorsMap.values()).slice(0, 8);
@@ -133,7 +132,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
   }, [searchTerm, mode, selectedCollector]);
 
   return (
-    <div className={`space-y-major px-3 sm:px-0 pb-24 sm:pb-32 ${animationClass || 'animate-in fade-in duration-300'}`}>
+    <div className={`space-y-major pb-32 ${animationClass || 'animate-in fade-in duration-300'}`}>
       {/* Header with dynamic breadcrumbs/back navigation */}
       <div className="flex items-center justify-between">
         <div className="space-y-control">
@@ -161,7 +160,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
         
         {mode !== 'Discovery' && (
           <button onClick={resetMode} className="btn-secondary px-4 text-xs font-bold uppercase tracking-widest">
-            Clear Search
+            Reset Archive
           </button>
         )}
       </div>
@@ -197,7 +196,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-control">
                     <Users size={20} className="text-gold-500" />
-                    <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Active Collectors</h3>
+                    <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Verified Collectors</h3>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-control">
@@ -215,21 +214,14 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                         </div>
                         <div className="flex-1">
                           <h4 className="text-sm font-bold text-ink-primary group-hover:text-gold-500 transition-colors">@{collector.username}</h4>
-                          <p className="text-xs text-ink-tertiary font-semibold uppercase tracking-widest">Collector</p>
+                          <p className="text-xs text-ink-tertiary font-semibold uppercase tracking-widest">Archive Contributor</p>
                         </div>
                         <ChevronRight size={16} className="text-ink-tertiary/40 group-hover:text-ink-primary transition-colors" />
                       </div>
                     ))
                   )}
                   {activeCollectors.length === 0 && !isLoading && (
-                    <div className="col-span-full">
-                      <EmptyState
-                        compact
-                        icon={<Users />}
-                        title="No collectors yet"
-                        message="Public collector profiles will appear here as activity grows."
-                      />
-                    </div>
+                    <p className="text-xs font-bold text-ink-tertiary uppercase py-8 text-center col-span-full">No contributors discovered yet</p>
                   )}
                 </div>
               </div>
@@ -269,11 +261,17 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                     }}
                   >
                     <div className="w-full h-full bg-surface-base rounded-lg overflow-hidden relative img-loading shadow-inner">
-                      <img 
-                        src={card.images[0]} 
-                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" 
-                        onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} 
-                      />
+                      {card.images?.[0] ? (
+                        <img 
+                          src={card.images[0]} 
+                          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" 
+                          onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} 
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-ink-tertiary/20">
+                          <Globe size={48} />
+                        </div>
+                      )}
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink-primary/90 via-ink-primary/40 to-transparent p-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
                         <p className="text-xs font-bold text-gold-500 uppercase tracking-widest leading-none mb-1">{card.playerName}</p>
                         <p className="text-xs font-semibold text-ink-on-dark/60 uppercase tracking-widest truncate">@{card.ownerUsername}</p>
@@ -282,15 +280,15 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                   </div>
                 ))}
                 {filteredCards.length === 0 && (
-                  <div className="col-span-full">
-                    <EmptyState
-                      compact
-                      icon={<Search />}
-                      title="No cards found"
-                      message="No cards match your current search."
-                      actionLabel="Clear Search"
-                      onAction={resetMode}
-                    />
+                  <div className="col-span-full py-20 bg-surface-elevated rounded-3xl border-dashed border-border-soft flex flex-col items-center justify-center gap-padding text-center">
+                    <div className="p-6 bg-surface-base rounded-full text-ink-tertiary/20">
+                       <Search size={32} />
+                    </div>
+                    <div className="space-y-control">
+                       <p className="text-sm font-bold text-ink-primary uppercase tracking-tighter">Archive connection failed</p>
+                       <p className="text-xs font-semibold text-ink-tertiary max-w-xs">No assets matching your query were found in this sector of the vault.</p>
+                    </div>
+                    <button onClick={resetMode} className="btn-secondary h-10 px-6 uppercase text-xs font-bold tracking-widest">Clear Archive View</button>
                   </div>
                 )}
               </div>
@@ -322,11 +320,11 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
             <div className="space-y-padding pt-padding border-t border-border-soft">
               <div className="flex items-center gap-control">
                 <Filter size={18} className="text-ink-tertiary" />
-                <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Community Stats</h3>
+                <h3 className="text-micro font-bold text-ink-tertiary uppercase tracking-widest">Vault Analytics</h3>
               </div>
               <div className="grid grid-cols-2 gap-padding">
                  <div className="space-y-control">
-                    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Public Cards</span>
+                    <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Global Assets</span>
                     <p className="text-xl font-bold text-ink-primary tabular leading-none">{publicCards.length}</p>
                  </div>
                  <div className="space-y-control">
@@ -340,7 +338,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
               <div className="pt-padding border-t border-border-soft space-y-padding">
                  <h4 className="text-xs font-bold text-gold-500 uppercase tracking-widest italic">Join the network</h4>
                  <p className="text-[11px] font-medium text-ink-tertiary leading-relaxed">
-                   Create your profile and start sharing your collection with the community.
+                   Secure your vault and start contributing to the global archive of high-end assets.
                  </p>
                  <button onClick={() => onNavigate(ViewMode.SETTINGS)} className="w-full btn-primary h-12 text-xs tracking-widest">Create Profile</button>
               </div>
@@ -359,12 +357,19 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
 
             <div className="flex-[1.8] bg-ink-primary/5 p-12 flex items-center justify-center relative min-h-[500px] border-r border-border-soft">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_0%,transparent_100%)] pointer-events-none"></div>
-              <img 
-                src={selectedCard.images[currentImageIndex]} 
-                className="w-full h-full object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700 select-none z-10" 
-                alt={selectedCard.playerName} 
-              />
-              {selectedCard.images.length > 1 && (
+              {selectedCard.images?.[currentImageIndex] ? (
+                <img 
+                  src={selectedCard.images[currentImageIndex]} 
+                  className="w-full h-full object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700 select-none z-10" 
+                  alt={selectedCard.playerName} 
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-4 text-ink-tertiary/20">
+                   <Globe size={64} />
+                   <span className="text-xs font-bold uppercase tracking-widest">Image missing</span>
+                </div>
+              )}
+              {selectedCard.images && selectedCard.images.length > 1 && (
                 <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 z-[220]">
                   <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(p => (p === 0 ? selectedCard.images.length - 1 : p - 1)); }} className="p-4 bg-ink-primary/60 rounded-full text-white hover:bg-gold-500 transition-all active:scale-90 shadow-xl border border-white/10">
                     <ChevronLeft size={24} />
@@ -383,10 +388,10 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                    <div className="w-10 h-10 rounded-full bg-surface-base flex items-center justify-center border border-border-soft overflow-hidden">
                       {selectedCard.ownerAvatar ? <img src={selectedCard.ownerAvatar} className="w-full h-full object-cover" /> : <UserIcon size={18} className="text-ink-tertiary" />}
                    </div>
-                   <div
+                   <div 
                     onClick={() => {
                       if (selectedCard.ownerId && selectedCard.ownerUsername) {
-                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, ...(selectedCard.ownerAvatar !== undefined ? { avatar: selectedCard.ownerAvatar } : {}) });
+                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, avatar: selectedCard.ownerAvatar });
                         setSelectedCard(null);
                       }
                     }}
@@ -402,36 +407,36 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
               <div className="space-y-control">
                 <span className="text-xs font-bold text-gold-500 uppercase tracking-widest bg-gold-500/10 px-3 py-1 rounded-full border border-gold-500/20">{selectedCard.rarityTier || 'Vault Asset'}</span>
                 <h2 className="text-4xl font-bold text-ink-primary tracking-tighter leading-none italic">{selectedCard.playerName}</h2>
-                <p className="text-sm font-bold text-ink-tertiary">Set: {selectedCard.set}</p>
+                <p className="text-sm font-bold text-ink-tertiary">Archive Ref: {selectedCard.set}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-section pt-4">
                 <Detail label="League/Team" value={selectedCard.team || 'N/A'} />
                 <Detail label="Serial Number" value={selectedCard.serialNumber || 'N/A'} />
-                <Detail label="Condition" value={selectedCard.condition} />
-                <Detail label="Market Value" value={`£${selectedCard.marketValue.toLocaleString()}`} />
+                <Detail label="Archive Grade" value={selectedCard.condition} />
+                <Detail label="Spec Value" value={`£${selectedCard.marketValue.toLocaleString()}`} />
               </div>
 
                <div className="pt-padding border-t border-border-soft space-y-padding">
                 <div className="space-y-control">
-                   <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest block">Collector Notes</span>
+                   <span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest block">Collector Intelligence</span>
                    <p className="text-xs font-medium text-ink-tertiary leading-relaxed italic">
-                     {selectedCard.notes || "No notes added for this card."}
+                     {selectedCard.notes || "No additional intelligence provided for this specific asset."}
                    </p>
                 </div>
                 <div className="flex flex-col gap-control">
-                  <button
+                  <button 
                     onClick={() => {
                       if (selectedCard.ownerId && selectedCard.ownerUsername) {
-                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, ...(selectedCard.ownerAvatar !== undefined ? { avatar: selectedCard.ownerAvatar } : {}) });
+                        handleCollectorClick({ id: selectedCard.ownerId, username: selectedCard.ownerUsername, avatar: selectedCard.ownerAvatar });
                         setSelectedCard(null);
                       }
                     }}
                     className="w-full btn-primary h-14 text-xs tracking-widest shadow-xl"
                   >
-                    Browse @{selectedCard.ownerUsername}'s Collection
+                    Enter @{selectedCard.ownerUsername}'s Vault
                   </button>
-                  <button onClick={() => setSelectedCard(null)} className="w-full btn-secondary h-14 text-xs tracking-widest">Back to Explore</button>
+                  <button onClick={() => setSelectedCard(null)} className="w-full btn-secondary h-14 text-xs tracking-widest">Return to Archive</button>
                 </div>
               </div>
             </div>
@@ -450,5 +455,3 @@ const Detail = ({ label, value }: { label: string, value: React.ReactNode }) => 
 );
 
 export default Explore;
-
-

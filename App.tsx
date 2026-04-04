@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { getMarketIntel } from './services/gemini';
 import { buildMarketMeta } from './services/valuation';
-import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost } from './types';
-import { UserSchema, safeParseJson } from './services/schemas';
+import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost, Notification } from './types';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import CardForm from './components/CardForm';
@@ -11,12 +9,13 @@ import Auth from './components/Auth';
 import Feed from './components/Feed';
 import Explore from './components/Explore';
 import ProfileView from './components/ProfileView';
+import NotificationsView from './components/NotificationsView';
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileNav } from './components/layout/MobileNav';
 import { BinderBottomSheet } from './components/layout/BinderBottomSheet';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { ConfirmModal } from './components/layout/ConfirmModal';
-import { vaultStorage, supabase, SchemaMismatchError } from './services/storage';
+import { vaultStorage, supabase } from './services/storage';
 import { goldGradientStyle } from './styles';
 import { TCLogo } from './components/Branding';
 
@@ -29,11 +28,12 @@ interface Toast {
 }
 
 function usePrevious<T>(value: T): T | undefined {
-  const [previous, setPrevious] = useState<T | undefined>(undefined);
+  const ref = useRef<T>(undefined);
   useEffect(() => {
-    setPrevious(value);
+    ref.current = value;
   }, [value]);
-  return previous;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return ref.current;
 }
 
 const App: React.FC = () => {
@@ -49,6 +49,7 @@ const App: React.FC = () => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showBinderSheet, setShowBinderSheet] = useState(false);
   const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
     title: string;
@@ -96,29 +97,28 @@ const App: React.FC = () => {
   const loadData = useCallback(async (userId?: string) => {
     try {
       if (!userId) return;
-      await vaultStorage.assertCoreSchema();
-
+      
       const profile = await vaultStorage.getUserProfile(userId);
       if (profile) setCurrentUser(profile);
       
-      const [storedCards, storedBinders] = await Promise.all([
+      const [storedCards, storedBinders, storedNotifications] = await Promise.all([
         vaultStorage.getCards(userId),
-        vaultStorage.getPages(userId)
+        vaultStorage.getPages(userId),
+        vaultStorage.getNotifications(userId)
       ]);
       setCards(storedCards || []);
       setBinders(storedBinders || []);
+      setNotifications(storedNotifications || []);
     } catch (e) {
       console.error("Vault load error:", e);
-      if (e instanceof SchemaMismatchError) {
-        addToast('Database schema is out of date. Run latest migrations.', 'error');
-      }
     }
-  }, [addToast]);
+  }, []);
 
   const resetLocalUiState = useCallback(() => {
     setCurrentUser(null);
     setCards([]);
     setBinders([]);
+    setNotifications([]);
     setEditingCard(null);
     setSelectedBinderId('all');
     setGlobalSearch('');
@@ -131,12 +131,11 @@ const App: React.FC = () => {
       return;
     }
 
-    const client = supabase;
     let isMounted = true;
 
     const startup = async () => {
       try {
-        const { data: { session } } = await client.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user && isMounted && !isTerminating.current) {
           const userId = session.user.id;
@@ -153,13 +152,9 @@ const App: React.FC = () => {
           const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
           if (savedSession) {
             try {
-              const userObj = safeParseJson(savedSession, UserSchema);
-              if (userObj) {
-                setCurrentUser(userObj);
-                await loadData(userObj.id);
-              } else {
-                localStorage.removeItem(STORAGE_SESSION_KEY);
-              }
+              const userObj = JSON.parse(savedSession);
+              setCurrentUser(userObj);
+              await loadData(userObj.id);
             } catch {
               localStorage.removeItem(STORAGE_SESSION_KEY);
             }
@@ -174,6 +169,34 @@ const App: React.FC = () => {
 
     startup();
     
+    // Realtime Notifications Subscription
+    let notificationChannel: any = null;
+    if (supabase && currentUser) {
+      notificationChannel = supabase
+        .channel('public:notifications')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${currentUser.id}`
+        }, (payload: any) => {
+          const newNotif: Notification = {
+            id: payload.new.id,
+            userId: payload.new.user_id,
+            type: payload.new.type,
+            postId: payload.new.post_id,
+            fromUserId: payload.new.from_user_id,
+            fromUsername: payload.new.from_username,
+            content: payload.new.content,
+            isRead: payload.new.is_read,
+            createdAt: new Date(payload.new.created_at).getTime()
+          };
+          setNotifications(prev => [newNotif, ...prev]);
+          addToast(`New ${newNotif.type} from ${newNotif.fromUsername}`, 'info');
+        })
+        .subscribe();
+    }
+    
     // Check for shared post URL
     const params = new URLSearchParams(window.location.search);
     const postId = params.get('post');
@@ -185,7 +208,7 @@ const App: React.FC = () => {
       window.history.replaceState({}, '', newUrl);
     }
     
-    const { data: { subscription } } = client.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (isTerminating.current || !isMounted) return;
       
       if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
@@ -202,8 +225,9 @@ const App: React.FC = () => {
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      if (notificationChannel) supabase.removeChannel(notificationChannel);
     };
-  }, [loadData, resetLocalUiState]);
+  }, [loadData, resetLocalUiState, currentUser, addToast]);
 
   const stats = useMemo<CollectionStats>(() => {
     const totalSpent = cards.reduce((sum, c) => sum + (Number(c.pricePaid) || 0), 0);
@@ -218,8 +242,8 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     setConfirmState({
       isOpen: true,
-      title: 'Sign Out?',
-      message: 'Are you sure you want to sign out?',
+      title: 'Seal Vault?',
+      message: 'Are you sure you want to sign out of your collector profile?',
       onConfirm: async () => {
         try {
           if (supabase) {
@@ -255,7 +279,7 @@ const App: React.FC = () => {
       });
       setEditingCard(null);
       setView(ViewMode.INVENTORY);
-      addToast(isUpdate ? "Card updated" : "Card saved");
+      addToast(isUpdate ? "Record updated" : "Card stashed");
       if (currentUser) loadData(currentUser.id);
     } catch {
       addToast("Save failed", "error");
@@ -289,7 +313,7 @@ const App: React.FC = () => {
     try {
       await vaultStorage.saveUserProfile(updatedUser);
       setCurrentUser(updatedUser);
-      addToast("Profile updated", "success");
+      addToast("Collector identity updated", "success");
     } catch {
       addToast("Profile update failed", "error");
     }
@@ -342,7 +366,7 @@ const App: React.FC = () => {
         return;
       }
 
-      const meta = buildMarketMeta(intel, { ukBias: true });
+      const meta = buildMarketMeta(intel);
       if (!meta) {
         addToast("Not enough high-quality comps to value.", "info");
         return;
@@ -350,10 +374,9 @@ const App: React.FC = () => {
 
       const updatedCard: Card = { ...card, marketValue: meta.mid, marketMeta: meta };
       await vaultStorage.saveCard(updatedCard);
-      await vaultStorage.saveValuationSnapshot(updatedCard);
       setCards(prev => prev.map(c => c.id === card.id ? updatedCard : c));
 
-      addToast(`Updated: GBP ${meta.mid} (GBP ${meta.low}-${meta.high}, ${meta.confidence}, ${meta.compsUsed} comps)`, "success");
+      addToast(`Updated: £${meta.mid} (£${meta.low}–£${meta.high}, ${meta.confidence})`, "success");
     } catch {
       addToast("Market refresh failed", "error");
     }
@@ -381,12 +404,39 @@ const App: React.FC = () => {
       };
 
       await vaultStorage.savePost(newPost);
-      addToast("Card shared to Collector's Corner!", "success");
+      addToast("Card shared to global feed!", "success");
       setView(ViewMode.FEED);
     } catch (error) {
       console.error("Share error:", error);
       addToast("Failed to share card.", "error");
     }
+  };
+
+  const unreadNotificationsCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+
+  const handleMarkNotificationAsRead = async (id: string) => {
+    try {
+      await vaultStorage.markNotificationAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+    } catch (e) {
+      console.error("Error marking notification as read:", e);
+    }
+  };
+
+  const handleMarkAllNotificationsAsRead = async () => {
+    if (!currentUser) return;
+    try {
+      await vaultStorage.markAllNotificationsAsRead(currentUser.id);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      addToast("All notifications marked as read");
+    } catch (e) {
+      console.error("Error marking all notifications as read:", e);
+    }
+  };
+
+  const handleNavigateToPost = (postId: string) => {
+    setHighlightedPostId(postId);
+    setView(ViewMode.FEED);
   };
 
   if (isInitializing) {
@@ -474,6 +524,15 @@ const App: React.FC = () => {
               animationClass={animationClass}
             />
           )}
+          {view === ViewMode.NOTIFICATIONS && !isGuest && (
+            <NotificationsView 
+              notifications={notifications}
+              onMarkAsRead={handleMarkNotificationAsRead}
+              onMarkAllAsRead={handleMarkAllNotificationsAsRead}
+              onNavigateToPost={handleNavigateToPost}
+              animationClass={animationClass}
+            />
+          )}
         </div>
       </main>
 
@@ -485,6 +544,7 @@ const App: React.FC = () => {
         setSelectedBinderId={setSelectedBinderId}
         setShowBinderSheet={setShowBinderSheet}
         goldGradientStyle={goldGradientStyle}
+        unreadNotificationsCount={unreadNotificationsCount}
       />
 
       <BinderBottomSheet 
@@ -523,9 +583,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-
-
-
-
-

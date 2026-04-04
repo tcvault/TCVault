@@ -1,7 +1,8 @@
 import React from 'react';
 import { Rss, Compass, LayoutDashboard as DashboardIcon, Layers as BinderIcon, ChevronDown, PlusCircle, User as UserIcon, Power } from 'lucide-react';
 import { ViewMode, User, BinderPage } from '../../types';
-import { TCLogoHorizontal } from '../Branding';
+import { TCLogo } from '../Branding';
+import { goldTextStyle } from '../../styles';
 
 interface SidebarProps {
   view: ViewMode;
@@ -12,6 +13,7 @@ interface SidebarProps {
   selectedBinderId: string;
   setSelectedBinderId: (id: string) => void;
   handleLogout: () => void;
+  unreadNotificationsCount?: number;
 }
 
 export const Sidebar = ({
@@ -22,25 +24,44 @@ export const Sidebar = ({
   binders,
   selectedBinderId,
   setSelectedBinderId,
-  handleLogout
+  handleLogout,
+  unreadNotificationsCount = 0
 }: SidebarProps) => {
   return (
-    <div className="px-4 py-6 flex flex-col h-full overflow-hidden">
-      <div className="cursor-pointer mb-2" onClick={() => setView(ViewMode.FEED)}>
-        <TCLogoHorizontal className="h-10" />
+    <div className="p-8 flex flex-col h-full overflow-hidden">
+      <div className="flex items-center gap-3 cursor-pointer mb-2" onClick={() => setView(ViewMode.FEED)}>
+        <TCLogo className="w-10 h-10 shrink-0" />
+        <div>
+          <p className="text-sm font-bold tracking-tighter leading-none">
+            <span style={goldTextStyle}>TC</span>
+            <span className="text-ink-primary ml-1">Vault</span>
+          </p>
+          <p style={goldTextStyle} className="text-xs font-semibold tracking-widest leading-none mt-0.5">
+            Collectors Community
+          </p>
+        </div>
       </div>
 
       <nav className="space-y-major flex-1 overflow-y-auto no-scrollbar mt-12 pb-8">
         <div className="space-y-control">
           <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Community</span>
-          <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Collector's Corner" />
+          <NavButton active={view === ViewMode.FEED} onClick={() => setView(ViewMode.FEED)} icon={<Rss size={16} />} label="Global Feed" />
           <NavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={16} />} label="Explore" />
+          {!isGuest && (
+            <NavButton 
+              active={view === ViewMode.NOTIFICATIONS} 
+              onClick={() => setView(ViewMode.NOTIFICATIONS)} 
+              icon={<UserIcon size={16} />} 
+              label="Notifications" 
+              badge={unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined}
+            />
+          )}
         </div>
 
         {!isGuest && (
           <>
             <div className="space-y-control">
-              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">My Collection</span>
+              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Asset Management</span>
               <NavButton active={view === ViewMode.DASHBOARD} onClick={() => setView(ViewMode.DASHBOARD)} icon={<DashboardIcon size={16} />} label="Portfolio" />
               
               <div className="space-y-control">
@@ -80,7 +101,7 @@ export const Sidebar = ({
             </div>
 
             <div className="space-y-control">
-              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Account</span>
+              <span className="px-4 text-micro font-semibold text-ink-tertiary uppercase tracking-widest">Identity</span>
               <NavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={16} />} label="My Profile" />
             </div>
           </>
@@ -119,36 +140,23 @@ interface NavButtonProps {
   icon: React.ReactElement;
   label: string;
   trailing?: React.ReactNode;
+  badge?: number;
 }
 
-const NavButton = ({ active, onClick, icon, label, trailing }: NavButtonProps) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all duration-150 active:scale-[0.97] relative group ${
-      active
-        ? 'text-ink-primary'
-        : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated/50'
-    }`}
-    style={active ? {
-      background: 'rgba(199, 165, 75, 0.10)',
-      border: '1px solid rgba(199, 165, 75, 0.18)',
-    } : undefined}
-  >
+const NavButton = ({ active, onClick, icon, label, trailing, badge }: NavButtonProps) => (
+  <button onClick={onClick} className={`w-full flex items-center justify-between gap-4 px-4 h-12 rounded-xl transition-all active:scale-[0.97] relative group ${active ? 'bg-surface-elevated text-ink-primary' : 'text-ink-secondary/60 hover:text-ink-primary hover:bg-surface-elevated/50'}`}>
     <div className="flex items-center gap-4">
-      {React.cloneElement(icon as React.ReactElement<{ size?: number; className?: string }>, {
-        size: 16,
-        className: active ? 'text-gold-500' : '',
-      })}
+      <div className="relative">
+        {React.cloneElement(icon, { size: 16, className: active ? 'text-ink-primary' : '' } as any)}
+        {badge !== undefined && (
+          <div className="absolute -top-1.5 -right-1.5 min-w-[14px] h-[14px] flex items-center justify-center bg-gold-500 text-white text-[8px] font-bold rounded-full px-0.5 shadow-sm">
+            {badge > 9 ? '9+' : badge}
+          </div>
+        )}
+      </div>
       <span className={`text-sm ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
     </div>
-    {/* Gold left indicator bar */}
-    {active && (
-      <div
-        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full"
-        style={{ background: 'var(--gold-gradient)' }}
-      />
-    )}
+    {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 bg-gold-500 rounded-full" />}
     {trailing}
   </button>
 );
-

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, User as UserIcon, Lock, KeyRound, RefreshCcw, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { User } from '../types';
-import type { AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '../services/storage';
 
 interface AuthProps {
@@ -21,7 +20,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 
   useEffect(() => {
     if (!supabase) return;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any) => {
       if (event === 'PASSWORD_RECOVERY') setAuthMode('update-password');
     });
     return () => subscription.unsubscribe();
@@ -35,7 +34,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 
     try {
       if (!supabase) {
-        throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (or SUPABASE_/NEXT_PUBLIC_ equivalents) in your Vercel environment variables and redeploy.");
+        throw new Error("Supabase is not configured. Please set SUPABASE_URL and SUPABASE_ANON_KEY in your environment variables.");
       }
       const formattedEmail = email.includes('@') ? email : `${email}@tcvault.app`;
 
@@ -66,11 +65,11 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
       } else if (authMode === 'update-password') {
         const { error: updateError } = await supabase.auth.updateUser({ password });
         if (updateError) throw updateError;
-        setSuccessMessage('Password updated. Please sign in.');
+        setSuccessMessage('Vault re-secured. Please log in.');
         setTimeout(() => setAuthMode('login'), 2000);
       }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Access denied.");
+    } catch (err: any) {
+      setError(err.message || "Access denied.");
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +80,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
       case 'register': return 'Create Account';
       case 'login': return 'Sign In';
       case 'forgot-password': return 'Reset Password';
-      case 'update-password': return 'Update Password';
+      case 'update-password': return 'Update Key';
       default: return 'Authentication';
     }
   };
@@ -177,7 +176,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
 
               <button type="submit" disabled={isLoading} className={`btn-primary w-full h-14 uppercase text-xs tracking-widest ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {isLoading ? <Loader2 size={20} className="animate-spin text-white/50" /> : (
-                  authMode === 'register' ? 'Register Account' : authMode === 'login' ? 'Login' : 'Reset Password'
+                  authMode === 'register' ? 'Register Account' : authMode === 'login' ? 'Login' : 'Reset Vault Key'
                 )}
               </button>
 
@@ -209,16 +208,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
   );
 };
 
-interface AuthFieldProps {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  icon: React.ReactNode;
-  type?: string;
-  placeholder?: string;
-  extra?: React.ReactNode;
-}
-const AuthField = ({ label, value, onChange, icon, type = 'text', placeholder, extra }: AuthFieldProps) => (
+const AuthField = ({ label, value, onChange, icon, type = 'text', placeholder, extra }: any) => (
   <div className="space-y-control">
     <div className="flex items-center justify-between px-1">
       <label className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">{label}</label>

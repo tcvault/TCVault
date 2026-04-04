@@ -51,16 +51,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
   , [pages, activePageId]);
 
   const uniqueTeams = useMemo(() => Array.from(new Set(cards.map(c => c.team).filter((t): t is string => !!t))).sort(), [cards]);
-  const uniqueSets = useMemo(() => {
-    const seen = new Map<string, string>(); // key -> display label
-    for (const c of cards) {
-      const key = c.setCanonicalKey || c.set;
-      if (key && !seen.has(key)) seen.set(key, c.set);
-    }
-    return Array.from(seen.entries())
-      .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [cards]);
+  const uniqueSets = useMemo(() => Array.from(new Set(cards.map(c => c.set).filter((s): s is string => !!s))).sort(), [cards]);
   const uniqueRarities = useMemo(() => Array.from(new Set(cards.map(c => c.rarityTier).filter(Boolean))).sort() as string[], [cards]);
   const uniqueConditions = useMemo(() => Array.from(new Set(cards.map(c => c.condition).filter((c): c is string => !!c))).sort(), [cards]);
 
@@ -76,7 +67,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
       }
       if (filters.player && !card.playerName.toLowerCase().includes(filters.player.toLowerCase())) return false;
       if (filters.team !== 'all' && card.team !== filters.team) return false;
-      if (filters.set !== 'all' && (card.setCanonicalKey || card.set) !== filters.set) return false;
+      if (filters.set !== 'all' && card.set !== filters.set) return false;
       if (filters.condition !== 'all' && card.condition !== filters.condition) return false;
       if (filters.rarity !== 'all' && card.rarityTier !== filters.rarity) return false;
       return true;
@@ -92,8 +83,6 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         comparison = a.marketValue - b.marketValue;
       } else if (sortBy === 'pricePaid') {
         comparison = a.pricePaid - b.pricePaid;
-      } else if (sortBy === 'setNumber') {
-        comparison = (a.setNumber || '').localeCompare(b.setNumber || '', undefined, { numeric: true });
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -146,9 +135,9 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         backgroundColor: '#faf8f4',
         cacheBust: true,
         pixelRatio: 1,
-        filter: (node: Node) => {
+        filter: (node: any) => {
           // Skip remote stylesheets that cause CORS 'cssRules' access errors
-          if (node instanceof HTMLLinkElement && node.rel === 'stylesheet' && !node.href?.startsWith(window.location.origin)) {
+          if (node.tagName === 'LINK' && node.rel === 'stylesheet' && !node.href?.startsWith(window.location.origin)) {
             return false;
           }
           return true;
@@ -230,7 +219,6 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <option value="marketValue">Value</option>
                 <option value="pricePaid">Cost</option>
                 <option value="playerName">Name</option>
-                <option value="setNumber">Set No.</option>
               </select>
               <ArrowUpDown size={14} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
@@ -251,20 +239,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-control animate-in slide-in-from-top-2 duration-300">
             <FilterSelect value={filters.team} onChange={(v: string) => setFilters({...filters, team: v})} options={uniqueTeams} placeholder="Team" />
-            <div className="relative group">
-              <select
-                value={filters.set}
-                onChange={(e) => setFilters({...filters, set: e.target.value})}
-                style={{ colorScheme: 'light' }}
-                className={`w-full bg-surface-elevated border rounded-xl h-12 px-4 text-xs font-bold uppercase tracking-widest appearance-none cursor-pointer outline-none transition-all focus:border-gold-500/40 ${filters.set !== 'all' ? 'border-gold-500/40 text-gold-500' : 'border-border-soft text-ink-tertiary hover:text-ink-secondary'}`}
-              >
-                <option value="all">Set</option>
-                {uniqueSets.map(({ key, label }) => (
-                  <option key={key} value={key} className="bg-surface-base text-ink-primary font-semibold">{label}</option>
-                ))}
-              </select>
-              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
-            </div>
+            <FilterSelect value={filters.set} onChange={(v: string) => setFilters({...filters, set: v})} options={uniqueSets} placeholder="Set" />
             <FilterSelect value={filters.condition} onChange={(v: string) => setFilters({...filters, condition: v})} options={uniqueConditions} placeholder="Grade" />
             <FilterSelect value={filters.rarity} onChange={(v: string) => setFilters({...filters, rarity: v})} options={uniqueRarities} placeholder="Rarity" />
             {hasActiveFilters && <button onClick={resetAllViewFilters} className="col-span-full text-center text-xs font-bold text-error uppercase tracking-widest hover:text-error/80 transition-colors py-control active:scale-95">Reset Filters</button>}
@@ -277,17 +252,23 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
           {processedCards.map(card => (
             <div key={card.id} className="group cursor-pointer space-y-control" onClick={() => setSelectedCard(card)}>
               <div className="aspect-[3/4] rounded-xl overflow-hidden border border-border-soft shadow-sm bg-surface-elevated relative flex items-center justify-center p-padding img-loading">
-                <img 
-                  src={card.images[0]} 
-                  loading="lazy"
-                  onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
-                  className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-[150ms] z-10" 
-                  alt={card.playerName} 
-                />
+                {card.images?.[0] ? (
+                  <img 
+                    src={card.images[0]} 
+                    loading="lazy"
+                    onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
+                    className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-[150ms] z-10" 
+                    alt={card.playerName} 
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-control opacity-20">
+                    <Ghost size={24} />
+                  </div>
+                )}
                 <button 
                   onClick={(e) => { e.stopPropagation(); onUpdate(card); }} 
                   className="absolute top-control left-control p-2 bg-ink-primary text-gold-500 rounded-lg shadow-xl z-30 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity active:scale-95"
-                  title="Edit Card"
+                  title="Modify Record"
                 >
                   <Edit3 size={14} />
                 </button>
@@ -304,7 +285,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
           ))}
         </div>
       ) : (
-        <EmptyState compact className="mx-1 sm:mx-0" 
+        <EmptyState 
           icon={<Ghost />} 
           title="No results found" 
           message={globalSearch ? `No matches for "${globalSearch}" in your collection.` : "This collection is currently empty."}
@@ -372,9 +353,8 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                  <X size={24} />
                </button>
              )}
-
-             <div className={`${isExporting ? 'h-[720px] w-full p-16' : 'flex-[1.4] md:flex-1 p-padding md:p-major'} bg-surface-base flex flex-col items-center justify-center relative min-h-0`}>
-                {isExporting && selectedCard.images.length > 1 ? (
+              <div className={`${isExporting ? 'h-[720px] w-full p-16' : 'flex-[1.4] md:flex-1 p-padding md:p-major'} bg-surface-base flex flex-col items-center justify-center relative min-h-0`}>
+                {isExporting && selectedCard.images && selectedCard.images.length > 1 ? (
                   <div className="grid grid-cols-2 gap-16 w-full max-w-[960px]">
                     {selectedCard.images.map((img, idx) => (
                       <div key={idx} className="relative aspect-[3/4] flex items-center justify-center">
@@ -388,13 +368,20 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                   </div>
                 ) : (
                   <div className="relative w-full h-full flex items-center justify-center overflow-hidden img-loading">
-                     <img 
-                      src={selectedCard.images[currentImageIndex]} 
-                      onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
-                      className={`w-full h-full object-contain select-none animate-in fade-in zoom-in-95 duration-500 drop-shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-10 ${isExporting ? 'max-h-[620px]' : ''}`} 
-                      alt={selectedCard.playerName} 
-                     />
-                     {!isExporting && selectedCard.images.length > 1 && (
+                     {selectedCard.images?.[currentImageIndex] ? (
+                       <img 
+                        src={selectedCard.images[currentImageIndex]} 
+                        onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
+                        className={`w-full h-full object-contain select-none animate-in fade-in zoom-in-95 duration-500 drop-shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-10 ${isExporting ? 'max-h-[620px]' : ''}`} 
+                        alt={selectedCard.playerName} 
+                       />
+                     ) : (
+                       <div className="flex flex-col items-center justify-center gap-4 opacity-20">
+                         <Ghost size={48} />
+                         <span className="text-xs font-bold uppercase tracking-widest">Image missing</span>
+                       </div>
+                     )}
+                     {!isExporting && selectedCard.images && selectedCard.images.length > 1 && (
                        <>
                           <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === 0 ? selectedCard.images.length - 1 : prev - 1); }} className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-ink-primary/5 text-ink-primary hover:bg-gold-500 hover:text-white transition-all ml-2 shadow-xl z-20 active:scale-90"><ChevronLeft size={24} /></button>
                           <button onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(prev => prev === selectedCard.images.length - 1 ? 0 : prev + 1); }} className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-ink-primary/5 text-ink-primary hover:bg-gold-500 hover:text-white transition-all mr-2 shadow-xl z-20 active:scale-90"><ChevronRight size={24} /></button>
@@ -403,10 +390,11 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                   </div>
                 )}
              </div>
+
              <div className={`${isExporting ? 'h-[630px] w-full p-16' : 'flex-1 md:w-[380px] p-padding md:p-section'} space-y-major ${isExporting ? '' : 'overflow-y-auto'} bg-surface-elevated flex flex-col border-t ${isExporting ? 'border-t' : 'md:border-t-0 md:border-l'} border-border-soft h-auto ${isExporting ? '' : 'md:h-full'}`}>
                 <div className={`${isExporting ? 'space-y-10' : 'space-y-section'}`}>
                   <div className="space-y-control">
-                    <span className={`${isExporting ? 'text-lg' : 'text-xs'} font-bold text-ink-tertiary uppercase tracking-widest`}>{selectedCard.rarityTier || 'Card Details'}</span>
+                    <span className={`${isExporting ? 'text-lg' : 'text-xs'} font-bold text-ink-tertiary uppercase tracking-widest`}>{selectedCard.rarityTier || 'Collection Item'}</span>
                     <h3 className={`${isExporting ? 'text-7xl' : 'text-2xl'} font-bold text-ink-primary tracking-tighter leading-tight`}>{selectedCard.playerName}</h3>
                   </div>
                   <div className={`grid grid-cols-2 ${isExporting ? 'gap-x-20 gap-y-12' : 'gap-x-padding gap-y-section'}`}>
@@ -447,16 +435,9 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                             <div className="space-y-0.5">
                               <p className="text-xl font-bold text-gold-500">£{selectedCard.marketValue}</p>
                               {selectedCard.marketMeta && (
-                                <>
-                                  <p className="text-xs font-semibold text-ink-tertiary uppercase tracking-tight">
-                                    GBP {selectedCard.marketMeta.low}-GBP {selectedCard.marketMeta.high} | {selectedCard.marketMeta.confidence} | {selectedCard.marketMeta.compsUsed} comps
-                                  </p>
-                                  {selectedCard.marketMeta.summary && (
-                                    <p className="text-[10px] font-semibold text-ink-tertiary leading-tight max-w-[220px] mx-auto">
-                                      {selectedCard.marketMeta.summary}
-                                    </p>
-                                  )}
-                                </>
+                                <p className="text-xs font-semibold text-ink-tertiary uppercase tracking-tight">
+                                  £{selectedCard.marketMeta.low}–£{selectedCard.marketMeta.high} · {selectedCard.marketMeta.confidence}
+                                </p>
                               )}
                             </div>
                             {onRefreshPrice && (
@@ -474,7 +455,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                    )}
                     {!isExporting && (
                       <div className="flex gap-control">
-                        <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 text-xs tracking-widest font-bold">Edit Card</button>
+                        <button onClick={() => { onUpdate(selectedCard); setSelectedCard(null); }} className="btn-primary flex-1 h-14 text-xs tracking-widest font-bold">Edit Record</button>
                         {onShareCard && (
                           <button 
                             onClick={() => { onShareCard(selectedCard); setSelectedCard(null); }} 
@@ -491,7 +472,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                         >
                           <Instagram size={20} />
                         </button>
-                        <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-error/20 text-error hover:bg-error/10 transition-all active:scale-95 shadow-sm" title="Delete Card"><Trash2 size={20} /></button>
+                        <button onClick={() => { onDelete(selectedCard.id); setSelectedCard(null); }} className="w-14 h-14 flex items-center justify-center rounded-xl border border-error/20 text-error hover:bg-error/10 transition-all active:scale-95 shadow-sm" title="Delete Asset"><Trash2 size={20} /></button>
                       </div>
                     )}
                 </div>
@@ -551,5 +532,3 @@ const Detail = ({ label, value, isExporting }: DetailProps) => (
 );
 
 export default Inventory;
-
-

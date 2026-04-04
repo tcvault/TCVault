@@ -1,10 +1,66 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TC Vault | Trading Card Portfolio</title>
     <meta name="description" content="The ultimate AI-powered tool for trading card collectors. Identify, track, and value your portfolio with precision.">
+    
+    <script>
+        // System Health Watchdog & Environment Fixes
+        window.V_START_TIME = Date.now();
+        
+        // Fix for "Cannot set property fetch of #<Window> which has only a getter"
+        // Some libraries try to polyfill fetch by assignment. We try to make it writable if possible.
+        try {
+            const originalFetch = window.fetch;
+            if (originalFetch) {
+                Object.defineProperty(window, 'fetch', {
+                    value: originalFetch,
+                    configurable: true,
+                    enumerable: true,
+                    writable: true
+                });
+            }
+        } catch (e) {
+            console.debug('Vault: Fetch property is read-only and non-configurable.');
+        }
+
+        window.addEventListener('load', () => {
+            const root = document.getElementById('root');
+            const checkHealth = () => {
+                const isMounted = root && root.children.length > 0;
+                const timeElapsed = Date.now() - window.V_START_TIME;
+
+                if (!isMounted && timeElapsed > 6000) {
+                    console.error('Vault: Critical Boot Failure detected.');
+                    const recovery = document.createElement('div');
+                    recovery.id = 'vault-access-failure-marker';
+                    recovery.innerHTML = `
+                        <div style="position:fixed;inset:0;background:var(--surface-base);display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink-primary);font-family:sans-serif;padding:40px;text-align:center;z-index:999999;background-image:radial-gradient(circle at center, var(--surface-elevated) 0%, var(--surface-base) 100%);">
+                            <div style="margin-bottom:30px;opacity:0.5;">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                            </div>
+                            <h2 style="font-weight:900;text-transform:uppercase;font-style:italic;margin-bottom:12px;letter-spacing:-0.5px;font-size:24px;">Connection Interrupted</h2>
+                            <p style="color:var(--ink-secondary);font-size:14px;max-width:320px;margin-bottom:40px;line-height:1.6;font-weight:500;">The local development server refused the connection or the application failed to initialize in time.</p>
+                            <div style="display:flex;gap:12px;flex-direction:column;width:100%;max-width:280px;">
+                                <button onclick="location.reload();" style="background:var(--gold-500);color:var(--ink-primary);border:none;padding:16px;border-radius:14px;font-weight:800;cursor:pointer;text-transform:uppercase;font-size:12px;letter-spacing:1px;box-shadow:0 10px 20px -5px rgba(212, 175, 55, 0.4);">Re-establish Connection</button>
+                                <button onclick="localStorage.clear();location.reload();" style="background:transparent;color:var(--ink-secondary);border:1px solid var(--border-soft);padding:14px;border-radius:14px;font-weight:700;cursor:pointer;text-transform:uppercase;font-size:11px;letter-spacing:0.5px;">Hard Reset Cache</button>
+                            </div>
+                            <div style="margin-top:40px;font-size:10px;color:var(--ink-secondary);font-weight:800;text-transform:uppercase;letter-spacing:2px;">Diagnostic: Error 502 / Connection Refused</div>
+                        </div>
+                    `;
+                    if (!document.getElementById('vault-access-failure-marker')) {
+                        document.body.appendChild(recovery);
+                    }
+                } else if (!isMounted) {
+                    setTimeout(checkHealth, 1000);
+                }
+            };
+            checkHealth();
+        });
+    </script>
+
     <style>
         :root {
             --surface-base: #F4EBD8;
@@ -33,4 +89,3 @@
     <div id="root"></div>
 </body>
 </html>
-

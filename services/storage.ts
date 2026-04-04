@@ -1,82 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
-import { Card, BinderPage, SocialPost, SocialComment, User, WantItem, ReleaseThread, ReleaseThreadComment, AppAlert } from '../types';
-import { UserSchema, CardSchema, BinderPageSchema, safeParseJson } from './schemas';
+import { Card, BinderPage, SocialPost, SocialComment, User, Notification, NotificationType } from '../types';
 
-const processEnv = typeof process !== 'undefined' ? process.env : undefined;
-const envUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL || processEnv?.SUPABASE_URL;
-const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || processEnv?.SUPABASE_ANON_KEY;
+const envUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
-export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null;
+export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
 
 const LOCAL_CARDS_KEY = 'tcvault_local_cards';
 const LOCAL_PAGES_KEY = 'tcvault_local_pages';
 const LOCAL_PROFILE_PREFIX = 'tcvault_profile_';
-const LOCAL_HIDDEN_POSTS_PREFIX = 'tcvault_hidden_posts_';
-function isMissingRelationError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const e = error as { code?: string; message?: string; details?: string; status?: number };
-  if (e.status === 404) return true;
-  const haystack = [e.code ?? '', e.message ?? '', e.details ?? ''].join(' ').toLowerCase();
-  return (
-    haystack.includes('does not exist') ||
-    haystack.includes('relation') ||
-    haystack.includes('schema cache')
-  );
-}
 
-
-export class SchemaMismatchError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SchemaMismatchError';
-  }
-}
-
-function isSchemaDriftError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const e = error as { code?: string; message?: string; details?: string; status?: number };
-  const haystack = [e.code ?? '', e.message ?? '', e.details ?? ''].join(' ').toLowerCase();
-  return isMissingRelationError(error) || e.code === '42703' || haystack.includes('column');
-}
 class CloudStorageService {
-  private coreSchemaCheckPromise: Promise<void> | null = null;
-
-  async assertCoreSchema(): Promise<void> {
-    if (!supabase) return;
-    if (!this.coreSchemaCheckPromise) {
-      this.coreSchemaCheckPromise = this.checkCoreSchema();
-    }
-    await this.coreSchemaCheckPromise;
-  }
-
-  private async checkCoreSchema(): Promise<void> {
-    if (!supabase) return;
-
-    const checks = [
-      {
-        name: 'cards',
-        run: () => supabase
-          .from('cards')
-          .select('id,player_name,card_specifics,set,market_meta,market_value_locked,set_canonical_key,set_year_start,set_year_end,manufacturer,product_line,sport,category')
-          .limit(1),
-      },
-      { name: 'profiles', run: () => supabase.from('profiles').select('id,username').limit(1) },
-      { name: 'pages', run: () => supabase.from('pages').select('id,name').limit(1) },
-      { name: 'social_posts', run: () => supabase.from('social_posts').select('id,user_id').limit(1) },
-    ];
-
-    for (const check of checks) {
-      const { error } = await check.run();
-      if (error && isSchemaDriftError(error)) {
-        throw new SchemaMismatchError('Database schema is out of date (missing ' + check.name + ' structure). Run the latest Supabase migrations before using the app.');
-      }
-      if (error) {
-        throw error;
-      }
-    }
-  }
-
   private async getUserId(): Promise<string | null> {
     if (!supabase) return null;
     const { data: { session } } = await supabase.auth.getSession();
@@ -86,9 +21,9 @@ class CloudStorageService {
   async uploadImage(userId: string, base64Data: string): Promise<string> {
     if (userId === 'local-guest' || !supabase || !base64Data.startsWith('data:')) return base64Data;
     try {
-      const mimeType = base64Data.split(';')[0]?.split(':')[1] ?? 'image/jpeg';
-      const extension = mimeType.split('/')[1] ?? 'jpg';
-      const base64Content = base64Data.split(',')[1] ?? '';
+      const mimeType = base64Data.split(';')[0].split(':')[1] || 'image/jpeg';
+      const extension = mimeType.split('/')[1] || 'jpg';
+      const base64Content = base64Data.split(',')[1];
       const byteCharacters = atob(base64Content);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -138,26 +73,21 @@ class CloudStorageService {
       }
     }
     const local = localStorage.getItem(`${LOCAL_PROFILE_PREFIX}${userId}`);
-    return local ? safeParseJson(local, UserSchema) : null;
+    return local ? JSON.parse(local) : null;
   }
 
-  async getPosts(options?: { limit?: number; offset?: number }): Promise<SocialPost[]> {
+  async getPosts(): Promise<SocialPost[]> {
     if (supabase) {
-      const { data, error } = await supabase
-        .from('social_posts')
-        .select('*, profiles(username, avatar_url)')
-        .order('created_at', { ascending: false })
-        .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
+      const { data, error } = await supabase.from('social_posts').select('*').order('created_at', { ascending: false });
       if (error) {
         console.error("Error fetching posts:", error);
         throw error;
       }
       if (data) {
-        return data.map((p) => ({
+        return data.map((p: any) => ({
           ...p,
           userId: p.user_id,
-          username: p.profiles?.username || 'Collector',
-          userAvatar: p.profiles?.avatar_url || undefined,
+          userAvatar: p.user_avatar,
           imageUrl: p.image_url,
           createdAt: new Date(p.created_at).getTime(),
           likes: p.likes || [],
@@ -174,6 +104,8 @@ class CloudStorageService {
       const payload = {
         id: post.id,
         user_id: post.userId,
+        username: post.username,
+        user_avatar: post.userAvatar,
         content: post.content,
         tag: post.tag,
         image_url: post.imageUrl,
@@ -188,28 +120,159 @@ class CloudStorageService {
 
   async toggleLike(postId: string, userId: string): Promise<void> {
     if (!supabase) return;
-    const { error } = await supabase.rpc('toggle_post_like', {
-      p_post_id: postId,
-      p_user_id: userId,
-    });
-    if (error) throw error;
+    
+    let success = false;
+    let attempts = 0;
+    const maxAttempts = 5;
+    let finalLikes: string[] = [];
+
+    while (!success && attempts < maxAttempts) {
+      attempts++;
+      const { data, error: fetchError } = await supabase
+        .from('social_posts')
+        .select('likes')
+        .eq('id', postId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      const oldLikes = data?.likes || [];
+      const likes = [...oldLikes];
+      const likeIdx = likes.indexOf(userId);
+      if (likeIdx > -1) likes.splice(likeIdx, 1);
+      else likes.push(userId);
+
+      finalLikes = likes;
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('social_posts')
+        .update({ likes })
+        .eq('id', postId)
+        .eq('likes', oldLikes)
+        .select();
+
+      if (!updateError && updateData && updateData.length > 0) {
+        success = true;
+      } else if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 50 + Math.random() * 50));
+      }
+    }
+    
+    if (!success) throw new Error("Concurrent update detected. Please try again.");
+
+    // Create notification if it's a new like (not an unlike)
+    const isLiked = finalLikes.includes(userId);
+    if (isLiked && supabase) {
+      // Get post owner
+      const { data: postData } = await supabase.from('social_posts').select('user_id').eq('id', postId).single();
+      if (postData && postData.user_id !== userId) {
+        // Get liker username
+        const profile = await this.getUserProfile(userId);
+        await supabase.from('notifications').insert({
+          user_id: postData.user_id,
+          type: 'like',
+          post_id: postId,
+          from_user_id: userId,
+          from_username: profile?.username || 'Someone',
+          is_read: false
+        });
+      }
+    }
   }
 
   async addComment(postId: string, comment: SocialComment): Promise<void> {
     if (!supabase) return;
-    const { error } = await supabase.rpc('add_post_comment', {
-      p_post_id: postId,
-      p_comment: comment,
-    });
-    if (error) throw error;
+
+    let success = false;
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    while (!success && attempts < maxAttempts) {
+      attempts++;
+      const { data, error: fetchError } = await supabase
+        .from('social_posts')
+        .select('comments')
+        .eq('id', postId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+
+      const oldComments = data?.comments || [];
+      const comments = [...oldComments, comment];
+
+      const { data: updateData, error: updateError } = await supabase
+        .from('social_posts')
+        .update({ comments })
+        .eq('id', postId)
+        .eq('comments', oldComments)
+        .select();
+
+      if (!updateError && updateData && updateData.length > 0) {
+        success = true;
+      } else if (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 50 + Math.random() * 50));
+      }
+    }
+    
+    if (!success) throw new Error("Concurrent update detected. Please try again.");
+
+    // Create notification
+    if (supabase) {
+      const { data: postData } = await supabase.from('social_posts').select('user_id').eq('id', postId).single();
+      if (postData && postData.user_id !== comment.userId) {
+        await supabase.from('notifications').insert({
+          user_id: postData.user_id,
+          type: 'comment',
+          post_id: postId,
+          from_user_id: comment.userId,
+          from_username: comment.username,
+          content: comment.content.substring(0, 50),
+          is_read: false
+        });
+      }
+    }
+  }
+
+  async getNotifications(userId: string): Promise<Notification[]> {
+    if (!supabase) return [];
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (error) {
+      console.error("Error fetching notifications:", error);
+      return [];
+    }
+
+    return (data || []).map((n: any) => ({
+      id: n.id,
+      userId: n.user_id,
+      type: n.type as NotificationType,
+      postId: n.post_id,
+      fromUserId: n.from_user_id,
+      fromUsername: n.from_username,
+      content: n.content,
+      isRead: n.is_read,
+      createdAt: new Date(n.created_at).getTime()
+    }));
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    if (!supabase) return;
+    await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    if (!supabase) return;
+    await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
   }
 
   async deletePost(postId: string): Promise<void> {
     if (supabase) {
-      const userId = await this.getUserId();
-      if (!userId) throw new Error("Not authenticated");
-      // .eq('user_id', userId) prevents deleting another user's post
-      const { error } = await supabase.from('social_posts').delete().eq('id', postId).eq('user_id', userId);
+      const { error } = await supabase.from('social_posts').delete().eq('id', postId);
       if (error) {
         console.error("Error deleting post:", error);
         throw error;
@@ -217,419 +280,40 @@ class CloudStorageService {
     }
   }
 
-  async getWants(options?: { limit?: number; offset?: number }): Promise<WantItem[]> {
-    if (!supabase) return [];
-    const { data, error } = await supabase
-      .from('wants')
-      .select('*, profiles(username, avatar_url)')
-      .order('created_at', { ascending: false })
-      .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
-
-    if (error) {
-      if (isMissingRelationError(error)) {
-        console.warn('wants table missing; returning empty wants list. Run latest migrations.');
-        return [];
-      }
-      console.error('Error fetching wants:', error);
-      throw error;
-    }
-
-    return (data || []).map((w) => ({
-      id: w.id,
-      userId: w.user_id,
-      username: w.profiles?.username || 'Collector',
-      userAvatar: w.profiles?.avatar_url || undefined,
-      title: w.title,
-      details: w.details || undefined,
-      setCanonicalKey: w.set_canonical_key || undefined,
-      setDisplay: w.set_display || undefined,
-      targetPriceGbp: w.target_price_gbp !== null && w.target_price_gbp !== undefined ? Number(w.target_price_gbp) : undefined,
-      status: (w.status || 'open') as WantItem['status'],
-      createdAt: new Date(w.created_at).getTime(),
-    }));
-  }
-
-  async saveWant(want: WantItem): Promise<void> {
-    if (!supabase) return;
-    const payload = {
-      id: want.id,
-      user_id: want.userId,
-      title: want.title,
-      details: want.details || null,
-      set_canonical_key: want.setCanonicalKey || null,
-      set_display: want.setDisplay || null,
-      target_price_gbp: want.targetPriceGbp ?? null,
-      status: want.status,
-      created_at: new Date(want.createdAt).toISOString(),
-    };
-
-    const { error } = await supabase.from('wants').upsert(payload);
-    if (error) {
-      if (isMissingRelationError(error)) {
-        console.warn('wants table missing; skipping save. Run latest migrations.');
-        return;
-      }
-      throw error;
-    }
-
-    if (want.status === 'open') {
-      await this.createWantMatchAlerts(want).catch((err) => {
-        console.warn('Want matching failed (non-critical):', err);
-      });
-    }
-  }
-
-  async updateWantStatus(wantId: string, status: WantItem['status']): Promise<void> {
-    if (!supabase) return;
-    const { error } = await supabase.from('wants').update({ status }).eq('id', wantId);
-    if (error) {
-      if (isMissingRelationError(error)) {
-        console.warn('wants table missing; skipping status update. Run latest migrations.');
-        return;
-      }
-      throw error;
-    }
-  }
-
-  private async createWantMatchAlerts(want: WantItem): Promise<void> {
-    if (!supabase || !want.setCanonicalKey) return;
-
-    const { data: matches, error: matchError } = await supabase
-      .from('cards')
-      .select('id, user_id, player_name, set')
-      .eq('is_public', true)
-      .eq('set_canonical_key', want.setCanonicalKey)
-      .neq('user_id', want.userId)
-      .limit(50);
-
-    if (matchError || !matches || matches.length === 0) return;
-
-    const seenUsers = new Set<string>();
-    const alerts: Array<{ user_id: string; alert_type: AppAlert['alertType']; payload: Record<string, unknown>; is_read: boolean }> = [];
-    for (const card of matches) {
-      if (!card.user_id || seenUsers.has(card.user_id)) continue;
-      seenUsers.add(card.user_id);
-      alerts.push({
-        user_id: want.userId,
-        alert_type: 'want_match',
-        payload: {
-          wantId: want.id,
-          matchedUserId: card.user_id,
-          matchedCardId: card.id,
-          matchedCardPlayer: card.player_name,
-          matchedCardSet: card.set,
-          wantTitle: want.title,
-        },
-        is_read: false,
-      });
-    }
-
-    if (alerts.length > 0) {
-      const { error } = await supabase.from('alerts').insert(alerts);
-      if (error) {
-        if (isMissingRelationError(error)) {
-          console.warn('alerts table missing; skipping alerts insert. Run latest migrations.');
-          return;
-        }
-        throw error;
-      }
-    }
-  }
-
-  async getReleaseThreads(options?: { limit?: number; offset?: number }): Promise<ReleaseThread[]> {
-    if (!supabase) return [];
-
-    const { data: threads, error: threadError } = await supabase
-      .from('release_threads')
-      .select('*, profiles(username, avatar_url)')
-      .order('created_at', { ascending: false })
-      .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 30) - 1));
-
-    if (threadError) {
-      if (isMissingRelationError(threadError)) {
-        console.warn('release_threads table missing; returning empty threads list. Run latest migrations.');
-        return [];
-      }
-      console.error('Error fetching release threads:', threadError);
-      throw threadError;
-    }
-
-    const threadIds = (threads || []).map((t) => t.id);
-    let comments: Array<{ id: string; thread_id: string; user_id: string; body: string; created_at: string; profiles?: { username: string | null; avatar_url: string | null } | null }> = [];
-    if (threadIds.length > 0) {
-      const { data: commentData, error: commentError } = await supabase
-        .from('thread_comments')
-        .select('*, profiles(username, avatar_url)')
-        .in('thread_id', threadIds)
-        .order('created_at', { ascending: true });
-      if (commentError) {
-        console.error('Error fetching thread comments:', commentError);
-      } else {
-        comments = (commentData || []) as Array<{ id: string; thread_id: string; user_id: string; body: string; created_at: string; profiles?: { username: string | null; avatar_url: string | null } | null }>;
-      }
-    }
-
-    const commentsByThread = new Map<string, ReleaseThreadComment[]>();
-    for (const c of comments) {
-      const mapped: ReleaseThreadComment = {
-        id: c.id,
-        threadId: c.thread_id,
-        userId: c.user_id,
-        username: c.profiles?.username || 'Collector',
-        userAvatar: c.profiles?.avatar_url || undefined,
-        body: c.body,
-        createdAt: new Date(c.created_at).getTime(),
-      };
-      if (!commentsByThread.has(mapped.threadId)) commentsByThread.set(mapped.threadId, []);
-      commentsByThread.get(mapped.threadId)!.push(mapped);
-    }
-
-    return (threads || []).map((t) => {
-      const threadComments = commentsByThread.get(t.id) || [];
-      return {
-        id: t.id,
-        creatorUserId: t.creator_user_id,
-        username: t.profiles?.username || 'Collector',
-        userAvatar: t.profiles?.avatar_url || undefined,
-        title: t.title,
-        body: t.body || undefined,
-        setCanonicalKey: t.set_canonical_key || undefined,
-        setDisplay: t.set_display || undefined,
-        category: (t.category || 'release') as ReleaseThread['category'],
-        createdAt: new Date(t.created_at).getTime(),
-        commentCount: threadComments.length,
-        comments: threadComments,
-      } as ReleaseThread;
-    });
-  }
-
-  async saveReleaseThread(thread: ReleaseThread): Promise<void> {
-    if (!supabase) return;
-    const payload = {
-      id: thread.id,
-      creator_user_id: thread.creatorUserId,
-      title: thread.title,
-      body: thread.body || null,
-      set_canonical_key: thread.setCanonicalKey || null,
-      set_display: thread.setDisplay || null,
-      category: thread.category,
-      created_at: new Date(thread.createdAt).toISOString(),
-    };
-    const { error } = await supabase.from('release_threads').upsert(payload);
-    if (error) {
-      if (isMissingRelationError(error)) {
-        console.warn('release_threads table missing; skipping thread save. Run latest migrations.');
-        return;
-      }
-      throw error;
-    }
-  }
-
-  async addReleaseThreadComment(comment: ReleaseThreadComment): Promise<void> {
-    if (!supabase) return;
-    const payload = {
-      id: comment.id,
-      thread_id: comment.threadId,
-      user_id: comment.userId,
-      body: comment.body,
-      created_at: new Date(comment.createdAt).toISOString(),
-    };
-    const { error } = await supabase.from('thread_comments').insert(payload);
-    if (error) {
-      if (isMissingRelationError(error)) {
-        console.warn('thread_comments table missing; skipping comment save. Run latest migrations.');
-        return;
-      }
-      throw error;
-    }
-
-    const { error: notifyError } = await supabase.rpc('create_thread_reply_alert', {
-      p_thread_id: comment.threadId,
-      p_commenter_user_id: comment.userId,
-    });
-
-    if (notifyError && !isMissingRelationError(notifyError)) {
-      console.warn('thread_reply alert RPC failed (non-critical):', notifyError.message);
-    }
-  }
-
-  async getAlerts(options?: { limit?: number; offset?: number }): Promise<AppAlert[]> {
-    const userId = await this.getUserId();
-    if (!userId || !supabase) return [];
-
-    const { data, error } = await supabase
-      .from('alerts')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 20) - 1));
-
-    if (error) {
-      if (isMissingRelationError(error)) {
-        console.warn('alerts table missing; returning empty alerts list. Run latest migrations.');
-        return [];
-      }
-      console.error('Error fetching alerts:', error);
-      return [];
-    }
-
-    return (data || []).map((a) => ({
-      id: a.id,
-      userId: a.user_id,
-      alertType: a.alert_type,
-      payload: a.payload || {},
-      isRead: !!a.is_read,
-      createdAt: new Date(a.created_at).getTime(),
-      readAt: a.read_at ? new Date(a.read_at).getTime() : undefined,
-    }));
-  }
-
-  async markAlertRead(alertId: string): Promise<void> {
-    if (!supabase) return;
-    const { error } = await supabase
-      .from('alerts')
-      .update({ is_read: true, read_at: new Date().toISOString() })
-      .eq('id', alertId);
-    if (error) throw error;
-  }
-
-  async reportPost(postId: string, reason: string): Promise<void> {
-    const userId = await this.getUserId();
-    if (!supabase || !userId) return;
-
-    const { error } = await supabase.from('post_reports').insert({
-      post_id: postId,
-      reporter_user_id: userId,
-      reason,
-      created_at: new Date().toISOString(),
-    });
-
-    if (error) {
-      if (isMissingRelationError(error)) {
-        console.warn('post_reports table missing; skipping report. Run latest migrations.');
-        return;
-      }
-      console.warn('Post report failed (non-critical):', error.message);
-    }
-  }
-
-  getHiddenPosts(userId: string): string[] {
-    const raw = localStorage.getItem(`${LOCAL_HIDDEN_POSTS_PREFIX}${userId}`);
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
-    } catch {
-      return [];
-    }
-  }
-
-  toggleHiddenPost(userId: string, postId: string): string[] {
-    const current = new Set(this.getHiddenPosts(userId));
-    if (current.has(postId)) current.delete(postId); else current.add(postId);
-    const next = Array.from(current);
-    localStorage.setItem(`${LOCAL_HIDDEN_POSTS_PREFIX}${userId}`, JSON.stringify(next));
-    return next;
-  }
   async getCards(userId?: string): Promise<Card[]> {
     const effectiveUserId = userId || await this.getUserId();
     if (effectiveUserId && supabase) {
-      type CardRow = {
-        id: string;
-        player_name: string;
-        team: string | null;
-        card_specifics: string;
-        set: string;
-        set_number: string | null;
-        condition: string;
-        price_paid: number | string | null;
-        market_value: number | string | null;
-        purchase_date: string | null;
-        serial_number: string | null;
-        cert_number: string | null;
-        images: string[];
-        notes: string | null;
-        created_at: string;
-        page_id: string | null;
-        rarity_tier: Card['rarityTier'];
-        is_public: boolean | null;
-        market_meta: Card['marketMeta'] | null;
-        market_value_locked: boolean | null;
-        set_canonical_key: string | null;
-        set_year_start: number | null;
-        set_year_end: number | null;
-        manufacturer: string | null;
-        product_line: string | null;
-        sport: string | null;
-        category: Card['category'] | null;
-      };
-
-      const rows: CardRow[] = [];
-      const pageSize = 500;
-      let cursorCreatedAt: string | null = null;
-
-      for (;;) {
-        let query = supabase
-          .from('cards')
-          .select('*')
-          .eq('user_id', effectiveUserId)
-          .order('created_at', { ascending: false })
-          .limit(pageSize);
-
-        if (cursorCreatedAt) {
-          query = query.lt('created_at', cursorCreatedAt);
-        }
-
-        const { data, error } = await query;
-        if (error) {
-          console.error('Error fetching cards:', error);
-          break;
-        }
-        if (!data || data.length === 0) break;
-
-        rows.push(...(data as CardRow[]));
-
-        if (data.length < pageSize) break;
-        cursorCreatedAt = String(data[data.length - 1].created_at);
-      }
-
-      if (rows.length > 0) {
-        return rows.map((item) => ({
+      const { data, error } = await supabase.from('cards').select('*').eq('user_id', effectiveUserId).order('created_at', { ascending: false });
+      if (!error && data) {
+        return data.map((item: any) => ({
           id: item.id,
           playerName: item.player_name,
-          team: item.team || undefined,
+          team: item.team,
           cardSpecifics: item.card_specifics,
           set: item.set,
-          setNumber: item.set_number || undefined,
+          setNumber: item.set_number,
           condition: item.condition,
           pricePaid: Number(item.price_paid),
           marketValue: Number(item.market_value),
-          purchaseDate: item.purchase_date || '',
-          serialNumber: item.serial_number || undefined,
-          certNumber: item.cert_number || undefined,
+          purchaseDate: item.purchase_date,
+          serialNumber: item.serial_number,
+          certNumber: item.cert_number,
           images: item.images,
-          notes: item.notes || undefined,
+          notes: item.notes,
           createdAt: new Date(item.created_at).getTime(),
           pageId: item.page_id || '',
-          rarityTier: item.rarity_tier,
+          rarityTier: item.rarity_tier as any,
           isPublic: item.is_public ?? true,
           marketMeta: item.market_meta || undefined,
-          marketValueLocked: item.market_value_locked ?? false,
-          setCanonicalKey: item.set_canonical_key || undefined,
-          setYearStart: item.set_year_start ?? undefined,
-          setYearEnd: item.set_year_end ?? undefined,
-          manufacturer: item.manufacturer || undefined,
-          productLine: item.product_line || undefined,
-          sport: item.sport || undefined,
-          category: item.category || undefined,
+          marketValueLocked: item.market_value_locked ?? false
         }));
       }
     }
     const local = localStorage.getItem(LOCAL_CARDS_KEY);
-    return local ? (safeParseJson(local, CardSchema.array()) ?? []) : [];
+    return local ? JSON.parse(local) : [];
   }
 
-  async getPublicCards(options?: { limit?: number; offset?: number }): Promise<Card[]> {
+  async getPublicCards(): Promise<Card[]> {
     if (supabase) {
       // Fetch cards with profile data joined
       const { data, error } = await supabase
@@ -637,10 +321,10 @@ class CloudStorageService {
         .select('*, profiles(username, avatar_url)')
         .eq('is_public', true)
         .order('created_at', { ascending: false })
-        .range(options?.offset ?? 0, (options?.offset ?? 0) + ((options?.limit ?? 50) - 1));
+        .limit(50);
 
       if (!error && data) {
-        return data.map((item) => ({
+        return data.map((item: any) => ({
           id: item.id,
           playerName: item.player_name,
           team: item.team,
@@ -656,26 +340,19 @@ class CloudStorageService {
           notes: item.notes,
           createdAt: new Date(item.created_at).getTime(),
           pageId: item.page_id || '',
-          rarityTier: item.rarity_tier as Card['rarityTier'],
+          rarityTier: item.rarity_tier as any,
           isPublic: item.is_public,
           ownerUsername: item.profiles?.username || 'Collector',
           ownerAvatar: item.profiles?.avatar_url,
           ownerId: item.user_id,
           certNumber: item.cert_number,
           marketMeta: item.market_meta || undefined,
-          marketValueLocked: item.market_value_locked ?? false,
-          setCanonicalKey: item.set_canonical_key || undefined,
-          setYearStart: item.set_year_start ?? undefined,
-          setYearEnd: item.set_year_end ?? undefined,
-          manufacturer: item.manufacturer || undefined,
-          productLine: item.product_line || undefined,
-          sport: item.sport || undefined,
-          category: item.category || undefined,
+          marketValueLocked: item.market_value_locked ?? false
         }));
       }
     }
     const local = localStorage.getItem(LOCAL_CARDS_KEY);
-    return local ? (safeParseJson(local, CardSchema.array()) ?? []).filter((c: Card) => c.isPublic) : [];
+    return local ? JSON.parse(local).filter((c: Card) => c.isPublic) : [];
   }
 
   async saveCard(card: Partial<Card>): Promise<Card> {
@@ -684,8 +361,7 @@ class CloudStorageService {
     const createdAt = card.createdAt || Date.now();
 
     if (userId && supabase) {
-      await this.assertCoreSchema();
-      const payload: Record<string, unknown> = {
+      const payload: any = {
         id: cardId,
         user_id: userId,
         player_name: card.playerName,
@@ -705,22 +381,28 @@ class CloudStorageService {
         rarity_tier: card.rarityTier,
         is_public: card.isPublic ?? true,
         created_at: new Date(createdAt).toISOString(),
-        market_meta: card.marketMeta ?? null,
-        market_value_locked: card.marketValueLocked ?? false,
-        set_canonical_key: card.setCanonicalKey ?? null,
-        set_year_start: card.setYearStart ?? null,
-        set_year_end: card.setYearEnd ?? null,
-        manufacturer: card.manufacturer ?? null,
-        product_line: card.productLine ?? null,
-        sport: card.sport ?? null,
-        category: card.category ?? null,
+        market_meta: (card as any).marketMeta ?? null,
+        market_value_locked: (card as any).marketValueLocked ?? false
       };
 
-      const { data, error } = await supabase.from('cards').upsert(payload).select().single();
-
-      if (error && isSchemaDriftError(error)) {
-        throw new SchemaMismatchError('Database schema does not match application expectations. Apply the latest migrations and retry.');
+      let { data, error } = await supabase.from('cards').upsert(payload).select().single();
+      
+      // Handle missing column errors (e.g. if columns were recently added but DB not updated)
+      if (error && (error.code === '42703' || error.message?.includes('column'))) {
+        console.warn("Detected missing column, retrying with minimal payload...", error.message);
+        const minimalPayload = { ...payload };
+        delete minimalPayload.cert_number;
+        delete minimalPayload.rarity_tier;
+        delete minimalPayload.is_public;
+        delete minimalPayload.page_id;
+        delete minimalPayload.market_meta;
+        delete minimalPayload.market_value_locked;
+        
+        const retry = await supabase.from('cards').upsert(minimalPayload).select().single();
+        data = retry.data;
+        error = retry.error;
       }
+      
       if (error) {
         console.error("Card save sync error:", error);
         throw error; // Propagate error to UI
@@ -744,19 +426,12 @@ class CloudStorageService {
           notes: data.notes,
           createdAt: new Date(data.created_at).getTime(),
           pageId: data.page_id || '',
-          rarityTier: data.rarity_tier as Card['rarityTier'],
+          rarityTier: data.rarity_tier as any,
           isPublic: data.is_public ?? true,
           marketMeta: data.market_meta || undefined,
-          marketValueLocked: data.market_value_locked ?? false,
-          setCanonicalKey: data.set_canonical_key || undefined,
-          setYearStart: data.set_year_start ?? undefined,
-          setYearEnd: data.set_year_end ?? undefined,
-          manufacturer: data.manufacturer || undefined,
-          productLine: data.product_line || undefined,
-          sport: data.sport || undefined,
-          category: data.category || undefined,
+          marketValueLocked: data.market_value_locked ?? false
         };
-
+        
         // Update local storage only on success
         const current = await this.getCards();
         const existingIdx = current.findIndex(c => c.id === savedCard.id);
@@ -776,38 +451,10 @@ class CloudStorageService {
     return newCard;
   }
 
-  async saveValuationSnapshot(card: Card): Promise<void> {
-    const userId = await this.getUserId();
-    if (!userId || !supabase || !card.marketMeta) return;
-
-    try {
-      const meta = card.marketMeta;
-      const payload = {
-        card_id: card.id,
-        user_id: userId,
-        value_low_gbp: meta.low,
-        value_mid_gbp: meta.mid,
-        value_high_gbp: meta.high,
-        confidence: meta.confidence,
-        comps_used: meta.compsUsed,
-        source: meta.valuationVersion || 'market_meta',
-        snapshot: meta,
-      };
-
-      const { error } = await supabase.from('valuation_history').insert(payload);
-      if (error) {
-        console.warn('Valuation snapshot save failed (non-critical):', error.message);
-      }
-    } catch (err) {
-      console.warn('Valuation snapshot save failed (non-critical):', err);
-    }
-  }
   async deleteCard(id: string): Promise<void> {
     const userId = await this.getUserId();
     if (userId && supabase) {
-      await this.assertCoreSchema();
-      // .eq('user_id', userId) prevents deleting another user's card
-      const { error } = await supabase.from('cards').delete().eq('id', id).eq('user_id', userId);
+      const { error } = await supabase.from('cards').delete().eq('id', id);
       if (error) {
         console.error("Error deleting card:", error);
         throw error;
@@ -828,13 +475,12 @@ class CloudStorageService {
       if (data) return data;
     }
     const local = localStorage.getItem(LOCAL_PAGES_KEY);
-    return local ? (safeParseJson(local, BinderPageSchema.array()) ?? []) : [];
+    return local ? JSON.parse(local) : [];
   }
 
   async createPage(name: string): Promise<BinderPage> {
     const userId = await this.getUserId();
     if (userId && supabase) {
-      await this.assertCoreSchema();
       const { data, error } = await supabase.from('pages').insert({ user_id: userId, name }).select().single();
       
       if (error) {
@@ -859,9 +505,7 @@ class CloudStorageService {
   async deletePage(id: string): Promise<void> {
     const userId = await this.getUserId();
     if (userId && supabase) {
-      await this.assertCoreSchema();
-      // .eq('user_id', userId) prevents deleting another user's page
-      const { error } = await supabase.from('pages').delete().eq('id', id).eq('user_id', userId);
+      const { error } = await supabase.from('pages').delete().eq('id', id);
       if (error) {
         console.error("Error deleting page:", error);
         throw error;
@@ -873,26 +517,3 @@ class CloudStorageService {
 }
 
 export const vaultStorage = new CloudStorageService();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

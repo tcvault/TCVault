@@ -46,36 +46,21 @@
 
 @layer base {
   :root {
-    /* Parchment System — TC Vault Design Brief */
-    --surface-base: #F0E3C0;
-    --surface-elevated: #E8D9A8;
-    --surface-muted: #DFCF98;
-    --border-soft: #CBB996;
-    --ink-primary: #1A1A1A;
-    --ink-secondary: #3D3020;
-    --gold-900: #7A5E18;
-    --gold-700: #A5842A;
-    --gold-500: #C7A54B;
-    --gold-300: #E2C46E;
-    --focus-ring: rgba(199, 165, 75, 0.6);
+    /* Parchment System Implementation */
+    --surface-base: #F4EBD8;
+    --surface-elevated: #EFE3C3;
+    --surface-muted: #E6D7B2;
+    --border-soft: #D6C6A1;
+    --ink-primary: #2B2418;
+    --ink-secondary: #5A4E38;
+    --gold-900: #8B6914;
+    --gold-700: #B8901F;
+    --gold-500: #D4AF37;
+    --gold-300: #F0D86A;
+    --focus-ring: rgba(212,175,55,0.6);
 
-    --gold-gradient: linear-gradient(135deg, var(--gold-900) 0%, var(--gold-500) 35%, #E8C96A 55%, var(--gold-500) 75%, var(--gold-900) 100%);
-    --gold-gradient-hover: linear-gradient(135deg, #9a7520 0%, #d4b055 35%, #f5df85 55%, #d4b055 75%, #9a7520 100%);
-  }
-
-  /* Dark Mode — applies when .dark class is on root element */
-  .dark {
-    --surface-base: #1A1A1A;
-    --surface-elevated: #252520;
-    --surface-muted: #2E2E28;
-    --border-soft: #3D3830;
-    --ink-primary: #E5D5B5;
-    --ink-secondary: #A89A7E;
-    --gold-900: #7A5E18;
-    --gold-700: #A5842A;
-    --gold-500: #C7A54B;
-    --gold-300: #E2C46E;
-    --focus-ring: rgba(199, 165, 75, 0.6);
+    --gold-gradient: linear-gradient(135deg, var(--gold-900) 0%, var(--gold-500) 35%, #f5e070 55%, var(--gold-500) 75%, var(--gold-900) 100%);
+    --gold-gradient-hover: linear-gradient(135deg, #9a7520 0%, #e0bc48 35%, #fff0a0 55%, #e0bc48 75%, #9a7520 100%);
   }
 
   body {
@@ -124,70 +109,21 @@
     background: rgba(240, 237, 232, 0.6);
   }
 
-  /* === Card Components === */
-
-  /* Base card — raised compartment feel with layered depth */
   .card-vault {
     @apply bg-surface-elevated border border-border-soft rounded-[12px] p-section;
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.45) inset,
-      0 -1px 0 rgba(0, 0, 0, 0.06) inset,
-      0 4px 16px -2px rgba(0, 0, 0, 0.10),
-      0 1px 4px rgba(0, 0, 0, 0.06);
-  }
-
-  /* Grail / special item card — gold glow, elevated prominence */
-  .card-vault-grail {
-    @apply bg-surface-elevated rounded-[12px] p-section;
-    border: 1px solid var(--gold-700);
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.45) inset,
-      0 0 0 1px rgba(199, 165, 75, 0.15),
-      0 0 24px rgba(199, 165, 75, 0.20),
-      0 4px 20px -2px rgba(0, 0, 0, 0.14);
-  }
-
-  /* Vault slot — inset "safe deposit" feel for upload/drop zones */
-  .vault-slot {
-    @apply rounded-[12px] border-2 border-dashed border-border-soft flex items-center justify-center;
-    background: rgba(0, 0, 0, 0.04);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) inset;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-
-  .vault-slot:hover {
-    border-color: var(--gold-700);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) inset, 0 0 16px rgba(199, 165, 75, 0.12);
-  }
-
-  /* === Typography Utilities === */
-
-  /* Section label — uppercase overline style */
-  .label-section {
-    @apply text-[11px] font-semibold uppercase tracking-[0.12em] leading-none;
-    color: var(--ink-secondary);
-    opacity: 0.55;
-  }
-
-  /* Gold gradient text — for stats & premium values */
-  .text-gold-gradient {
-    background: var(--gold-gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
   }
 
   .btn-primary {
     @apply inline-flex items-center justify-center h-12 px-6 rounded-[8px] font-bold text-sm tracking-widest transition-all duration-150 shadow-lg;
     background: var(--gold-gradient);
     color: var(--ink-primary);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 8px 24px -4px rgba(165, 132, 42, 0.45);
+    box-shadow: 0 8px 24px -4px rgba(184, 134, 11, 0.4);
   }
 
   .btn-primary:hover:not(:disabled) {
     @apply -translate-y-px;
     background: var(--gold-gradient-hover);
-    box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 12px 28px -4px rgba(165, 132, 42, 0.55);
+    box-shadow: 0 12px 28px -4px rgba(184, 134, 11, 0.5);
   }
 
   .btn-primary:active:not(:disabled) {
