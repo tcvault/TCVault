@@ -6,7 +6,7 @@ import {
   Loader2, Globe, Lock, Crop, Scissors, ShieldCheck, CheckCircle, XCircle,
   AlertTriangle,
 } from 'lucide-react';
-import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
+import { identifyCard, getCardBoundingBox, BoundingBox, RateLimitError } from '../services/gemini';
 import ManualCropModal from './ManualCropModal';
 import { vaultStorage, supabase } from '../services/storage';
 import { normalizeSet } from '../lib/normalizeSet';
@@ -278,6 +278,9 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           setImages(prev => [...prev, storedUrl].slice(0, 4));
         } catch (cropErr) {
           console.error('Auto-crop failed:', cropErr);
+          if (cropErr instanceof RateLimitError && onToast) {
+            onToast(cropErr.message, 'error');
+          }
           const storedUrl = await vaultStorage.uploadImage(userId, compressed);
           setImages(prev => [...prev, storedUrl].slice(0, 4));
         } finally {
@@ -313,7 +316,11 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
       }
     } catch (err) {
       console.error('Recrop failed:', err);
-      if (onToast) onToast('Recrop analysis failed', 'error');
+      if (err instanceof RateLimitError && onToast) {
+        onToast(err.message, 'error');
+      } else if (onToast) {
+        onToast('Recrop analysis failed', 'error');
+      }
     } finally {
       setIsCropping(null);
     }
@@ -471,8 +478,12 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
           onToast('AI scan complete', 'info');
         }
       }
-    } catch {
-      setError('AI analysis failed.');
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        setError(err.message);
+      } else {
+        setError('AI analysis failed.');
+      }
     } finally {
       setIsScanning(false);
       setScanStep('');

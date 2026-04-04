@@ -70,6 +70,13 @@ export interface BoundingBox {
   xmax: number;
 }
 
+export class RateLimitError extends Error {
+  constructor(message = "Rate limit reached. Please wait a moment before trying again.") {
+    super(message);
+    this.name = "RateLimitError";
+  }
+}
+
 /** Retrieves the current user's JWT access token for authenticated API calls. */
 async function getAuthToken(): Promise<string | null> {
   if (!isSupabaseConfigured || !supabase) return null;
@@ -91,10 +98,14 @@ async function post<T>(path: string, body: unknown): Promise<T | null> {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       console.error(`${path} error:`, err);
+      if (res.status === 429) {
+        throw new RateLimitError(err.error);
+      }
       return null;
     }
     return res.json() as Promise<T>;
   } catch (error) {
+    if (error instanceof RateLimitError) throw error;
     console.error(`${path} fetch error:`, error);
     return null;
   }
