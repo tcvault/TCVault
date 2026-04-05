@@ -246,6 +246,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                 <div className="aspect-[3/4] rounded-xl overflow-hidden border border-border-soft bg-surface-base flex items-center justify-center p-control relative img-loading shadow-sm">
                   <img 
                     src={card.images[0]} 
+                    loading="lazy"
                     onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
                     className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform" 
                     alt={card.playerName} 

@@ -28,11 +28,14 @@ interface FilterState {
   rarity: string;
 }
 
+const PAGE_SIZE = 24;
+
 const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onGlobalSearchChange, onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice, onShareCard }) => {
   const [filters, setFilters] = useState<FilterState>({ team: 'all', set: 'all', condition: 'all', rarity: 'all' });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activePageId, setActivePageId] = useState<string | 'all'>(initialActiveBinderId);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   const [newPageName, setNewPageName] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -95,6 +98,21 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
   }, [cards, filters, activePageId, globalSearch, sortBy, sortOrder]);
 
   const hasActiveFilters = useMemo(() => filters.team !== 'all' || filters.set !== 'all' || filters.condition !== 'all' || filters.rarity !== 'all' || globalSearch !== '', [filters, globalSearch]);
+  const totalPages = Math.max(1, Math.ceil(processedCards.length / PAGE_SIZE));
+  const visibleCards = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return processedCards.slice(start, start + PAGE_SIZE);
+  }, [processedCards, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, globalSearch, activePageId, sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const resetAllViewFilters = () => {
     setFilters({ team: 'all', set: 'all', condition: 'all', rarity: 'all' });
@@ -254,8 +272,9 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
       </div>
 
       {processedCards.length > 0 ? (
+        <>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-section">
-          {processedCards.map(card => (
+          {visibleCards.map(card => (
             <div key={card.id} className="group cursor-pointer space-y-control" onClick={() => setSelectedCard(card)}>
               <div className="aspect-[3/4] rounded-xl overflow-hidden border border-border-soft shadow-sm bg-surface-elevated relative flex items-center justify-center p-padding img-loading">
                 {card.images?.[0] ? (
@@ -290,6 +309,30 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
             </div>
           ))}
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-control pt-section">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="btn-secondary h-10 px-4 text-xs tracking-widest font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft size={16} className="mr-2" />
+              Prev
+            </button>
+            <span className="min-w-[120px] text-center text-xs font-bold uppercase tracking-widest text-ink-tertiary">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="btn-secondary h-10 px-4 text-xs tracking-widest font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+              <ChevronRight size={16} className="ml-2" />
+            </button>
+          </div>
+        )}
+        </>
       ) : (
         <EmptyState 
           icon={<Ghost />} 

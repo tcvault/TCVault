@@ -264,6 +264,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
                       {card.images?.[0] ? (
                         <img 
                           src={card.images[0]} 
+                          loading="lazy"
                           className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500" 
                           onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')} 
                         />
@@ -360,6 +361,7 @@ const Explore: React.FC<ExploreProps> = ({ user, onNavigate, onToast, animationC
               {selectedCard.images?.[currentImageIndex] ? (
                 <img 
                   src={selectedCard.images[currentImageIndex]} 
+                  loading="lazy"
                   className="w-full h-full object-contain drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-700 select-none z-10" 
                   alt={selectedCard.playerName} 
                 />

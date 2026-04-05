@@ -65,6 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
                 <div className={`relative w-full h-full flex items-center justify-center img-loading ${isSpotlightLoaded ? '!before:hidden' : ''}`}>
                   <img 
                     src={spotlightCard.images[0]} 
+                    loading="lazy"
                     onLoad={(e) => {
                       (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading');
                       setIsSpotlightLoaded(true);
@@ -114,6 +115,7 @@ const Dashboard: React.FC<DashboardProps> = ({ stats, recentCards, onNavigate, o
                 {card.images && card.images[0] ? (
                   <img 
                     src={card.images[0]} 
+                    loading="lazy"
                     onLoad={(e) => (e.currentTarget.parentElement as HTMLElement).classList.remove('img-loading')}
                     className="max-w-full max-h-full w-auto h-auto object-contain group-hover:scale-[1.02] transition-transform duration-[150ms] z-10" 
                     alt={card.playerName} 
