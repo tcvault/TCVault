@@ -24,6 +24,20 @@ export function isRecoverableSupabaseAuthError(error: unknown): boolean {
   );
 }
 
+export function isRecoverableSupabaseDataError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return (
+    message.includes('Failed to fetch') ||
+    message.includes('Load failed') ||
+    message.includes('ERR_FAILED') ||
+    message.includes('502') ||
+    message.includes('503') ||
+    message.includes('504') ||
+    message.includes('Bad Gateway') ||
+    message.includes('Gateway')
+  );
+}
+
 export function clearSupabaseSessionArtifacts() {
   if (!SUPABASE_AUTH_STORAGE_KEY || typeof window === 'undefined') return;
 
@@ -150,17 +164,22 @@ class CloudStorageService {
 
   async getUserProfile(userId: string): Promise<User | null> {
     if (supabase) {
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (!error && data) {
-        return {
-          id: data.id,
-          username: data.username,
-          avatar: data.avatar_url,
-          bio: data.bio,
-          favClub: data.fav_club,
-          favPlayer: data.fav_player,
-          bannerUrl: data.banner_url
-        };
+      try {
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+        if (!error && data) {
+          return {
+            id: data.id,
+            username: data.username,
+            avatar: data.avatar_url,
+            bio: data.bio,
+            favClub: data.fav_club,
+            favPlayer: data.fav_player,
+            bannerUrl: data.banner_url
+          };
+        }
+      } catch (error) {
+        if (!isRecoverableSupabaseDataError(error)) throw error;
+        console.warn("Profile fetch failed, falling back to local profile:", error);
       }
     }
     const local = localStorage.getItem(`${LOCAL_PROFILE_PREFIX}${userId}`);
@@ -326,29 +345,35 @@ class CloudStorageService {
 
   async getNotifications(userId: string): Promise<Notification[]> {
     if (!supabase) return [];
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    
-    if (error) {
-      console.error("Error fetching notifications:", error);
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) {
+        console.error("Error fetching notifications:", error);
+        return [];
+      }
+
+      return (data || []).map((n: any) => ({
+        id: n.id,
+        userId: n.user_id,
+        type: n.type as NotificationType,
+        postId: n.post_id,
+        fromUserId: n.from_user_id,
+        fromUsername: n.from_username,
+        content: n.content,
+        isRead: n.is_read,
+        createdAt: new Date(n.created_at).getTime()
+      }));
+    } catch (error) {
+      if (!isRecoverableSupabaseDataError(error)) throw error;
+      console.warn("Notifications fetch failed, returning empty list:", error);
       return [];
     }
-
-    return (data || []).map((n: any) => ({
-      id: n.id,
-      userId: n.user_id,
-      type: n.type as NotificationType,
-      postId: n.post_id,
-      fromUserId: n.from_user_id,
-      fromUsername: n.from_username,
-      content: n.content,
-      isRead: n.is_read,
-      createdAt: new Date(n.created_at).getTime()
-    }));
   }
 
   async markNotificationAsRead(notificationId: string): Promise<void> {
@@ -374,30 +399,35 @@ class CloudStorageService {
   async getCards(userId?: string): Promise<Card[]> {
     const effectiveUserId = userId || await this.getUserId();
     if (effectiveUserId && supabase) {
-      const { data, error } = await supabase.from('cards').select('*').eq('user_id', effectiveUserId).order('created_at', { ascending: false });
-      if (!error && data) {
-        return data.map((item: any) => ({
-          id: item.id,
-          playerName: item.player_name,
-          team: item.team,
-          cardSpecifics: item.card_specifics,
-          set: item.set,
-          setNumber: item.set_number,
-          condition: item.condition,
-          pricePaid: Number(item.price_paid),
-          marketValue: Number(item.market_value),
-          purchaseDate: item.purchase_date,
-          serialNumber: item.serial_number,
-          certNumber: item.cert_number,
-          images: item.images,
-          notes: item.notes,
-          createdAt: new Date(item.created_at).getTime(),
-          pageId: item.page_id || '',
-          rarityTier: item.rarity_tier as any,
-          isPublic: item.is_public ?? true,
-          marketMeta: item.market_meta || undefined,
-          marketValueLocked: item.market_value_locked ?? false
-        }));
+      try {
+        const { data, error } = await supabase.from('cards').select('*').eq('user_id', effectiveUserId).order('created_at', { ascending: false });
+        if (!error && data) {
+          return data.map((item: any) => ({
+            id: item.id,
+            playerName: item.player_name,
+            team: item.team,
+            cardSpecifics: item.card_specifics,
+            set: item.set,
+            setNumber: item.set_number,
+            condition: item.condition,
+            pricePaid: Number(item.price_paid),
+            marketValue: Number(item.market_value),
+            purchaseDate: item.purchase_date,
+            serialNumber: item.serial_number,
+            certNumber: item.cert_number,
+            images: item.images,
+            notes: item.notes,
+            createdAt: new Date(item.created_at).getTime(),
+            pageId: item.page_id || '',
+            rarityTier: item.rarity_tier as any,
+            isPublic: item.is_public ?? true,
+            marketMeta: item.market_meta || undefined,
+            marketValueLocked: item.market_value_locked ?? false
+          }));
+        }
+      } catch (error) {
+        if (!isRecoverableSupabaseDataError(error)) throw error;
+        console.warn("Cards fetch failed, falling back to local cards:", error);
       }
     }
     const localUserId = await this.getEffectiveLocalUserId(userId);
@@ -454,84 +484,88 @@ class CloudStorageService {
     const createdAt = card.createdAt || Date.now();
 
     if (userId && supabase) {
-      const payload: any = {
-        id: cardId,
-        user_id: userId,
-        player_name: card.playerName,
-        team: card.team,
-        card_specifics: card.cardSpecifics,
-        set: card.set,
-        set_number: card.setNumber,
-        condition: card.condition,
-        price_paid: card.pricePaid,
-        market_value: card.marketValue,
-        purchase_date: card.purchaseDate,
-        serial_number: card.serialNumber,
-        cert_number: card.certNumber,
-        images: card.images,
-        notes: card.notes,
-        page_id: card.pageId || null,
-        rarity_tier: card.rarityTier,
-        is_public: card.isPublic ?? true,
-        created_at: new Date(createdAt).toISOString(),
-        market_meta: (card as any).marketMeta ?? null,
-        market_value_locked: (card as any).marketValueLocked ?? false
-      };
-
-      let { data, error } = await supabase.from('cards').upsert(payload).select().single();
-      
-      // Handle missing column errors (e.g. if columns were recently added but DB not updated)
-      if (error && (error.code === '42703' || error.message?.includes('column'))) {
-        console.warn("Detected missing column, retrying with minimal payload...", error.message);
-        const minimalPayload = { ...payload };
-        delete minimalPayload.cert_number;
-        delete minimalPayload.rarity_tier;
-        delete minimalPayload.is_public;
-        delete minimalPayload.page_id;
-        delete minimalPayload.market_meta;
-        delete minimalPayload.market_value_locked;
-        
-        const retry = await supabase.from('cards').upsert(minimalPayload).select().single();
-        data = retry.data;
-        error = retry.error;
-      }
-      
-      if (error) {
-        console.error("Card save sync error:", error);
-        throw error; // Propagate error to UI
-      }
-
-      if (data) {
-        const savedCard: Card = {
-          id: data.id,
-          playerName: data.player_name,
-          team: data.team,
-          cardSpecifics: data.card_specifics,
-          set: data.set,
-          setNumber: data.set_number,
-          condition: data.condition,
-          pricePaid: Number(data.price_paid),
-          marketValue: Number(data.market_value),
-          purchaseDate: data.purchase_date,
-          serialNumber: data.serial_number,
-          certNumber: data.cert_number,
-          images: data.images,
-          notes: data.notes,
-          createdAt: new Date(data.created_at).getTime(),
-          pageId: data.page_id || '',
-          rarityTier: data.rarity_tier as any,
-          isPublic: data.is_public ?? true,
-          marketMeta: data.market_meta || undefined,
-          marketValueLocked: data.market_value_locked ?? false
+      try {
+        const payload: any = {
+          id: cardId,
+          user_id: userId,
+          player_name: card.playerName,
+          team: card.team,
+          card_specifics: card.cardSpecifics,
+          set: card.set,
+          set_number: card.setNumber,
+          condition: card.condition,
+          price_paid: card.pricePaid,
+          market_value: card.marketValue,
+          purchase_date: card.purchaseDate,
+          serial_number: card.serialNumber,
+          cert_number: card.certNumber,
+          images: card.images,
+          notes: card.notes,
+          page_id: card.pageId || null,
+          rarity_tier: card.rarityTier,
+          is_public: card.isPublic ?? true,
+          created_at: new Date(createdAt).toISOString(),
+          market_meta: (card as any).marketMeta ?? null,
+          market_value_locked: (card as any).marketValueLocked ?? false
         };
+
+        let { data, error } = await supabase.from('cards').upsert(payload).select().single();
         
-        // Update local storage only on success
-        const current = await this.getCards(userId);
-        const existingIdx = current.findIndex(c => c.id === savedCard.id);
-        if (existingIdx > -1) current[existingIdx] = savedCard; else current.unshift(savedCard);
-        localStorage.setItem(this.getScopedLocalCardsKey(userId), JSON.stringify(current));
+        // Handle missing column errors (e.g. if columns were recently added but DB not updated)
+        if (error && (error.code === '42703' || error.message?.includes('column'))) {
+          console.warn("Detected missing column, retrying with minimal payload...", error.message);
+          const minimalPayload = { ...payload };
+          delete minimalPayload.cert_number;
+          delete minimalPayload.rarity_tier;
+          delete minimalPayload.is_public;
+          delete minimalPayload.page_id;
+          delete minimalPayload.market_meta;
+          delete minimalPayload.market_value_locked;
+          
+          const retry = await supabase.from('cards').upsert(minimalPayload).select().single();
+          data = retry.data;
+          error = retry.error;
+        }
         
-        return savedCard;
+        if (error) {
+          console.error("Card save sync error:", error);
+          throw error;
+        }
+
+        if (data) {
+          const savedCard: Card = {
+            id: data.id,
+            playerName: data.player_name,
+            team: data.team,
+            cardSpecifics: data.card_specifics,
+            set: data.set,
+            setNumber: data.set_number,
+            condition: data.condition,
+            pricePaid: Number(data.price_paid),
+            marketValue: Number(data.market_value),
+            purchaseDate: data.purchase_date,
+            serialNumber: data.serial_number,
+            certNumber: data.cert_number,
+            images: data.images,
+            notes: data.notes,
+            createdAt: new Date(data.created_at).getTime(),
+            pageId: data.page_id || '',
+            rarityTier: data.rarity_tier as any,
+            isPublic: data.is_public ?? true,
+            marketMeta: data.market_meta || undefined,
+            marketValueLocked: data.market_value_locked ?? false
+          };
+          
+          const current = await this.getCards(userId);
+          const existingIdx = current.findIndex(c => c.id === savedCard.id);
+          if (existingIdx > -1) current[existingIdx] = savedCard; else current.unshift(savedCard);
+          localStorage.setItem(this.getScopedLocalCardsKey(userId), JSON.stringify(current));
+          
+          return savedCard;
+        }
+      } catch (error) {
+        if (!isRecoverableSupabaseDataError(error)) throw error;
+        console.warn("Card save failed against Supabase, falling back to local storage:", error);
       }
     }
 
@@ -562,12 +596,17 @@ class CloudStorageService {
   async getPages(userId?: string): Promise<BinderPage[]> {
     const effectiveUserId = userId || await this.getUserId();
     if (effectiveUserId && supabase) {
-      const { data, error } = await supabase.from('pages').select('*').eq('user_id', effectiveUserId).order('name');
-      if (error) {
-        console.error("Error fetching pages:", error);
-        throw error;
+      try {
+        const { data, error } = await supabase.from('pages').select('*').eq('user_id', effectiveUserId).order('name');
+        if (error) {
+          console.error("Error fetching pages:", error);
+        } else if (data) {
+          return data;
+        }
+      } catch (error) {
+        if (!isRecoverableSupabaseDataError(error)) throw error;
+        console.warn("Pages fetch failed, falling back to local binders:", error);
       }
-      if (data) return data;
     }
     const localUserId = await this.getEffectiveLocalUserId(userId);
     const local = localStorage.getItem(this.getScopedLocalPagesKey(localUserId));

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, BinderPage } from '../types';
 import { Sparkles, X, Save, AlertCircle, Plus, Trash2, User, Users, FileText, Eye, BrainCircuit, PoundSterling, BookOpen, Hash, Zap, ChevronDown, Loader2, Globe, Lock, Crop, ShieldCheck } from 'lucide-react';
 import { identifyCard, getCardBoundingBox, BoundingBox } from '../services/gemini';
-import { vaultStorage, supabase } from '../services/storage';
+import { getSupabaseSessionSafely, vaultStorage } from '../services/storage';
 
 interface CardFormProps {
   onSubmit: (card: Card) => void;
@@ -128,10 +128,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     
     try {
       let userId = 'local-guest';
-      if (supabase) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) userId = user.id;
-      }
+      const { session } = await getSupabaseSessionSafely();
+      if (session?.user?.id) userId = session.user.id;
 
       for (let i = 0; i < files.length; i++) {
         if (i > 0) await new Promise(res => setTimeout(res, 500));
@@ -186,10 +184,8 @@ const CardForm: React.FC<CardFormProps> = ({ onSubmit, onDelete, onCancel, initi
     setIsCropping(index);
     try {
       let userId = 'local-guest';
-      if (supabase) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) userId = user.id;
-      }
+      const { session } = await getSupabaseSessionSafely();
+      if (session?.user?.id) userId = session.user.id;
 
       const box = await getCardBoundingBox(targetImage);
       if (box) {
