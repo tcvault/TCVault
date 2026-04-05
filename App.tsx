@@ -54,6 +54,8 @@ const App: React.FC = () => {
   });
   
   const isTerminating = useRef(false);
+  const inFlightLoadRef = useRef<Promise<void> | null>(null);
+  const inFlightLoadUserIdRef = useRef<string | null>(null);
 
   const animationClass = 'animate-in fade-in duration-300';
 
@@ -66,23 +68,37 @@ const App: React.FC = () => {
   }, []);
 
   const loadData = useCallback(async (userId?: string) => {
-    try {
-      if (!userId) return;
-      
-      const profile = await vaultStorage.getUserProfile(userId);
-      if (profile) setCurrentUser(profile);
-      
-      const [storedCards, storedBinders, storedNotifications] = await Promise.all([
-        vaultStorage.getCards(userId),
-        vaultStorage.getPages(userId),
-        vaultStorage.getNotifications(userId)
-      ]);
-      setCards(storedCards || []);
-      setBinders(storedBinders || []);
-      setNotifications(storedNotifications || []);
-    } catch (e) {
-      console.error("Vault load error:", e);
+    if (!userId) return;
+    if (inFlightLoadRef.current && inFlightLoadUserIdRef.current === userId) {
+      return inFlightLoadRef.current;
     }
+
+    const loadPromise = (async () => {
+      try {
+        const profile = await vaultStorage.getUserProfile(userId);
+        if (profile) setCurrentUser(profile);
+        
+        const [storedCards, storedBinders, storedNotifications] = await Promise.all([
+          vaultStorage.getCards(userId),
+          vaultStorage.getPages(userId),
+          vaultStorage.getNotifications(userId)
+        ]);
+        setCards(storedCards || []);
+        setBinders(storedBinders || []);
+        setNotifications(storedNotifications || []);
+      } catch (e) {
+        console.error("Vault load error:", e);
+      } finally {
+        if (inFlightLoadRef.current === loadPromise) {
+          inFlightLoadRef.current = null;
+          inFlightLoadUserIdRef.current = null;
+        }
+      }
+    })();
+
+    inFlightLoadRef.current = loadPromise;
+    inFlightLoadUserIdRef.current = userId;
+    return loadPromise;
   }, []);
 
   const resetLocalUiState = useCallback(() => {
@@ -144,34 +160,6 @@ const App: React.FC = () => {
 
     startup();
     
-    // Realtime Notifications Subscription
-    let notificationChannel: any = null;
-    if (supabase && currentUser) {
-      notificationChannel = supabase
-        .channel('public:notifications')
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${currentUser.id}`
-        }, (payload: any) => {
-          const newNotif: Notification = {
-            id: payload.new.id,
-            userId: payload.new.user_id,
-            type: payload.new.type,
-            postId: payload.new.post_id,
-            fromUserId: payload.new.from_user_id,
-            fromUsername: payload.new.from_username,
-            content: payload.new.content,
-            isRead: payload.new.is_read,
-            createdAt: new Date(payload.new.created_at).getTime()
-          };
-          setNotifications(prev => [newNotif, ...prev]);
-          addToast(`New ${newNotif.type} from ${newNotif.fromUsername}`, 'info');
-        })
-        .subscribe();
-    }
-    
     // Check for shared post URL
     const params = new URLSearchParams(window.location.search);
     const postId = params.get('post');
@@ -200,9 +188,40 @@ const App: React.FC = () => {
     return () => {
       isMounted = false;
       subscription.unsubscribe();
-      if (notificationChannel) supabase.removeChannel(notificationChannel);
     };
-  }, [loadData, resetLocalUiState, currentUser, addToast]);
+  }, [loadData, resetLocalUiState]);
+
+  useEffect(() => {
+    if (!supabase || !currentUser) return;
+
+    const notificationChannel = supabase
+      .channel(`public:notifications:${currentUser.id}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'notifications',
+        filter: `user_id=eq.${currentUser.id}`
+      }, (payload: any) => {
+        const newNotif: Notification = {
+          id: payload.new.id,
+          userId: payload.new.user_id,
+          type: payload.new.type,
+          postId: payload.new.post_id,
+          fromUserId: payload.new.from_user_id,
+          fromUsername: payload.new.from_username,
+          content: payload.new.content,
+          isRead: payload.new.is_read,
+          createdAt: new Date(payload.new.created_at).getTime()
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+        addToast(`New ${newNotif.type} from ${newNotif.fromUsername}`, 'info');
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(notificationChannel);
+    };
+  }, [currentUser, addToast]);
 
   const stats = useMemo<CollectionStats>(() => {
     const totalSpent = cards.reduce((sum, c) => sum + (Number(c.pricePaid) || 0), 0);
@@ -255,7 +274,6 @@ const App: React.FC = () => {
       setEditingCard(null);
       setView(ViewMode.INVENTORY);
       addToast(isUpdate ? "Record updated" : "Card stashed");
-      if (currentUser) loadData(currentUser.id);
     } catch {
       addToast("Save failed", "error");
     }
