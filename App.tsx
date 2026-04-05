@@ -73,6 +73,7 @@ const App: React.FC = () => {
       return inFlightLoadRef.current;
     }
 
+    let currentPromise: Promise<void> | null = null;
     const loadPromise = (async () => {
       try {
         const profile = await vaultStorage.getUserProfile(userId);
@@ -89,13 +90,14 @@ const App: React.FC = () => {
       } catch (e) {
         console.error("Vault load error:", e);
       } finally {
-        if (inFlightLoadRef.current === loadPromise) {
+        if (currentPromise && inFlightLoadRef.current === currentPromise) {
           inFlightLoadRef.current = null;
           inFlightLoadUserIdRef.current = null;
         }
       }
     })();
 
+    currentPromise = loadPromise;
     inFlightLoadRef.current = loadPromise;
     inFlightLoadUserIdRef.current = userId;
     return loadPromise;
