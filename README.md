@@ -18,3 +18,17 @@ View your app in AI Studio: https://ai.studio/apps/d3a8f955-f249-484f-923d-1ba95
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Create a local copy of this repository
+
+Use the helper script to clone this repo into a sibling directory:
+
+```bash
+./scripts/create-local-copy.sh
+```
+
+Optional arguments:
+
+```bash
+./scripts/create-local-copy.sh <source-repo-path> <target-path>
+```
