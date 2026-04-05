@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { Card, BinderPage, SocialPost, SocialComment, User, Notification, NotificationType } from '../types';
 
-const envUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+const runtimeEnv = typeof process !== 'undefined' ? process.env : undefined;
+const envUrl = import.meta.env.VITE_SUPABASE_URL || runtimeEnv?.SUPABASE_URL;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || runtimeEnv?.SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
 export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
