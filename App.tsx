@@ -15,7 +15,7 @@ import { MobileNav } from './components/layout/MobileNav';
 import { BinderBottomSheet } from './components/layout/BinderBottomSheet';
 import { ToastContainer } from './components/layout/ToastContainer';
 import { ConfirmModal } from './components/layout/ConfirmModal';
-import { vaultStorage, supabase } from './services/storage';
+import { clearSupabaseSessionArtifacts, getSupabaseSessionSafely, isRecoverableSupabaseAuthError, vaultStorage, supabase } from './services/storage';
 import { goldGradientStyle } from './styles';
 import { TCLogo } from './components/Branding';
 
@@ -27,18 +27,9 @@ interface Toast {
   type: 'success' | 'error' | 'info';
 }
 
-function usePrevious<T>(value: T): T | undefined {
-  const ref = useRef<T>(undefined);
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-  return ref.current;
-}
-
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [view, setView] = useState<ViewMode>(ViewMode.FEED);
-  const prevView = usePrevious(view);
   const [cards, setCards] = useState<Card[]>([]);
   const [binders, setBinders] = useState<BinderPage[]>([]);
   const [selectedBinderId, setSelectedBinderId] = useState<string | 'all'>('all');
@@ -64,26 +55,7 @@ const App: React.FC = () => {
   
   const isTerminating = useRef(false);
 
-  const animationClass = useMemo(() => {
-    if (!prevView || prevView === view) return 'animate-in fade-in duration-300';
-    
-    const deepViews = [ViewMode.DASHBOARD, ViewMode.INVENTORY, ViewMode.PROFILE, ViewMode.ADD_CARD];
-    const surfaceViews = [ViewMode.FEED, ViewMode.EXPLORE];
-    
-    if (deepViews.includes(view) && surfaceViews.includes(prevView)) {
-      return 'animate-in fade-in slide-in-from-bottom-2 duration-300';
-    }
-    
-    if (surfaceViews.includes(view) && deepViews.includes(prevView)) {
-      return 'animate-in fade-in slide-in-from-left-4 duration-300';
-    }
-
-    if (surfaceViews.includes(view) && surfaceViews.includes(prevView)) {
-      return view === ViewMode.EXPLORE ? 'animate-in fade-in slide-in-from-right-4 duration-300' : 'animate-in fade-in slide-in-from-left-4 duration-300';
-    }
-    
-    return 'animate-in fade-in duration-300';
-  }, [view, prevView]);
+  const animationClass = 'animate-in fade-in duration-300';
 
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
     const id = crypto.randomUUID();
@@ -134,7 +106,7 @@ const App: React.FC = () => {
 
     const startup = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { session, error } = await getSupabaseSessionSafely();
         
         if (session?.user && isMounted && !isTerminating.current) {
           const userId = session.user.id;
@@ -147,7 +119,7 @@ const App: React.FC = () => {
           setCurrentUser(finalUser);
           localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(finalUser));
           await loadData(userId);
-        } else if (isMounted && !isTerminating.current) {
+        } else if (isMounted && !isTerminating.current && !error) {
           const savedSession = localStorage.getItem(STORAGE_SESSION_KEY);
           if (savedSession) {
             try {
@@ -160,6 +132,10 @@ const App: React.FC = () => {
           }
         }
       } catch (e) {
+        if (isRecoverableSupabaseAuthError(e)) {
+          clearSupabaseSessionArtifacts();
+          resetLocalUiState();
+        }
         console.error("Startup auth check failed:", e);
       } finally {
         if (isMounted) setIsInitializing(false);

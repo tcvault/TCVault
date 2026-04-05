@@ -4,13 +4,62 @@ import { Card, BinderPage, SocialPost, SocialComment, User, Notification, Notifi
 const runtimeEnv = typeof process !== 'undefined' ? process.env : undefined;
 const envUrl = import.meta.env.VITE_SUPABASE_URL || runtimeEnv?.SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || runtimeEnv?.SUPABASE_ANON_KEY;
+const supabaseProjectRef = envUrl ? new URL(envUrl).hostname.split('.')[0] : null;
 
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
 export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
+export const SUPABASE_AUTH_STORAGE_KEY = supabaseProjectRef ? `sb-${supabaseProjectRef}-auth-token` : null;
 
 const LOCAL_GUEST_ID_KEY = 'tcvault_local_guest_id';
 const LOCAL_ACTIVE_SESSION_KEY = 'tcvault_active_session';
 const LOCAL_PROFILE_PREFIX = 'tcvault_profile_';
+
+export function isRecoverableSupabaseAuthError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return (
+    message.includes('Navigator LockManager lock') ||
+    message.includes('AuthRetryableFetchError') ||
+    message.includes('refresh_token') ||
+    message.includes('504')
+  );
+}
+
+export function clearSupabaseSessionArtifacts() {
+  if (!SUPABASE_AUTH_STORAGE_KEY || typeof window === 'undefined') return;
+
+  const keysToRemove = [
+    SUPABASE_AUTH_STORAGE_KEY,
+    `${SUPABASE_AUTH_STORAGE_KEY}-code-verifier`,
+    `${SUPABASE_AUTH_STORAGE_KEY}-user`,
+    LOCAL_ACTIVE_SESSION_KEY,
+  ];
+
+  keysToRemove.forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+}
+
+export async function getSupabaseSessionSafely() {
+  if (!supabase) {
+    return { session: null, error: null as unknown };
+  }
+
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error && isRecoverableSupabaseAuthError(error)) {
+      clearSupabaseSessionArtifacts();
+      return { session: null, error };
+    }
+    return { session, error };
+  } catch (error) {
+    if (isRecoverableSupabaseAuthError(error)) {
+      clearSupabaseSessionArtifacts();
+      return { session: null, error };
+    }
+    throw error;
+  }
+}
 
 class CloudStorageService {
   private getScopedLocalCardsKey(userId: string) {
@@ -52,8 +101,12 @@ class CloudStorageService {
 
   private async getUserId(): Promise<string | null> {
     if (!supabase) return null;
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.user?.id || null;
+    try {
+      const { session } = await getSupabaseSessionSafely();
+      return session?.user?.id || null;
+    } catch {
+      return null;
+    }
   }
 
   async uploadImage(userId: string, base64Data: string): Promise<string> {
