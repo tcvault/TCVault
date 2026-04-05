@@ -1,5 +1,5 @@
 import { Type } from "@google/genai";
-import { getAi, generateWithRetry, resolveImageToBase64, DEFAULT_MODEL } from "./_gemini";
+import { getAi, generateWithRetry, resolveImageToBase64, DEFAULT_MODEL } from "./_gemini.js";
 
 const UNIVERSAL_SOCCER_CARD_REGISTRY = `
 UNIVERSAL SOCCER CARD HISTORICAL REGISTRY (Multi-Era):
@@ -34,22 +34,24 @@ UNIVERSAL SOCCER CARD HISTORICAL REGISTRY (Multi-Era):
 `;
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const { images } = req.body || {};
   if (!images || !Array.isArray(images) || images.length === 0) {
-    return res.status(400).json({ error: 'images array is required' });
+    return res.status(400).json({ error: "images array is required" });
   }
 
   try {
     const ai = getAi();
 
-    const imageParts = await Promise.all(images.map(async (img: string) => ({
-      inlineData: {
-        mimeType: 'image/jpeg',
-        data: await resolveImageToBase64(img),
-      },
-    })));
+    const imageParts = await Promise.all(
+      images.map(async (img: string) => ({
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: await resolveImageToBase64(img),
+        },
+      })),
+    );
 
     const response = await generateWithRetry(ai, {
       model: DEFAULT_MODEL,
@@ -71,7 +73,7 @@ export default async function handler(req: any, res: any) {
             VALUATION PROTOCOL:
             1. **Valuation Anchor**: Identify the 3 most common RECENT SOLD prices for this exact parallel and grade.
             2. **Calculate Mean**: Calculate the Volume-Weighted Mean of these 3 prices.
-            3. **Consistency Check**: Round the 'estimatedValue' to the nearest £5.
+            3. **Consistency Check**: Round the 'estimatedValue' to the nearest GBP 5.
 
             Output JSON. Be extremely precise with the 'set' name (e.g., "2023-24 Panini Donruss Soccer").`,
           },
@@ -93,7 +95,7 @@ export default async function handler(req: any, res: any) {
             serialNumber: { type: Type.STRING },
             certNumber: { type: Type.STRING },
             reasoning: { type: Type.STRING },
-            rarityTier: { type: Type.STRING, enum: ['Base', 'Parallel', 'Chase', '1/1'] },
+            rarityTier: { type: Type.STRING, enum: ["Base", "Parallel", "Chase", "1/1"] },
             checklistVerified: { type: Type.BOOLEAN },
           },
           required: ["playerName", "team", "cardSpecifics", "set", "estimatedValue"],
@@ -101,9 +103,9 @@ export default async function handler(req: any, res: any) {
       },
     });
 
-    res.json(response ? JSON.parse(response.text || '{}') : null);
+    res.json(response ? JSON.parse(response.text || "{}") : null);
   } catch (error: any) {
-    const status = (error?.status === 429 || error?.error?.code === 429) ? 429 : 500;
+    const status = error?.status === 429 || error?.error?.code === 429 ? 429 : 500;
     res.status(status).json({ error: error.message });
   }
 }
