@@ -30,6 +30,19 @@ interface FilterState {
 
 const PAGE_SIZE = 24;
 
+const parseSetNumber = (value?: string): { numericValue: number | null; textValue: string } => {
+  const normalized = (value || '').trim();
+  if (!normalized) {
+    return { numericValue: null, textValue: '' };
+  }
+
+  const numericMatch = normalized.match(/\d+/);
+  return {
+    numericValue: numericMatch ? Number.parseInt(numericMatch[0], 10) : null,
+    textValue: normalized.toLowerCase(),
+  };
+};
+
 const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onGlobalSearchChange, onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice, onShareCard }) => {
   const [filters, setFilters] = useState<FilterState>({ team: 'all', set: 'all', condition: 'all', rarity: 'all' });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
@@ -92,6 +105,22 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         comparison = a.marketValue - b.marketValue;
       } else if (sortBy === 'pricePaid') {
         comparison = a.pricePaid - b.pricePaid;
+      } else if (sortBy === 'setNumber') {
+        const aSetNumber = parseSetNumber(a.setNumber);
+        const bSetNumber = parseSetNumber(b.setNumber);
+
+        if (aSetNumber.numericValue !== null && bSetNumber.numericValue !== null) {
+          comparison = aSetNumber.numericValue - bSetNumber.numericValue;
+          if (comparison === 0) {
+            comparison = aSetNumber.textValue.localeCompare(bSetNumber.textValue);
+          }
+        } else if (aSetNumber.numericValue !== null) {
+          comparison = -1;
+        } else if (bSetNumber.numericValue !== null) {
+          comparison = 1;
+        } else {
+          comparison = aSetNumber.textValue.localeCompare(bSetNumber.textValue);
+        }
       }
       return sortOrder === 'asc' ? comparison : -comparison;
     });
@@ -243,6 +272,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <option value="marketValue">Value</option>
                 <option value="pricePaid">Cost</option>
                 <option value="playerName">Name</option>
+                <option value="setNumber">Set #</option>
               </select>
               <ArrowUpDown size={14} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
               <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-tertiary" />
