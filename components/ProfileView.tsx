@@ -95,7 +95,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
             </>
           )}
           
-          <div className="absolute inset-0 opacity-[0.05] mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }}></div>
+          <div className="absolute inset-0 opacity-[0.05] mix-blend-overlay pointer-events-none" style={{ backgroundImage: 'url("/noise.svg")' }}></div>
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
           
           {isEditing && (

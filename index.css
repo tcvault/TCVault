@@ -95,7 +95,7 @@
 @layer components {
   .grain {
     @apply fixed inset-0 pointer-events-none z-[9999] opacity-[0.08];
-    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+    background-image: url("/noise.svg");
     filter: contrast(170%) brightness(100%);
   }
 
