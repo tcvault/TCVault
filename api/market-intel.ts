@@ -1,4 +1,4 @@
-import { getAi, generateWithRetry, DEFAULT_MODEL } from "./_gemini";
+﻿import { getAi, generateWithRetry, DEFAULT_MODEL } from "./_gemini";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -23,8 +23,8 @@ TARGET CARD:
 ${certNumber ? `- PSA cert: ${certNumber} (verify against ${psaUrl})` : ''}
 
 TASK:
-1) Find 8–15 RECENT SOLD comps (last 90 days) for the *exact* card + grade.
-2) Also find 6–12 ACTIVE listings for the exact card + grade.
+1) Find 8-15 RECENT SOLD comps (last 90 days) for the *exact* card + grade.
+2) Also find 6-12 ACTIVE listings for the exact card + grade.
 3) Exclude: lots/multipacks, obvious mis-matches, damaged unless explicitly stated, reprints, "custom", "digital", "case hit lot".
 4) For each item: title, uri, soldDate (sold only), price, currency, shipping, grade (if stated), matchConfidence 0..1, source, flags.
 5) Convert everything to GBP via a stated FX rate note (fxRateUsed). Keep original currency in the item too.
@@ -59,3 +59,4 @@ Output schema: { sold: [...], active: [...], notes, fxRateUsed }.
     res.status(status).json({ error: error.message });
   }
 }
+

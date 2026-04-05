@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { Card, BinderPage, SortField, SortOrder } from '../types';
 import { Search, Trash2, Edit3, X, ChevronDown, Filter as FilterIcon, Plus, BookOpen, Layers, ChevronLeft, ChevronRight, Ghost, Check, RefreshCw, Share2, ExternalLink, Instagram, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -8,6 +8,7 @@ interface InventoryProps {
   cards: Card[];
   pages: BinderPage[];
   globalSearch?: string;
+  onGlobalSearchChange?: (value: string) => void;
   onClearSearch?: () => void;
   onDelete: (id: string) => void;
   onUpdate: (card: Card) => void;
@@ -21,15 +22,14 @@ interface InventoryProps {
 }
 
 interface FilterState {
-  player: string;
   team: string;
   set: string;
   condition: string;
   rarity: string;
 }
 
-const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice, onShareCard }) => {
-  const [filters, setFilters] = useState<FilterState>({ player: '', team: 'all', set: 'all', condition: 'all', rarity: 'all' });
+const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', onGlobalSearchChange, onClearSearch, onDelete, onUpdate, onCreatePage, onDeletePage, initialActiveBinderId = 'all', onSelectBinder, animationClass, onRefreshPrice, onShareCard }) => {
+  const [filters, setFilters] = useState<FilterState>({ team: 'all', set: 'all', condition: 'all', rarity: 'all' });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activePageId, setActivePageId] = useState<string | 'all'>(initialActiveBinderId);
@@ -62,10 +62,16 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
       if (activePageId !== 'all' && card.pageId !== activePageId) return false;
       if (globalSearch) {
         const term = globalSearch.toLowerCase();
-        const matches = card.playerName.toLowerCase().includes(term) || (card.team && card.team.toLowerCase().includes(term)) || card.set.toLowerCase().includes(term) || card.cardSpecifics.toLowerCase().includes(term);
+        const matches =
+          card.playerName.toLowerCase().includes(term) ||
+          (card.team && card.team.toLowerCase().includes(term)) ||
+          card.set.toLowerCase().includes(term) ||
+          card.cardSpecifics.toLowerCase().includes(term) ||
+          (card.setNumber && card.setNumber.toLowerCase().includes(term)) ||
+          (card.serialNumber && card.serialNumber.toLowerCase().includes(term)) ||
+          (card.certNumber && card.certNumber.toLowerCase().includes(term));
         if (!matches) return false;
       }
-      if (filters.player && !card.playerName.toLowerCase().includes(filters.player.toLowerCase())) return false;
       if (filters.team !== 'all' && card.team !== filters.team) return false;
       if (filters.set !== 'all' && card.set !== filters.set) return false;
       if (filters.condition !== 'all' && card.condition !== filters.condition) return false;
@@ -88,10 +94,10 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
     });
   }, [cards, filters, activePageId, globalSearch, sortBy, sortOrder]);
 
-  const hasActiveFilters = useMemo(() => filters.player !== '' || filters.team !== 'all' || filters.set !== 'all' || filters.condition !== 'all' || filters.rarity !== 'all' || globalSearch !== '', [filters, globalSearch]);
+  const hasActiveFilters = useMemo(() => filters.team !== 'all' || filters.set !== 'all' || filters.condition !== 'all' || filters.rarity !== 'all' || globalSearch !== '', [filters, globalSearch]);
 
   const resetAllViewFilters = () => {
-    setFilters({ player: '', team: 'all', set: 'all', condition: 'all', rarity: 'all' });
+    setFilters({ team: 'all', set: 'all', condition: 'all', rarity: 'all' });
     if (onClearSearch) onClearSearch();
   };
 
@@ -206,7 +212,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
         <div className="flex items-center justify-between gap-control">
           <div className="relative flex-1 group">
              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-tertiary group-focus-within:text-gold-500 transition-colors" size={16} />
-             <input type="text" placeholder="Search current view..." value={filters.player} onChange={(e) => setFilters({...filters, player: e.target.value})} className="w-full bg-surface-elevated border border-border-soft rounded-xl h-12 pl-11 pr-4 text-sm font-semibold text-ink-primary focus:border-gold-500/40 outline-none transition-all placeholder:text-ink-tertiary" />
+             <input type="text" placeholder="Search current view..." value={globalSearch} onChange={(e) => onGlobalSearchChange?.(e.target.value)} className="w-full bg-surface-elevated border border-border-soft rounded-xl h-12 pl-11 pr-4 text-sm font-semibold text-ink-primary focus:border-gold-500/40 outline-none transition-all placeholder:text-ink-tertiary" />
           </div>
           <div className="flex items-center gap-control">
             <div className="relative group">
@@ -277,7 +283,7 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <h4 className="font-bold text-sm text-ink-primary truncate group-hover:text-gold-500 transition-colors">{card.playerName}</h4>
                 <p className="text-xs text-ink-secondary/60 font-semibold uppercase tracking-widest truncate">{card.set} {card.setNumber ? `#${card.setNumber}` : ''}</p>
                 <div className="flex items-center justify-between pt-0.5">
-                  <span className="text-sm font-bold text-ink-secondary/80 tabular">£{card.marketValue.toLocaleString()}</span>
+                  <span className="text-sm font-bold text-ink-secondary/80 tabular">GBP {card.marketValue.toLocaleString()}</span>
                   {card.serialNumber && <span className="text-xs font-bold text-gold-500 px-1.5 py-0.5 bg-gold-500/5 rounded border border-gold-500/10">{card.serialNumber}</span>}
                 </div>
               </div>
@@ -428,15 +434,15 @@ const Inventory: React.FC<InventoryProps> = ({ cards, pages, globalSearch = '', 
                 <div className={`pt-section border-t border-border-soft space-y-section mt-auto ${isExporting ? 'pb-8' : ''}`}>
                    {!isExporting && (
                      <div className="grid grid-cols-2 gap-control">
-                        <div className="p-padding rounded-xl bg-surface-base border border-border-soft space-y-control"><span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Paid</span><p className="text-xl font-bold text-ink-primary">£{selectedCard.pricePaid}</p></div>
+                        <div className="p-padding rounded-xl bg-surface-base border border-border-soft space-y-control"><span className="text-xs font-bold text-ink-tertiary uppercase tracking-widest">Paid</span><p className="text-xl font-bold text-ink-primary">GBP {selectedCard.pricePaid}</p></div>
                         <div className="p-padding rounded-xl bg-gold-500/5 border border-gold-500/10 space-y-control relative group text-center">
                           <span className="text-xs font-bold text-gold-500 uppercase tracking-widest">Market</span>
                           <div className="flex items-center justify-center gap-control">
                             <div className="space-y-0.5">
-                              <p className="text-xl font-bold text-gold-500">£{selectedCard.marketValue}</p>
+                              <p className="text-xl font-bold text-gold-500">GBP {selectedCard.marketValue}</p>
                               {selectedCard.marketMeta && (
                                 <p className="text-xs font-semibold text-ink-tertiary uppercase tracking-tight">
-                                  £{selectedCard.marketMeta.low}–£{selectedCard.marketMeta.high} · {selectedCard.marketMeta.confidence}
+                                  GBP {selectedCard.marketMeta.low}-GBP {selectedCard.marketMeta.high} | {selectedCard.marketMeta.confidence}
                                 </p>
                               )}
                             </div>
@@ -532,3 +538,4 @@ const Detail = ({ label, value, isExporting }: DetailProps) => (
 );
 
 export default Inventory;
+

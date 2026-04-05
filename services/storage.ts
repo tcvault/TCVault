@@ -8,11 +8,48 @@ const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY || runtimeEnv?.SUPABASE_AN
 export const isSupabaseConfigured = !!(envUrl && envUrl.startsWith('http') && envKey);
 export const supabase = isSupabaseConfigured ? createClient(envUrl!, envKey!) : null as any;
 
-const LOCAL_CARDS_KEY = 'tcvault_local_cards';
-const LOCAL_PAGES_KEY = 'tcvault_local_pages';
+const LOCAL_GUEST_ID_KEY = 'tcvault_local_guest_id';
+const LOCAL_ACTIVE_SESSION_KEY = 'tcvault_active_session';
 const LOCAL_PROFILE_PREFIX = 'tcvault_profile_';
 
 class CloudStorageService {
+  private getScopedLocalCardsKey(userId: string) {
+    return `tcvault_local_cards_${userId}`;
+  }
+
+  private getScopedLocalPagesKey(userId: string) {
+    return `tcvault_local_pages_${userId}`;
+  }
+
+  private getStoredLocalSessionUserId(): string | null {
+    try {
+      const rawSession = localStorage.getItem(LOCAL_ACTIVE_SESSION_KEY);
+      if (!rawSession) return null;
+      const parsed = JSON.parse(rawSession);
+      return typeof parsed?.id === 'string' ? parsed.id : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private getOrCreateGuestUserId(): string {
+    const existingGuestId = localStorage.getItem(LOCAL_GUEST_ID_KEY);
+    if (existingGuestId) return existingGuestId;
+
+    const guestId = `local-guest-${crypto.randomUUID()}`;
+    localStorage.setItem(LOCAL_GUEST_ID_KEY, guestId);
+    return guestId;
+  }
+
+  private async getEffectiveLocalUserId(preferredUserId?: string): Promise<string> {
+    if (preferredUserId) return preferredUserId;
+
+    const sessionUserId = await this.getUserId();
+    if (sessionUserId) return sessionUserId;
+
+    return this.getStoredLocalSessionUserId() || this.getOrCreateGuestUserId();
+  }
+
   private async getUserId(): Promise<string | null> {
     if (!supabase) return null;
     const { data: { session } } = await supabase.auth.getSession();
@@ -310,7 +347,8 @@ class CloudStorageService {
         }));
       }
     }
-    const local = localStorage.getItem(LOCAL_CARDS_KEY);
+    const localUserId = await this.getEffectiveLocalUserId(userId);
+    const local = localStorage.getItem(this.getScopedLocalCardsKey(localUserId));
     return local ? JSON.parse(local) : [];
   }
 
@@ -352,7 +390,8 @@ class CloudStorageService {
         }));
       }
     }
-    const local = localStorage.getItem(LOCAL_CARDS_KEY);
+    const localUserId = await this.getEffectiveLocalUserId();
+    const local = localStorage.getItem(this.getScopedLocalCardsKey(localUserId));
     return local ? JSON.parse(local).filter((c: Card) => c.isPublic) : [];
   }
 
@@ -434,21 +473,22 @@ class CloudStorageService {
         };
         
         // Update local storage only on success
-        const current = await this.getCards();
+        const current = await this.getCards(userId);
         const existingIdx = current.findIndex(c => c.id === savedCard.id);
         if (existingIdx > -1) current[existingIdx] = savedCard; else current.unshift(savedCard);
-        localStorage.setItem(LOCAL_CARDS_KEY, JSON.stringify(current));
+        localStorage.setItem(this.getScopedLocalCardsKey(userId), JSON.stringify(current));
         
         return savedCard;
       }
     }
 
     // Guest mode or fallback
-    const current = await this.getCards();
+    const localUserId = await this.getEffectiveLocalUserId();
+    const current = await this.getCards(localUserId);
     const newCard = { ...card, id: cardId, createdAt } as Card;
     const existingIdx = current.findIndex(c => c.id === newCard.id);
     if (existingIdx > -1) current[existingIdx] = newCard; else current.unshift(newCard);
-    localStorage.setItem(LOCAL_CARDS_KEY, JSON.stringify(current));
+    localStorage.setItem(this.getScopedLocalCardsKey(localUserId), JSON.stringify(current));
     return newCard;
   }
 
@@ -461,8 +501,9 @@ class CloudStorageService {
         throw error;
       }
     }
-    const current = await this.getCards();
-    localStorage.setItem(LOCAL_CARDS_KEY, JSON.stringify(current.filter(c => c.id !== id)));
+    const localUserId = await this.getEffectiveLocalUserId();
+    const current = await this.getCards(localUserId);
+    localStorage.setItem(this.getScopedLocalCardsKey(localUserId), JSON.stringify(current.filter(c => c.id !== id)));
   }
 
   async getPages(userId?: string): Promise<BinderPage[]> {
@@ -475,7 +516,8 @@ class CloudStorageService {
       }
       if (data) return data;
     }
-    const local = localStorage.getItem(LOCAL_PAGES_KEY);
+    const localUserId = await this.getEffectiveLocalUserId(userId);
+    const local = localStorage.getItem(this.getScopedLocalPagesKey(localUserId));
     return local ? JSON.parse(local) : [];
   }
 
@@ -490,16 +532,17 @@ class CloudStorageService {
       }
       
       if (data) {
-        const current = await this.getPages();
+        const current = await this.getPages(userId);
         current.push(data);
-        localStorage.setItem(LOCAL_PAGES_KEY, JSON.stringify(current));
+        localStorage.setItem(this.getScopedLocalPagesKey(userId), JSON.stringify(current));
         return data;
       }
     }
-    const current = await this.getPages();
+    const localUserId = await this.getEffectiveLocalUserId();
+    const current = await this.getPages(localUserId);
     const newPage = { id: crypto.randomUUID(), name };
     current.push(newPage);
-    localStorage.setItem(LOCAL_PAGES_KEY, JSON.stringify(current));
+    localStorage.setItem(this.getScopedLocalPagesKey(localUserId), JSON.stringify(current));
     return newPage;
   }
 
@@ -512,8 +555,9 @@ class CloudStorageService {
         throw error;
       }
     }
-    const current = await this.getPages();
-    localStorage.setItem(LOCAL_PAGES_KEY, JSON.stringify(current.filter(p => p.id !== id)));
+    const localUserId = await this.getEffectiveLocalUserId();
+    const current = await this.getPages(localUserId);
+    localStorage.setItem(this.getScopedLocalPagesKey(localUserId), JSON.stringify(current.filter(p => p.id !== id)));
   }
 }
 

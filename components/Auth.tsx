@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { ShieldCheck, User as UserIcon, Lock, KeyRound, RefreshCcw, ArrowLeft, Loader2, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { User } from '../types';
 import { supabase } from '../services/storage';
@@ -154,7 +154,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onCancel }) => {
                     icon={<Lock size={16} />} 
                     value={password} 
                     onChange={setPassword} 
-                    placeholder="••••••••" 
+                    placeholder="********" 
                     extra={authMode === 'login' && (
                       <button 
                         type="button" 
@@ -222,3 +222,4 @@ const AuthField = ({ label, value, onChange, icon, type = 'text', placeholder, e
 );
 
 export default Auth;
+

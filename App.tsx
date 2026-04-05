@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getMarketIntel } from './services/gemini';
 import { buildMarketMeta } from './services/valuation';
 import { Card, ViewMode, CollectionStats, User, BinderPage, SocialPost, Notification } from './types';
@@ -32,7 +32,6 @@ function usePrevious<T>(value: T): T | undefined {
   useEffect(() => {
     ref.current = value;
   }, [value]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   return ref.current;
 }
 
@@ -376,7 +375,7 @@ const App: React.FC = () => {
       await vaultStorage.saveCard(updatedCard);
       setCards(prev => prev.map(c => c.id === card.id ? updatedCard : c));
 
-      addToast(`Updated: £${meta.mid} (£${meta.low}–£${meta.high}, ${meta.confidence})`, "success");
+      addToast(`Updated: GBP ${meta.mid} (GBP ${meta.low}-GBP ${meta.high}, ${meta.confidence})`, "success");
     } catch {
       addToast("Market refresh failed", "error");
     }
@@ -462,6 +461,7 @@ const App: React.FC = () => {
           selectedBinderId={selectedBinderId}
           setSelectedBinderId={setSelectedBinderId}
           handleLogout={handleLogout}
+          unreadNotificationsCount={unreadNotificationsCount}
         />
       </aside>
 
@@ -492,6 +492,7 @@ const App: React.FC = () => {
               cards={cards} 
               pages={binders} 
               globalSearch={globalSearch}
+              onGlobalSearchChange={setGlobalSearch}
               onClearSearch={() => setGlobalSearch('')}
               onDelete={handleDeleteCard} 
               onUpdate={(c) => { setEditingCard(c); setView(ViewMode.ADD_CARD); }} 
@@ -583,3 +584,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Rss, Compass, Plus, Layers as BinderIcon, User as UserIcon, ShieldCheck } from 'lucide-react';
+import { Rss, Compass, Plus, Layers as BinderIcon, User as UserIcon, ShieldCheck, Bell } from 'lucide-react';
 import { ViewMode, BinderPage } from '../../types';
 
 interface MobileNavProps {
@@ -29,8 +29,7 @@ export const MobileNav = ({
         active={view === ViewMode.FEED} 
         onClick={() => setView(ViewMode.FEED)} 
         icon={<Rss size={20} />} 
-        label="Feed" 
-        badge={unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined}
+        label="Feed"
       />
       <MobileNavButton active={view === ViewMode.EXPLORE} onClick={() => setView(ViewMode.EXPLORE)} icon={<Compass size={20} />} label="Explore" />
       {!isGuest ? (
@@ -54,6 +53,13 @@ export const MobileNav = ({
             }}
             icon={<BinderIcon size={20} />}
             label="Vault"
+          />
+          <MobileNavButton
+            active={view === ViewMode.NOTIFICATIONS}
+            onClick={() => setView(ViewMode.NOTIFICATIONS)}
+            icon={<Bell size={20} />}
+            label="Alerts"
+            badge={unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined}
           />
           <MobileNavButton active={view === ViewMode.PROFILE} onClick={() => setView(ViewMode.PROFILE)} icon={<UserIcon size={20} />} label="You" />
         </>

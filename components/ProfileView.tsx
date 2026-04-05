@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { User, Card } from '../types';
 import { User as UserIcon, Settings, Grid, Lock, Unlock, MapPin, Trophy, ShieldCheck, Heart, Camera, Loader2, Save, Edit3 } from 'lucide-react';
 import EmptyState from './EmptyState';
@@ -145,7 +145,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                   className="bg-surface-base border border-border-soft rounded-xl h-10 px-padding text-sm font-bold italic focus:border-gold-500/40 outline-none transition-all text-ink-primary w-full max-w-sm" 
                   placeholder="Username"
                 />
-                <p className="text-xs font-bold text-ink-tertiary uppercase tracking-widest px-1">Master Collector • London, UK</p>
+                <p className="text-xs font-bold text-ink-tertiary uppercase tracking-widest px-1">Master Collector - London, UK</p>
               </div>
             ) : (
               <>
@@ -155,7 +155,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ user, cards, onEditCard, onUp
                     <ShieldCheck size={20} className="text-gold-500" />
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-ink-tertiary">Master Collector • London, UK</p>
+                <p className="text-sm font-semibold text-ink-tertiary">Master Collector - London, UK</p>
               </>
             )}
           </div>
