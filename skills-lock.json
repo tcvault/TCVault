@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "travel-planner": {
+      "source": "ailabs-393/ai-labs-claude-skills",
+      "sourceType": "github",
+      "skillPath": "packages/skills/travel-planner/SKILL.md",
+      "computedHash": "8320b1c4b544113788926eee4cb7a31ed1f354227d59cd9f880a51a0c02e101d"
+    }
+  }
+}
