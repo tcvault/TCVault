@@ -1,5 +1,6 @@
 """Generate Cesarewitch-V2.0-Build-Audit.md from the pipeline outputs (tables are never hand-typed)."""
-import os, json
+import os, sys, json
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np, pandas as pd
 import warnings; warnings.filterwarnings('ignore')
 import backtest as B
