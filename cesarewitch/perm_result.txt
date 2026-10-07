@@ -1,0 +1,5 @@
+observed mean winner rank pct / top-half rate: [0.223 1.   ]
+null mean rank pct: mean 0.179  5th pct 0.072
+P(null mean rank pct <= observed) = 0.727  n=300
+P(null top-half rate >= observed) = 0.693
+

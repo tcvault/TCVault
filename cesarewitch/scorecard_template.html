@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cesarewitch V2.0 Scorecard</title>
+<style>
+:root{--green:#14452f;--green2:#1d5c40;--gold:#b8923a;--parch:#f6f1e4;--ink:#1d2a22;--line:#d9cfb4;--warn:#9a3412;--ok:#166534;--card:#fffdf6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--parch:#141a16;--ink:#e8e4d4;--line:#34423a;--card:#1b231e;--green:#0e2e20;--gold:#d4b05a}}
+body{margin:0;background:var(--parch);color:var(--ink);font:15px/1.5 Georgia,serif}
+header{background:var(--green);color:#fff;padding:20px 16px;border-bottom:4px solid var(--gold)}
+header h1{margin:0;font-size:22px}header p{margin:4px 0 0;opacity:.85;font-size:13px}
+main{max-width:1100px;margin:0 auto;padding:16px}
+section{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin:14px 0}
+h2{margin:0 0 8px;font-size:17px;color:var(--green2)}@media (prefers-color-scheme:dark){h2{color:var(--gold)}}
+.badge{display:inline-block;background:var(--gold);color:#1d1600;font:700 11px monospace;padding:2px 8px;border-radius:10px}
+table{border-collapse:collapse;width:100%;font:13px ui-monospace,Menlo,monospace}
+th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}th{color:var(--green2)}
+@media (prefers-color-scheme:dark){th{color:var(--gold)}}
+.scroll{overflow-x:auto}select,input[type=text],input[type=number]{font:13px monospace;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:3px;padding:3px}
+button{background:var(--green2);color:#fff;border:0;border-radius:4px;padding:6px 12px;cursor:pointer;font:13px sans-serif}
+.warn{color:var(--warn);font-weight:700}.ok{color:var(--ok);font-weight:700}.note{font-size:12.5px;opacity:.85}
+</style></head><body>
+<header><h1>Cesarewitch Handicap — V2.0 Anchored 100</h1>
+<p>Class 2 · 3YO+ · Newmarket Rowley Mile · 2m2f (3,960y) · Turf &nbsp;<span class="badge">PROVISIONAL / IN-SAMPLE ONLY</span></p></header>
+<main>
+<section><h2>1 · Score the field (price-blind)</h2>
+<p class="note">Pick each runner's band per factor from pre-race RFB form only. “NA” = evidence not available: the factor takes the active-field mean (never zero) and the runner is marked PROVISIONAL.</p>
+<div class="scroll"><table id="t"><thead></thead><tbody></tbody></table></div>
+<p><button id="add">+ runner</button> <button id="clear">clear</button> &nbsp; k = <input type="number" id="k" value="5" step=".5" min="2" max="8" style="width:60px"> (frozen 5.0) · λ = <input type="number" id="lam" value="0" step=".02" min="0" max=".2" style="width:60px"> (frozen 0)</p></section>
+<section><h2>2 · Probability line, compression gate and tissue</h2><div id="gate"></div><div class="scroll"><table id="out"><thead><tr><th>#</th><th>Runner</th><th>Score</th><th>True %</th><th>Fair odds</th><th>Tissue ×1.15</th><th>Status</th></tr></thead><tbody></tbody></table></div></section>
+<section><h2>3 · Factors, weights and bands</h2><div class="scroll"><table id="spec"></table></div>
+<p class="note">Weights ∝ Phase 2 effect size (standardised separation × direction consistency), capped 40 / floored 5. Band edges from the pooled 95-runner distribution. Excluded by governance and held for race-day overlays: OR, weight, draw, going, course form, trainer/jockey, market. Evidence base and caveats: see the Build Audit.</p></section>
+<section><h2>4 · Decision layer</h2><p class="note">Freeze this score, then apply the race-day route audit and price categories in the horse-racing-scorecard-decision process. Price never enters the 100.
+A status of PROVISIONAL or a compression warning means the tissue is not validated.</p></section>
+</main>
+<script>
+const FACTORS=/*FACTORS*/[];
+const MAXSUM=FACTORS.reduce((a,f)=>a+f.max,0); console.assert(MAXSUM===100,'maxima must sum to 100');
+FACTORS.forEach(f=>{for(let i=1;i<f.pts.length;i++)console.assert(f.pts[i]>f.pts[i-1],'ordered bands '+f.key)});
+const thead=document.querySelector('#t thead'), tb=document.querySelector('#t tbody');
+thead.innerHTML='<tr><th>Runner</th>'+FACTORS.map(f=>`<th title="${f.desc}">${f.name} (${f.max})</th>`).join('')+'<th></th></tr>';
+function row(name=''){const tr=document.createElement('tr');
+ tr.innerHTML=`<td><input type="text" value="${name}" size="16"></td>`+FACTORS.map(f=>`<td><select><option value="NA">NA</option>${f.bands.map((b,i)=>`<option value="${i}">${b} · ${f.pts[i]}</option>`).join('')}</select></td>`).join('')+'<td><button class="x">×</button></td>';
+ tr.querySelector('.x').onclick=()=>{tr.remove();calc()};tr.querySelectorAll('select,input').forEach(e=>e.oninput=calc);tb.appendChild(tr)}
+function calc(){const rows=[...tb.rows].map(tr=>({name:tr.querySelector('input').value||'runner',sel:[...tr.querySelectorAll('select')].map(s=>s.value)}));
+ const mean=FACTORS.map((f,j)=>{const k=rows.filter(r=>r.sel[j]!=='NA').map(r=>f.pts[+r.sel[j]]);return k.length?k.reduce((a,b)=>a+b,0)/k.length:(Math.min(...f.pts)+f.max)/2});
+ rows.forEach(r=>{r.na=r.sel.filter(s=>s==='NA').length;r.total=r.sel.reduce((a,s,j)=>a+(s==='NA'?mean[j]:FACTORS[j].pts[+s]),0)});
+ const k=+document.getElementById('k').value,lam=+document.getElementById('lam').value;const top=Math.max(...rows.map(r=>r.total),0);
+ const w=rows.map(r=>Math.exp(k*(r.total-top)/100));const sw=w.reduce((a,b)=>a+b,0)||1;rows.forEach((r,i)=>r.p=(1-lam)*w[i]/sw+lam/rows.length);
+ const s=[...rows].sort((a,b)=>b.total-a.total);const tot=s.map(r=>r.total).sort((a,b)=>a-b);
+ const q=p=>{if(!tot.length)return 0;const i=(tot.length-1)*p,lo=Math.floor(i);return tot[lo]+(tot[Math.min(lo+1,tot.length-1)]-tot[lo])*(i-lo)};
+ const range=tot.length?tot[tot.length-1]-tot[0]:0,iqr=q(.75)-q(.25);
+ const comp=FACTORS.filter(f=>f.max>=10).map(f=>{const j=FACTORS.indexOf(f);const lv=[...new Set(f.pts)].sort((a,b)=>b-a).slice(0,f.pts.length>2?2:1);
+  const known=rows.filter(r=>r.sel[j]!=='NA');const sh=known.length?known.filter(r=>lv.includes(f.pts[+r.sel[j]])).length/known.length:0;return {n:f.name,sh}});
+ const breach=comp.filter(c=>c.sh>=.7);const big=rows.length>=16;
+ const gateOK=range>=20&&iqr>=8&&!breach.length;
+ document.getElementById('gate').innerHTML=rows.length?`Range <b class="${range>=20?'ok':'warn'}">${range.toFixed(0)}</b> (≥20) · IQR <b class="${iqr>=8?'ok':'warn'}">${iqr.toFixed(1)}</b> (≥8) · top-two-band share: `+comp.map(c=>`${c.n} <b class="${c.sh<.7?'ok':'warn'}">${(c.sh*100).toFixed(0)}%</b>`).join(' · ')+(gateOK?` — <span class="ok">gate passed</span>`:` — <span class="warn">COMPRESSION WARNING: tissue not validated</span>`)+(big?'<div class="note">16+ runners: gate must pass before the tissue is used.</div>':''):'Add runners.';
+ const ob=document.querySelector('#out tbody');ob.innerHTML=s.map((r,i)=>`<tr><td>${i+1}</td><td>${r.name}</td><td>${r.total.toFixed(1)}</td><td>${(r.p*100).toFixed(1)}%</td><td>${(1/r.p).toFixed(1)}</td><td>${(1.15/r.p).toFixed(1)}</td><td>${r.na?'<span class="warn">PROVISIONAL ('+r.na+' NA)</span>':'complete'}</td></tr>`).join('')}
+document.getElementById('add').onclick=()=>{row();calc()};document.getElementById('clear').onclick=()=>{tb.innerHTML='';calc()};
+['k','lam'].forEach(i=>document.getElementById(i).oninput=calc);
+document.getElementById('spec').innerHTML='<tr><th>Factor</th><th>Max</th><th>Bands → points (low → high)</th></tr>'+FACTORS.map(f=>`<tr><td title="${f.desc}">${f.name}</td><td>${f.max}</td><td>${f.bands.map((b,i)=>b+' → '+f.pts[i]).join(' · ')}</td></tr>`).join('');
+for(let i=0;i<4;i++)row('');calc();
+</script></body></html>
