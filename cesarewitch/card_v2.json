@@ -1,0 +1,56 @@
+{
+ "weights": {
+  "f_winrate16": 40,
+  "dual_career": 24,
+  "wins_365d": 20,
+  "form_trend3": 16
+ },
+ "card": {
+  "f_winrate16": [
+   1,
+   14,
+   27,
+   40
+  ],
+  "dual_career": [
+   1,
+   24
+  ],
+  "wins_365d": [
+   1,
+   7,
+   14,
+   20
+  ],
+  "form_trend3": [
+   1,
+   6,
+   11,
+   16
+  ]
+ },
+ "bands": {
+  "f_winrate16": [
+   "0 wins at 1m6f+",
+   ">0 to 20%",
+   ">20% to 40%",
+   ">40%"
+  ],
+  "dual_career": [
+   "Flat only",
+   "Flat + jumps"
+  ],
+  "wins_365d": [
+   "0 wins",
+   "1 win",
+   "2 wins",
+   "3+ wins"
+  ],
+  "form_trend3": [
+   "declining (<=-0.20)",
+   "stable (-0.20 to 0.10]",
+   "improving (0.10 to 0.30]",
+   "strong rise (>0.30)"
+  ]
+ }
+}
